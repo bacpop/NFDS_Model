@@ -1,0 +1,1505 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+path_to_data <- "~/Documents/PhD_Project/Data/"
+library(readxl)
+```
+
+#### read in meta data
+```{r}
+joined_metadata_list <- vector(mode = "list", length = 3) # meta data list for UK, US, Nepal
+names(joined_metadata_list) <- c("UK", "US", "Nepal")
+
+joined_PopPUNK_list <- vector(mode = "list", length = 3) # PopPUNK list for UK, US, Nepal
+names(joined_metadata_list) <- c("UK", "US", "Nepal")
+```
+
+### Nepal
+```{r}
+# GPS1
+Nepal_meta_data_gps1 <-   as.data.frame(readxl::read_excel("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/GPS1_and_GPS2_Nepal_dataset_3Dec2024.xlsx", sheet = "GPS1"))
+Nepal_meta_data_gps1_selection <- Nepal_meta_data_gps1[,c(2:6,8:13, 25, 75)]
+Nepal_meta_data_gps1_selection$GPS <- 1
+
+#GPS2 serotypes
+Nepal_gps2_serotyping <- read.csv("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/SerotypeSummary.csv", header = FALSE)
+colnames(Nepal_gps2_serotyping) <- c("Sample","Serotype","Genetic_Variant","Contamination_Status")
+
+spl_serotype_names <- function(serotype_str){
+  split1 <- strsplit(serotype_str, "/data/SerotypingResults/", fixed = TRUE)[[1]][2]
+  split2 <- strsplit(split1, "_RESULT", fixed = TRUE)[[1]][1]
+  split2
+}
+Nepal_gps2_serotyping$Sample <- as.vector(sapply(Nepal_gps2_serotyping$Sample,spl_serotype_names))
+
+gps2_serotype_dict <- Nepal_gps2_serotyping$Serotype
+names(gps2_serotype_dict) <- Nepal_gps2_serotyping$Sample
+
+# GPS2
+Nepal_meta_data_gps2 <- as.data.frame(readxl::read_excel("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/GPS1_and_GPS2_Nepal_dataset_3Dec2024.xlsx", sheet = "GPS2")) 
+Nepal_meta_data_gps2_selection <- Nepal_meta_data_gps2[,c(1,2,4:11,21,22)]
+Nepal_meta_data_gps2_selection$GPS <- 2
+colnames(Nepal_meta_data_gps2_selection)[2] <- "Public_name"
+Nepal_meta_data_gps2_selection$"In_silico_serotype" <- rep(NA, nrow(Nepal_meta_data_gps2_selection))
+Nepal_meta_data_gps2_selection$"In_silico_serotype" <- gps2_serotype_dict[Nepal_meta_data_gps2_selection$"Lane_id"]
+#note: there are 66 entries in here that do not have genome data available 
+
+Nepal_meta_data_gps_joined <- rbind(Nepal_meta_data_gps1_selection, Nepal_meta_data_gps2_selection)
+
+Nepal_time_points <- sort(unique(Nepal_meta_data_gps_joined$Year))
+
+Nepal_SeqYear_dict <- Nepal_meta_data_gps_joined$Year
+names(Nepal_SeqYear_dict) <- Nepal_meta_data_gps_joined$Lane_id
+
+Nepal_meta_IDtoInd <- 1:nrow(Nepal_meta_data_gps_joined)
+names(Nepal_meta_IDtoInd) <- Nepal_meta_data_gps_joined$Lane_id
+```
+
+```{r}
+Nepal_has_serotype <- rep(FALSE, nrow(Nepal_meta_data_gps_joined))
+names(Nepal_has_serotype) <- Nepal_meta_data_gps_joined$Lane_id
+
+
+Nepal_has_serotype[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_" & Nepal_meta_data_gps_joined$Phenotypic_serotype != "NT")]] <- TRUE
+Nepal_has_serotype[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$In_silico_serotype != "UNTYPABLE" & Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "SWISS_NT" & Nepal_meta_data_gps_joined$In_silico_serotype != "ALTERNATIVE_ALIB_NT")]] <- TRUE
+
+### TIDY UP SEROTYPES 
+# e.g. these (Nepal 6B)  (Vellor 6B) need to be merged into 6B
+# I am not sure whether the phenotypic serotype or the in-silico serotype is more reliable
+
+# this has 237 without serotype
+
+# store values for those serotypes
+Nepal_Serotype_dict <- rep(NA, nrow(Nepal_meta_data_gps_joined))
+names(Nepal_Serotype_dict) <- Nepal_meta_data_gps_joined$Lane_id
+
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$In_silico_serotype != "UNTYPABLE" & Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "SWISS_NT"  & Nepal_meta_data_gps_joined$In_silico_serotype != "ALTERNATIVE_ALIB_NT")]] <- Nepal_meta_data_gps_joined$In_silico_serotype[which(Nepal_meta_data_gps_joined$In_silico_serotype != "UNTYPABLE" & Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "SWISS_NT" & Nepal_meta_data_gps_joined$In_silico_serotype != "ALTERNATIVE_ALIB_NT")]
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_" & Nepal_meta_data_gps_joined$Phenotypic_serotype != "NT")]] <- Nepal_meta_data_gps_joined$Phenotypic_serotype[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_" & Nepal_meta_data_gps_joined$Phenotypic_serotype != "NT")]
+
+is_equal <- function(a,b){
+  identical(a,b)
+}
+
+length(which(as.vector(sapply(Nepal_meta_data_gps_joined$Phenotypic_serotype, is_equal, Nepal_meta_data_gps_joined$In_silico_serotype, simplify = TRUE))==FALSE))
+
+in_silico_copy <- Nepal_meta_data_gps_joined$In_silico_serotype
+in_silico_copy[which(in_silico_copy=="UNTYPABLE")] <- "NT"
+in_silico_copy[which(in_silico_copy=="SWISS_NT")] <- "NT"
+in_silico_copy[which(in_silico_copy=="ALTERNATIVE_ALIB_NT")] <- "NT"
+
+not_the_same <- 0
+not_same_pheno <- c()
+not_same_insilico <- c()
+for (i in 1:length(Nepal_meta_data_gps_joined$Phenotypic_serotype)) {
+  #print(Nepal_meta_data_gps_joined$Phenotypic_serotype[i])
+  #print(Nepal_meta_data_gps_joined$In_silico_serotype[i])
+  if(!is.na(Nepal_meta_data_gps_joined$Phenotypic_serotype[i]) & !is.na(Nepal_meta_data_gps_joined$In_silico_serotype[i])){
+    if(Nepal_meta_data_gps_joined$Phenotypic_serotype[i] != in_silico_copy[i]){
+    not_the_same <- not_the_same + 1
+    not_same_pheno[not_the_same] <- Nepal_meta_data_gps_joined$Phenotypic_serotype[i]
+    not_same_insilico[not_the_same] <- Nepal_meta_data_gps_joined$In_silico_serotype[i]
+  }
+  } 
+}
+
+not_same_serotype_df <- as.data.frame(cbind(not_same_pheno, not_same_insilico))
+
+# okay, based on John's and Steph's feedback:
+# trust the in-silico phenotype
+# and then use the phenotypic one only for those that are not in-silico typed
+
+# store values for those serotypes
+Nepal_Serotype_dict <- rep(NA, nrow(Nepal_meta_data_gps_joined))
+names(Nepal_Serotype_dict) <- Nepal_meta_data_gps_joined$Lane_id
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_")]] <- Nepal_meta_data_gps_joined$Phenotypic_serotype[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_")]
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "coverage too low")]] <- Nepal_meta_data_gps_joined$In_silico_serotype[which(Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "coverage too low")]
+
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "UNTYPABLE" | Nepal_Serotype_dict == "SWISS_NT" | Nepal_Serotype_dict == "ALTERNATIVE_ALIB_NT" | Nepal_Serotype_dict == "untypable" | Nepal_Serotype_dict == "NCC1_pspK_non_encapsulated" | Nepal_Serotype_dict == "NCC3_aliD_non_encapsulated" | Nepal_Serotype_dict == "NCC2_S_mitis_aliC_aliD_non_encapsulated" | Nepal_Serotype_dict == "NCC2_aliC_aliD_non_encapsulated")] <- "NT"
+
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "(Nepal 2) (vellor 2)")] <- "2"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "23B1")] <- "23B"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "01")] <- "1"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "02")] <- "2"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "03")] <- "3"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "04")] <- "4"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "05")] <- "5"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06A")] <- "6A"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06B")] <- "6B"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06C")] <- "6C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06D")] <- "6D"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "07B")] <- "7B"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "07C")] <- "7C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "07F")] <- "7F"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "08")] <- "8"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "09L")] <- "9L"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "09N")] <- "9N"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "09V")] <- "9V"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "15B")] <- "15B/15C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "15C")] <- "15B/15C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "20A")] <- "20"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "20B")] <- "20"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "24F")] <- "24B/24C/24F"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "33F")] <- "33A/33E/33F"
+
+# keep 23B1? subtype of 23B
+# And SEROGROUP 24? It seems that in GPS1 they called 24F and 24A separately but in GPS2, they only called SEROGROUP 24. I will assume that this is the newer, correct way to do it.
+
+#Nepal_Serotype_dict[which(Nepal_Serotype_dict == "24F" | Nepal_Serotype_dict == "24A")] <- "SEROGROUP 24"
+# not necessary anymore after doing my own serotyping
+
+length(unique(Nepal_Serotype_dict))
+#[1] 69
+```
+
+# read in PopPUNK results
+```{r}
+PP_all <- read.csv(paste(path_to_data, "StrepPneumo_Nepal_gps_v2/poppunk_clusters_GPSCs_v9/poppunk_clusters_external_clusters.csv",sep = ""))
+# since Nepal was in the database, I had to run PopPUNK with --write-references
+# so now I need to filter this dataset to only have the real Nepal sequences
+
+# remove appendix "_contigs_velvet"
+#remove_contigs_velvet <- function(str_with_app){
+#  str_without_app <- strsplit(str_with_app, "_contigs_velvet", fixed = TRUE)[[1]][1]
+#  str_without_app
+#}
+
+#PP_all$Taxon <- sapply(PP_all$Taxon, remove_contigs_velvet)
+PP_all <- PP_all[!duplicated(PP_all$sample),]
+
+PP_taxon_ind_dict <- 1:nrow(PP_all)
+names(PP_taxon_ind_dict) <- PP_all$sample
+
+PP_is_Nepal_dict <- rep(FALSE,nrow(PP_all))
+names(PP_is_Nepal_dict) <- PP_all$sample
+
+for (i in 1:length(Nepal_meta_data_gps_joined$Lane_id)) {
+  if(Nepal_has_serotype[i]){ # checks if we have serotype for this sequence and only includes it in PP dataset if yes
+    PP_is_Nepal_dict[Nepal_meta_data_gps_joined$Lane_id[i]] <- TRUE
+  }
+}
+
+Nepal_PP <- PP_all[which(PP_is_Nepal_dict[PP_all$sample]),]
+Nepal_PP <- Nepal_PP[which(!(is.na(Nepal_PP$GPSC))),]
+no_Nepal_PP <- length(unique(Nepal_PP$GPSC)) 
+# now: 173
+# now: 169 (GPSCs)
+# before: (PopPUNK clusters, not directly based on GPSCs)
+# 187 clusters 
+# before: (with misassemblies)
+# 181 clusters
+
+Nepal_seq_clusters_dict <- Nepal_PP$GPSC
+names(Nepal_seq_clusters_dict) <- Nepal_PP$sample
+```
+
+# filter meta data by PopPUNK sequences (PopPUNK qc removed some of the sequences)
+```{r}
+#Nepal_meta_dataPP <- Nepal_meta_data_gps_joined[sort(Nepal_meta_IDtoInd[Nepal_PP$sample]),c("Lane_id", "Year")]
+Nepal_meta_dataPP <- Nepal_meta_data_gps_joined[sort(Nepal_meta_IDtoInd[Nepal_PP$sample]),c("Lane_id", "Year")]
+Nepal_meta_dataPP$Serotype <- Nepal_Serotype_dict[Nepal_meta_dataPP$Lane_id]
+colnames(Nepal_meta_dataPP) <- c("Lane_id", "Year", "Serotype")
+
+# length(which(Nepal_meta_dataPP$Serotype == "SEROGROUP 24"))
+#[1] 19
+# I think I will leave them in for now
+# now 39
+# now none 
+rownames(Nepal_meta_dataPP) <- 1:nrow(Nepal_meta_dataPP)
+
+Nepal_meta_IDtoIndPP <- 1:nrow(Nepal_meta_dataPP)
+names(Nepal_meta_IDtoIndPP) <- Nepal_meta_dataPP$Lane_id
+```
+
+```{r}
+# save Nepal metadata in metadata list
+joined_metadata_list[["Nepal"]] <- Nepal_meta_dataPP
+```
+
+```{r}
+# Add Serotype Information to PP
+#Nepal_Serotype_dict <- Nepal_meta_dataPP$In_silico_serotype
+#names(Nepal_Serotype_dict) <- Nepal_meta_dataPP$Lane_id
+# I created a new version of this above, that takes phenotypic serotype when possible
+
+Nepal_PP$Serotype <- Nepal_Serotype_dict[Nepal_PP$sample]
+
+# create dictionary for VTs of the PCV10
+# 1, 4, 5, 6b, 7f, 9V, 14, 18c, 19f and 23f serotypes (source: NCBI)
+PCV10_VTsPP <- rep("NVT",length(unique(Nepal_PP$Serotype)))
+names(PCV10_VTsPP) <- unique(Nepal_PP$Serotype)
+PCV10_VTsPP[c("1","4","5","6B", "7F", "9V", "14", "18C", "19F", "23F")] <- "VT"
+
+Nepal_PP$VT <- PCV10_VTsPP[Nepal_PP$Serotype]
+
+
+joined_PopPUNK_list[["Nepal"]] <- Nepal_PP
+
+saveRDS(Nepal_PP, "Nepal_PP.rds")
+```
+
+### UK
+```{r}
+### Reading in the Accession Codes, Population and the Sequence Clusters
+UK_metadata <- read.csv("~/Documents/PhD_Project/Data/StrepPneumo_UK/metadata.csv")
+
+UK_ids <- UK_metadata$id
+UK_ids_dict <- 1:length(UK_ids)
+names(UK_ids_dict) <- UK_ids
+
+UK_id_acc_dict <- UK_ids
+names(UK_id_acc_dict) <- UK_metadata$Accession
+
+#Isolates <- Samples_accCodes$`Isolate Name`
+#Isolates_dict <- 1:length(Isolates)
+#names(Isolates_dict) <- Isolates
+
+#Isolate_from_Mass_dict <- rep(0, length(Isolates))
+#names(Isolate_from_Mass_dict) <- Isolates
+#Isolate_from_Mass_dict[Mass_Isolates] <- 1
+
+split_winter <- function(winter){
+  strsplit(winter,"\\/")[[1]][1]
+}
+
+UK_SeqYear_dict <- sapply(UK_metadata$Winter, split_winter)
+#names(UK_SeqYear_dict) <- UK_ids
+names(UK_SeqYear_dict) <- UK_metadata$Accession
+
+UK_meta_IDtoInd <- 1:nrow(UK_metadata)
+names(UK_meta_IDtoInd) <- UK_metadata$Accession
+
+UK_time_points <- sort(unique(UK_SeqYear_dict))
+
+UK_winters <- sort(unique(UK_metadata$Winter))
+```
+
+```{r}
+# save UK metadata in metadata list
+joined_metadata_list[["UK"]] <- UK_metadata
+```
+
+# PopPUNK UK
+```{r}
+#PP_all <- read.csv(paste(path_to_data, "StrepPneumoUKjoined/PopPUNK/poppunk_clusters_clusters.csv",sep = ""))
+PP_all <- read.csv(paste(path_to_data, "StrepPneumoUKjoined/poppunk_clusters_GPSCs_v9/poppunk_clusters_external_clusters.csv",sep = ""))
+colnames(PP_all) <- c("Taxon","Cluster")
+no_PP_all <- length(unique(PP_all$Cluster)) 
+```
+
+```{r}
+PP_taxon_ind_dict <- 1:nrow(PP_all)
+names(PP_taxon_ind_dict) <- PP_all$Taxon
+
+PP_is_UK_dict <- rep(FALSE,nrow(PP_all))
+names(PP_is_UK_dict) <- PP_all$Taxon
+
+for (i in 1:length(UK_metadata$Accession)) {
+  PP_is_UK_dict[UK_metadata$Accession[i]] <- TRUE
+}
+# seq ERR657323 is only in metadata, not in PP info. Need to remove that one
+UK_PP <- PP_all[PP_is_UK_dict,]
+UK_PP <- UK_PP[-nrow(UK_PP),]
+no_UK_PP <- length(unique(UK_PP$Cluster)) 
+# 54 GPSCs
+# 59 clusters (old)
+
+UK_seq_clusters_dict <- UK_PP$Cluster
+names(UK_seq_clusters_dict) <- UK_PP$Taxon
+```
+
+```{r}
+# Add Serotype Information
+UK_Serotype_dict <- UK_metadata$Serotype
+names(UK_Serotype_dict) <- UK_metadata$Accession
+
+UK_PP$Serotype <- UK_Serotype_dict[UK_PP$Taxon]
+
+UK_PP$Time <- UK_SeqYear_dict[UK_PP$Taxon]
+
+# create dictionary for VTs of the PCV10
+# 1, 4, 5, 6b, 7f, 9V, 14, 18c, 19f and 23f serotypes (source: NCBI)
+#PCV7: 4, 6B, 9V, 14, 18C, 19F and 23F. (source: https://journals.plos.org/plospathogens/article?id=10.1371/journal.ppat.1006966#sec018)
+# PCV13: (1, 3, 4, 5, 6A and 6B, 7F, 9V, 14, 19A, and 19F, 18C, and 23F) (source: https://www.ncbi.nlm.nih.gov/books/NBK507794/)
+PCV13_VTs <- rep("NVT",length(unique(UK_metadata$Serotype)))
+names(PCV13_VTs) <- unique(UK_metadata$Serotype)
+PCV13_VTs[c("1", "3", "4","5","6A","6B", "7F", "9V", "14", "18C", "19A", "19F", "23F")] <- "VT"
+
+# add 6A to PCV7 because there is strong cross-immunity btw PVC7 and 6A (4.Croucher, N. J. et al. Population genomics of post-vaccine changes in pneumococcal epidemiology. Nat. Genet. 45, 656–663 (2013).)
+PCV7_VTs <- rep("NVT",length(unique(UK_metadata$Serotype)))
+names(PCV7_VTs) <- unique(UK_metadata$Serotype)
+PCV7_VTs[c("4","6A", "6B", "9V", "14", "18C", "19F", "23F")] <- "VT"
+
+UK_PP$VT_PCV7 <- PCV7_VTs[UK_PP$Serotype]
+UK_PP$VT_PCV13 <- PCV13_VTs[UK_PP$Serotype]
+
+saveRDS(UK_PP,"UK_PP.rds")
+
+joined_PopPUNK_list[["UK"]] <- UK_PP
+```
+
+
+### US
+```{r}
+### Reading in the Accession Codes, Population and the Sequence Clusters
+Samples_accCodes <- read_excel(paste(path_to_data, "Massachusetts_data_NickCroucher/SupplementaryDataPaper/Samples_accCodes.xlsx", sep = ""))
+Mass_Samples_accCodes <- Samples_accCodes[Samples_accCodes$Population=="Massachusetts",]
+Mass_Isolates <- Mass_Samples_accCodes$`Isolate Name`
+Mass_Isolates_dict <- 1:length(Mass_Isolates)
+names(Mass_Isolates_dict) <- Mass_Isolates
+
+Isolates <- Samples_accCodes$`Isolate Name`
+Isolates_dict <- 1:length(Isolates)
+names(Isolates_dict) <- Isolates
+
+Isolate_from_Mass_dict <- rep(0, length(Isolates))
+names(Isolate_from_Mass_dict) <- Isolates
+Isolate_from_Mass_dict[Mass_Isolates] <- 1
+```
+
+# Read in PopPUNK clusters:
+
+```{r}
+#PopPUNK_all <- read.csv("/Users/llorenz/Documents/PhD_Project/Data/Massachusetts_SeqClusters/PopPUNKwithStandardDB/poppunk_clusters_clusters.csv")
+PopPUNK_all <- read.csv("/Users/llorenz/Documents/PhD_Project/Data/Massachusetts_SeqClusters/poppunk_clusters_GPSCs_v9/poppunk_clusters_external_clusters.csv")
+colnames(PopPUNK_all) <- c("Taxon","Cluster")
+no_PopPUNK_all <- length(unique(PopPUNK_all$Cluster)) # number of clusters in dataset
+```
+
+```{r}
+# Add Isolate Name to PopPUNK data frame
+accNo_to_filename <- read.delim("~/Documents/PhD_Project/Code/1st_project/odin-dust-examples/Data/filereport_read_run_PRJEB2632_tsv.txt")
+accNo_to_filename <- accNo_to_filename[,c(1,8)]
+accNo_to_filename[,3] <- matrix(unlist(strsplit(accNo_to_filename[,2],"/")), ncol=6, byrow = TRUE)[,6]
+accNo_to_filename[,3] <- matrix(unlist(strsplit(accNo_to_filename[,3],"[.]")), ncol=2, byrow = TRUE)[,1]
+accNo_to_filename <- accNo_to_filename[,c(1,3)]
+colnames(accNo_to_filename) <- c(colnames(accNo_to_filename)[1], "filenames")
+
+filenameToAccNo_dict <- accNo_to_filename$run_accession
+names(filenameToAccNo_dict) <- accNo_to_filename$filenames
+
+AccNoToIsolate_dict <- Mass_Samples_accCodes$`Isolate Name`
+names(AccNoToIsolate_dict) <- Mass_Samples_accCodes$`Accession Code`
+
+#PopPUNK_clusters$IsolateName <- AccNoToIsolate_dict[filenameToAccNo_dict[PopPUNK_clusters$Taxon]]
+```
+
+```{r}
+PopPUNK_clusters <- data.frame(matrix(NA, nrow = nrow(Mass_Samples_accCodes), ncol = 3))
+colnames(PopPUNK_clusters) <- c(colnames(PopPUNK_all), "IsolateName")
+
+counter <- 0
+for (i in 1:nrow(PopPUNK_all)) {
+  if(is.element(PopPUNK_all$Taxon[i], names(filenameToAccNo_dict))){
+    if(is.element(filenameToAccNo_dict[PopPUNK_all$Taxon[i]], names(AccNoToIsolate_dict))){
+    counter <- counter + 1
+    PopPUNK_clusters[counter,] <- c(PopPUNK_all[i,],AccNoToIsolate_dict[filenameToAccNo_dict[PopPUNK_all[i,1]]])
+    }
+  }
+}
+
+no_PopPUNK_clusters <- length(unique(PopPUNK_clusters$Cluster)) 
+
+# 52 GPSCs
+```
+
+```{r}
+# Add VT information
+VT_dict <- Mass_Samples_accCodes$`Vaccine Type`
+names(VT_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+PopPUNK_clusters$VT <- VT_dict[PopPUNK_clusters$IsolateName]
+```
+
+```{r}
+# Add sequencing year information
+SeqYear_dict <- Mass_Samples_accCodes$`Year of Isolation`
+names(SeqYear_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+PopPUNK_clusters$SeqYear <- SeqYear_dict[PopPUNK_clusters$IsolateName]
+
+SeqYear_dict_Taxon <- PopPUNK_clusters$SeqYear
+names(SeqYear_dict_Taxon) <- PopPUNK_clusters$Taxon
+```
+
+```{r}
+# Add Serotype Information
+Serotype_dict <- Mass_Samples_accCodes$Serotype
+names(Serotype_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+PopPUNK_clusters$Serotype <- Serotype_dict[PopPUNK_clusters$IsolateName]
+```
+
+```{r}
+# Create PP clusters, split by serotype
+#calculate the frequency of the gene clusters and year and serotype
+PP_mass_cluster_freq_1_sero <- matrix(0,nrow = no_PopPUNK_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_2_sero <- matrix(0,nrow = no_PopPUNK_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_3_sero <- matrix(0,nrow = no_PopPUNK_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_sero_names <- unique(PopPUNK_clusters$Serotype)
+for (i in 1:no_PopPUNK_clusters){
+  for (k in unique(PopPUNK_clusters$Serotype)){
+  PP_mass_cluster_freq_1_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2001))
+  PP_mass_cluster_freq_2_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2004))
+  PP_mass_cluster_freq_3_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2007))
+  }
+}
+
+#save sequence cluster frequencies
+saveRDS(PP_mass_cluster_freq_1_sero, file = "PP_mass_cluster_freq_1_seroMod.rds")
+saveRDS(PP_mass_cluster_freq_2_sero, file = "PP_mass_cluster_freq_2_seroMod.rds")
+saveRDS(PP_mass_cluster_freq_3_sero, file = "PP_mass_cluster_freq_3_seroMod.rds")
+```
+
+# create matrix with PP clusters and serotypes
+```{r}
+PPxSero_matrix <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+# sort(unique(PopPUNK_clusters$Serotype))
+# [1] "10A"   "11A"   "14"    "15A"   "15B/C" "15F"   "16F"   "17F"   "18C"   "19A"   "19F"   "21"    "22F"   "23A"
+#[15] "23B"   "23F"   "3"     "31"    "33F"   "34"    "35B"   "35F"   "37"    "38"    "6A"    "6B"    "6C"    "7C" 
+#[29] "7F"    "9N"    "9V"    "NT"
+
+SerotypeToIndex_dict <- 1:length(unique(PopPUNK_clusters$Serotype))
+names(SerotypeToIndex_dict) <- (unique(PopPUNK_clusters$Serotype))
+
+#IndexToSerotype_dict <- (unique(PopPUNK_clusters$Serotype))
+#names(IndexToSerotype_dict) <- 1:length(unique(PopPUNK_clusters$Serotype))
+
+PPclustToIndex_dict <- 1:length(unique(PopPUNK_clusters$Cluster))
+names(PPclustToIndex_dict) <- (unique(PopPUNK_clusters$Cluster))
+
+for (i in 1:nrow(PopPUNK_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(PopPUNK_clusters$Cluster[i])],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- 1
+}
+# matrix shows information whether PP and serotype co-occur in the dataset (1=TRUE)
+# this can be used as the migration matrix:
+PPxSero_matrix_prob <- PPxSero_matrix / sum(PPxSero_matrix)
+PPxSero_matrix_prob <- matrix(sapply(PPxSero_matrix_prob,as.double), nrow = nrow(PPxSero_matrix), ncol = ncol(PPxSero_matrix))
+saveRDS(PPxSero_matrix_prob, "PPsero_mig.rds")
+saveRDS(PPxSero_matrix_prob, "PPsero_mig2.rds")
+
+# same with new sorting 
+PPsero_startpop6 <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_expand_factor <- 15000 / sum(PP_mass_cluster_freq_1_sero)
+exp_noise <- 1000
+for (i in 1:nrow(PPsero_startpop6)) {
+    PPsero_startpop6[i,] <- (sapply((PP_mass_cluster_freq_1_sero[i,] + rexp(n = length(PP_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob[i,])
+  #PPsero_startpop5[i,] <- PP_mass_cluster_freq_1_sero[i,] + ceiling(PPxSero_matrix_prob[i,])
+}
+saveRDS(PPsero_startpop6, "PPsero_startpop6.rds")
+
+plot(colSums(PP_mass_cluster_freq_1_sero)/sum(colSums(PP_mass_cluster_freq_1_sero)))
+points(colSums(PPsero_startpop6)/sum(colSums(PPsero_startpop6)), col = "red")
+
+plot(rowSums(PP_mass_cluster_freq_1_sero)/sum((PP_mass_cluster_freq_1_sero)))
+points(rowSums(PPsero_startpop6)/sum(rowSums(PPsero_startpop6)), col = "red")
+#much better
+
+
+# serotype VT vector
+SeroVT <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:nrow(PopPUNK_clusters)) {
+  SeroVT[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
+}
+saveRDS(SeroVT, "SeroVT.rds")
+saveRDS(SeroVT, "SeroVT2.rds")
+
+```
+
+```{r}
+# save US metadata in metadata list
+joined_metadata_list[["US"]] <- Mass_Samples_accCodes
+
+# save US PopPUNK clusters
+joined_PopPUNK_list[["US"]] <- PopPUNK_clusters
+
+saveRDS(PopPUNK_clusters, "PopPUNK_clusters.rds")
+```
+
+### ggCaller (this is what was newly analysed here - running ggCaller and Panaroo in one go on UK, US and Nepal)
+
+```{r}
+joined_ggCaller <- read.csv("/Users/llorenz/Documents/PhD_Project/Data/StrepPneumo_UKUSNepal/gene_presence_absence.csv", header=FALSE)
+
+# converting the gene presence absence matrix into a boolean df (0 = gene not present, 1 = gene present)
+convert_to_bool <- function(x){
+  if (x=="") 0 else 1
+}
+
+joined_ggCaller_bool <- joined_ggCaller[,c(-2,-3)]
+joined_ggCaller_bool[-1,-1] <- apply(joined_ggCaller_bool[-1,-1],c(1,2), convert_to_bool)
+
+joined_ggCaller_bool[1,-1] <- sapply(joined_ggCaller_bool[1,-1], strsplit, split = ".contigs_velvet") # remove contigs appendix
+colnames(joined_ggCaller_bool) <- joined_ggCaller_bool[1,]
+```
+
+# split ggCaller matrix into UK, US, Nepal
+```{r}
+# filter ggCaller results by Nepal 
+Nepal_ggCallerPP_bool <- data.frame(matrix(0, nrow = nrow(joined_ggCaller_bool), ncol = length(Nepal_PP$sample)+1))
+Nepal_ggCallerPP_bool[-1,-1] <- joined_ggCaller_bool[-1,c(Nepal_PP$sample)]
+colnames(Nepal_ggCallerPP_bool) <- c("Gene",Nepal_PP$sample)
+Nepal_ggCallerPP_bool[1,] <- c("Gene",Nepal_PP$sample)
+Nepal_ggCallerPP_bool[,1] <- joined_ggCaller_bool[,1]
+
+# filter ggCaller results by the ones I have metadata for from UK
+UK_ggCallerPP_bool <- data.frame(matrix(0, nrow = nrow(joined_ggCaller_bool), ncol = length(UK_PP$Taxon)+1))
+for (i in 1:length(UK_PP$Taxon)) {
+  UK_ggCallerPP_bool[-1,(i+1)] <- joined_ggCaller_bool[-1,UK_PP$Taxon[i]]
+}
+
+UK_ggCallerPP_bool[-1,-1] <- joined_ggCaller_bool[-1,c(UK_PP$Taxon)]
+colnames(UK_ggCallerPP_bool) <- c("Gene",UK_PP$Taxon)
+UK_ggCallerPP_bool[1,] <- c("Gene",UK_PP$Taxon)
+UK_ggCallerPP_bool[,1] <- joined_ggCaller_bool[,1]
+
+# filter ggCaller results by US 
+US_ggCallerPP_bool <- data.frame(matrix(0, nrow = nrow(joined_ggCaller_bool), ncol = length(PopPUNK_clusters$Taxon)+1))
+US_ggCallerPP_bool[-1,-1] <- joined_ggCaller_bool[-1,c(PopPUNK_clusters$Taxon)]
+colnames(US_ggCallerPP_bool) <- c("Gene",PopPUNK_clusters$Taxon)
+US_ggCallerPP_bool[1,] <- c("Gene",PopPUNK_clusters$Taxon)
+US_ggCallerPP_bool[,1] <- joined_ggCaller_bool[,1]
+
+# save ggCaller bool matrices in list
+joined_ggCaller_list <- vector(mode = "list", length = 3) # ggCaller list for UK, US, Nepal
+names(joined_ggCaller_list) <- c("UK", "US", "Nepal")
+
+joined_ggCaller_list[["Nepal"]] <- Nepal_ggCallerPP_bool
+joined_ggCaller_list[["UK"]] <- UK_ggCallerPP_bool
+joined_ggCaller_list[["US"]] <- US_ggCallerPP_bool
+
+saveRDS(joined_ggCaller_list, "joined_ggCaller_list.rds")
+```
+
+# process Nepal ggCaller
+# split ggCaller gene presence absence matrix into different time points
+```{r}
+### continue working here
+Nepal_ggCaller_byYear <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  Nepal_ggCaller_year <- data.frame(matrix(0, nrow = nrow(Nepal_ggCallerPP_bool), ncol = length(which(Nepal_meta_dataPP$Year==Nepal_time_points_selected[i]))+1)) # initialize data frame
+  Nepal_ggCaller_year[1,-1] <- Nepal_ggCallerPP_bool[1,c(FALSE,Nepal_SeqYear_dict[unlist(Nepal_ggCallerPP_bool[1,-1])]==Nepal_time_points_selected[i])] # fill in first row (seq names)
+  Nepal_ggCaller_year[-1,1] <- Nepal_ggCallerPP_bool[-1,1] # fill in first column (gene cluster names)
+  Nepal_ggCaller_year[-1,-1] <- Nepal_ggCallerPP_bool[-1,c(FALSE,Nepal_SeqYear_dict[unlist(Nepal_ggCallerPP_bool[1,-1])]==Nepal_time_points_selected[i])] # fill in presence absence information
+  Nepal_ggCaller_byYear[[i]] <- Nepal_ggCaller_year
+}
+```
+
+# find intermediate frequency genes
+# I will combine all pre-vaccine data points for this
+```{r}
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+Nepal_gene_freq_preVac <- rep(0, nrow(Nepal_ggCaller_byYear[[1]])-1)
+preVac_datapoints <- 0
+for (i in 1:length(Nepal_time_points_preVac)) {
+  Nepal_gene_freq_preVac <- Nepal_gene_freq_preVac + apply(Nepal_ggCaller_byYear[[i]][-1,-1],1, sum_as_int)
+  preVac_datapoints <- preVac_datapoints + length(Nepal_ggCaller_byYear[[i]][1,-1])
+}
+Nepal_gene_freq_preVac <- Nepal_gene_freq_preVac / preVac_datapoints
+
+Nepal_gene_filter <- as.integer(Nepal_gene_freq_preVac<=0.95 & Nepal_gene_freq_preVac>=0.05)
+# now 2484 (joined analysis) (of 24451)
+# 2120 intermediate-frequency genes (of 6533)
+# now: 2890 intermediate-frequency genes (of 9059)
+```
+
+# create intermediate frequency dataframes
+```{r}
+Nepal_ggCaller_byYear_intermed <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  Nepal_ggCaller_year <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,ncol = length(which(Nepal_meta_dataPP$Year==Nepal_time_points_selected[i]))+1))
+  if(ncol(Nepal_ggCaller_byYear[[i]])>1){
+    Nepal_ggCaller_year <-  Nepal_ggCaller_byYear[[i]][c(1,which(Nepal_gene_filter==1)+1),]
+  }
+  else{
+    Nepal_ggCaller_year <-  data.frame(matrix(Nepal_ggCaller_byYear[[6]][c(1,which(Nepal_gene_filter==1)+1),1], nrow = sum(Nepal_gene_filter)+1,ncol = 1))
+  }
+  Nepal_ggCaller_byYear_intermed[[i]] <- Nepal_ggCaller_year 
+}
+
+Nepal_ggCaller_intermed <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,ncol = ncol(Nepal_ggCallerPP_bool)))
+Nepal_ggCaller_intermed <-  Nepal_ggCallerPP_bool[c(1,which(Nepal_gene_filter==1)+1),]
+
+# use 2009 as preVac reference
+Nepal_ggCaller_intermed_preVac <- Nepal_ggCaller_byYear_intermed[[5]]
+```
+
+# create consensus gene presence absence matrices for the clusters
+```{r}
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+# overall
+Nepal_ggCaller_intermed_consensus <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1, ncol = no_Nepal_PP+1))
+Nepal_ggCaller_intermed_consensus[1,-1] <- paste("SeqCl_",unique(Nepal_PP$GPSC),sep = "")
+
+for (i in unique(Nepal_PP$GPSC)) {
+  Nepal_ggCaller_intermed_consensus[-1,(which(unique(Nepal_PP$GPSC) == i))+1] <- apply(as.matrix(Nepal_ggCaller_intermed[-1,c(FALSE,Nepal_seq_clusters_dict[unlist(Nepal_ggCaller_intermed[1,-1])]==i)]), 1, cons_genomes)
+
+}
+Nepal_ggCaller_intermed_consensus[,1] <- Nepal_ggCaller_intermed[,1]
+
+#by year
+Nepal_ggCaller_byYear_intermed_consensus <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  Nepal_ggCaller_year <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,ncol = no_Nepal_PP+1))
+  Nepal_ggCaller_year[1,-1] <- paste("SeqCl_",unique(Nepal_PP$GPSC),sep = "")
+  for (j in unique(Nepal_PP$GPSC)) {
+    Nepal_ggCaller_year[-1,(which(unique(Nepal_PP$GPSC) == j))+1] <- apply(as.matrix(Nepal_ggCaller_byYear_intermed[[i]][-1,c(FALSE,Nepal_seq_clusters_dict[unlist(Nepal_ggCaller_byYear_intermed[[i]][1,-1])]==j)]), 1, cons_genomes)
+  }
+  Nepal_ggCaller_year[,1] <- Nepal_ggCaller_byYear_intermed[[i]][,1]
+  Nepal_ggCaller_byYear_intermed_consensus[[i]] <- Nepal_ggCaller_year
+}
+
+saveRDS(Nepal_ggCaller_intermed_consensus,"Nepal_ggCaller_intermed_consensus.rds")
+```
+
+# calculate cluster frequencies for different years
+```{r}
+Nepal_cluster_freqs <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for(j in 1:length(Nepal_time_points_selected)){
+  Nepal_cluster_freqs[[j]] <- rep(0, no_Nepal_PP)
+  for (i in unique(Nepal_PP$GPSC)){
+    Nepal_cluster_freqs[[j]][which(unique(Nepal_PP$GPSC) == i)] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == i,"sample"]],]$Year==Nepal_time_points_selected[j]))
+  }
+}
+
+Nepal_cluster_freqs[[6]] <- rep(NA, no_Nepal_PP)
+
+# I will use 2009 as start population I think
+Nepal_cluster_freqs_preVac <- Nepal_cluster_freqs[[5]]
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  file_name <- paste("Nepal_cluster_freqs_", as.character(i),".rds", sep = "")
+  saveRDS(Nepal_cluster_freqs[[i]], file_name)
+}
+```
+
+#create initial population
+```{r}
+### create initial population that is based on the first time point data set
+# sample from it with an Poisson process
+expand_factor <- 15000 / sum(Nepal_cluster_freqs_preVac)
+exp_noise <- 10
+Nepal_model_start_pop <- (sapply((Nepal_cluster_freqs_preVac + rexp(n = length(Nepal_cluster_freqs_preVac), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(Nepal_cluster_freqs_preVac/sum(Nepal_cluster_freqs_preVac))
+points(Nepal_model_start_pop/sum(Nepal_model_start_pop), col = "red")
+
+# aha, I compared the data but 90% of the data are actually coming from 2009 (of the preVac era)
+# so it would be much better to only use that time point I think
+
+Nepal_model_start_pop <- (sapply((Nepal_cluster_freqs[[5]] + rexp(n = length(Nepal_cluster_freqs[[5]]), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(Nepal_cluster_freqs[[5]]/sum(Nepal_cluster_freqs[[5]]))
+points(Nepal_model_start_pop/sum(Nepal_model_start_pop), col = "red")
+
+saveRDS(Nepal_model_start_pop, "Nepal_model_start_pop.rds")
+```
+
+
+# calculate delta ranking
+# I will do 2019 - 2009
+```{r}
+# For strong and weak selection in the model, I need to calculate the beta statistics.
+
+# calculate gene frequencies first, separate for three time points
+#Nepal_gene_freq_preVac <- apply(Nepal_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
+#Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[length(Nepal_ggCaller_byYear_intermed)]][-1,-1], 1, sum_as_int)
+Nepal_gene_freq_preVac <- apply(Nepal_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
+Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[15]][-1,-1], 1, sum_as_int)
+
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+#Nepal_gene_freq_preVac_rel <- Nepal_gene_freq_preVac/sum(Nepal_gene_freq_preVac)
+#Nepal_gene_freq_postVac_rel <- Nepal_gene_freq_postVac/sum(Nepal_gene_freq_postVac)
+# no, I don't want to divide by the sum of the number of genes, I want to divide by number of seqs
+Nepal_gene_freq_preVac_rel <- Nepal_gene_freq_preVac/(ncol(Nepal_ggCaller_intermed_preVac[-1,-1]))
+Nepal_gene_freq_postVac_rel <- Nepal_gene_freq_postVac/(ncol(Nepal_ggCaller_byYear_intermed[[15]][-1,-1]))
+
+# calculate delta statistic (refer to Corander et al. for more info)
+Nepal_delta_data <- (Nepal_gene_freq_postVac_rel - Nepal_gene_freq_preVac_rel) ^ 2 / (1 - Nepal_gene_freq_preVac_rel * (1 - Nepal_gene_freq_preVac_rel))
+Nepal_delta_ranking <- rank(Nepal_delta_data)
+
+saveRDS(Nepal_delta_ranking,"Nepal_delta_ranking.rds")
+saveRDS(Nepal_delta_data,"Nepal_delta_data.rds")
+```
+
+### Data processing for PPxSero model
+```{r}
+Nepal_clusters <- readRDS("Nepal_PP.rds")
+Nepal_model_start_pop <- readRDS("Nepal_model_start_pop.rds")
+Nepal_clusters_no <- length(unique(Nepal_clusters$GPSC))
+Nepal_avg_cluster_freq <- rep(1/Nepal_clusters_no, Nepal_clusters_no)
+
+
+PPxSero_matrix <- matrix(0, nrow = length(unique(Nepal_clusters$GPSC)), ncol = length(unique(Nepal_clusters$Serotype)))
+# sort(unique(PopPUNK_clusters$Serotype))
+# [1] "10A"   "11A"   "14"    "15A"   "15B/C" "15F"   "16F"   "17F"   "18C"   "19A"   "19F"   "21"    "22F"   "23A"
+#[15] "23B"   "23F"   "3"     "31"    "33F"   "34"    "35B"   "35F"   "37"    "38"    "6A"    "6B"    "6C"    "7C" 
+#[29] "7F"    "9N"    "9V"    "NT"
+# now, 74 serotypes
+
+SerotypeToIndex_dict <- 1:length(unique(Nepal_clusters$Serotype))
+names(SerotypeToIndex_dict) <- sort(unique(Nepal_clusters$Serotype))
+
+IndexToSerotype_dict <- sort(unique(Nepal_clusters$Serotype))
+names(IndexToSerotype_dict) <- 1:length(unique(Nepal_clusters$Serotype))
+
+PPclustToIndex_dict <- 1:length(unique(Nepal_clusters$GPSC))
+names(PPclustToIndex_dict) <- sort(unique(Nepal_clusters$GPSC))
+
+for (i in 1:nrow(Nepal_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(Nepal_clusters$GPSC[i])],SerotypeToIndex_dict[Nepal_clusters$Serotype[i]]] <- 1
+}
+
+
+PPxSero_matrix_prob2 <-  matrix(0, nrow = length(unique(Nepal_clusters$GPSC)), ncol = length(unique(Nepal_clusters$Serotype)))
+for (i in 1:length(unique(Nepal_clusters$GPSC))) {
+  PPxSero_matrix_prob2[i,] <- ((PPxSero_matrix[i,] * Nepal_avg_cluster_freq[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPxSero_matrix_prob2, "Nepal_PPsero_mig.rds")
+# new migration matrix that is closer to original one
+
+# start population:
+PPsero_startpop <- matrix(0, nrow = length(unique(Nepal_clusters$GPSC)), ncol = length(unique(Nepal_clusters$Serotype)))
+
+for (i in which(Nepal_clusters$SeqYear=="1998")) {
+  PPsero_startpop[PPclustToIndex_dict[Nepal_clusters$GPSC[i]],SerotypeToIndex_dict[Nepal_clusters$Serotype[i]]] <- PPsero_startpop[PPclustToIndex_dict[Nepal_clusters$GPSC[i]],SerotypeToIndex_dict[Nepal_clusters$Serotype[i]]] + 1
+}
+#PPsero_startpop <- PPsero_startpop * 15000 / sum(PPsero_startpop)
+
+
+PP_expand_factor <- 15000 / sum(PPsero_startpop)
+exp_noise <- 10
+#PPsero_startpop_corr <- matrix(sapply((PPsero_startpop + matrix(rexp(n = ncol(PPsero_startpop) * nrow(PPsero_startpop), rate = exp_noise), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))) * PP_expand_factor, rpois, n=1), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#PPsero_startpop_corr <- matrix(sapply(PPsero_startpop_corr,as.double), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#saveRDS(PPsero_startpop_corr, "PPsero_startpop.rds")
+
+# this lead to a start population that is way too evenly distributed across the different clusters
+# instead, I could maybe use the existing PP_model_start_pop and distribute it to the different serotypes?
+PPsero_startpop2 <-  matrix(0, nrow = length(unique(Nepal_clusters$GPSC)), ncol = length(unique(Nepal_clusters$Serotype)))
+for (i in 1:length(unique(Nepal_clusters$GPSC))) {
+  PPsero_startpop2[i,] <- round((PPxSero_matrix[i,] * Nepal_model_start_pop[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPsero_startpop2, "Nepal_PPsero_startpop.rds")
+# this is very close to the original PP_model_start_pop
+# maybe I am giving out too much information because the serotype distribution is exactly the real one?
+
+# serotype VT vector
+SeroVT <- rep(0, length(unique(Nepal_clusters$Serotype)))
+for (i in 1:nrow(Nepal_clusters)) {
+  SeroVT[SerotypeToIndex_dict[Nepal_clusters$Serotype[i]]] <- as.integer(Nepal_clusters$VT[i]=="VT")
+}
+saveRDS(SeroVT, "Nepal_SeroVT.rds")
+```
+
+# UK
+# split ggCaller gene presence absence matrix into different time points
+```{r}
+UK_ggCaller_byYear <- vector(mode = "list", length = length(UK_time_points))
+
+for (i in 1:length(UK_time_points)) {
+  UK_ggCaller_year <- data.frame(matrix(0, nrow = nrow(UK_ggCallerPP_bool), ncol = length(which(UK_metadata$Winter==UK_winters[i]))+1)) # initialize data frame
+  UK_ggCaller_year[1,-1] <- UK_ggCallerPP_bool[1,c(FALSE,UK_SeqYear_dict[unlist(UK_ggCallerPP_bool[1,-1])]==UK_time_points[i])] # fill in first row (seq names)
+  UK_ggCaller_year[-1,1] <- UK_ggCallerPP_bool[-1,1] # fill in first column (gene cluster names)
+  UK_ggCaller_year[-1,-1] <- UK_ggCallerPP_bool[-1,c(FALSE,UK_SeqYear_dict[unlist(UK_ggCallerPP_bool[1,-1])]==UK_time_points[i])] # fill in presence absence information
+  #print(i)
+  UK_ggCaller_byYear[[i]] <- UK_ggCaller_year
+}
+```
+
+# find intermediate frequency genes
+```{r}
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+UK_time_points_preVac <- 1
+UK_gene_freq_preVac <- rep(0, nrow(UK_ggCaller_byYear[[1]])-1)
+preVac_datapoints <- 0
+for (i in 1:length(UK_time_points_preVac)) {
+  UK_gene_freq_preVac <- UK_gene_freq_preVac + apply(UK_ggCaller_byYear[[i]][-1,-1],1, sum_as_int)
+  preVac_datapoints <- preVac_datapoints + length(UK_ggCaller_byYear[[i]][1,-1])
+}
+UK_gene_freq_preVac <- UK_gene_freq_preVac / preVac_datapoints
+
+UK_gene_filter <- as.integer(UK_gene_freq_preVac<=0.95 & UK_gene_freq_preVac>=0.05)
+# sum(UK_gene_filter)
+# now (joined analysis) 2048
+# 1614 intermediate-frequency genes (of 6526)
+
+UK_ggC_intermed_gene_freqs <- UK_gene_freq_preVac[which(UK_gene_filter==1)]
+saveRDS(UK_ggC_intermed_gene_freqs, file = "UK_ggC_intermed_gene_freqs.rds")
+
+UK_ggC_all_gene_freqs <- UK_gene_freq_preVac
+saveRDS(UK_ggC_all_gene_freqs, file = "UK_ggC_all_gene_freqs.rds")
+
+UK_ggC_all_gene_names <- UK_ggCaller_byYear[[1]][-1,1]
+saveRDS(UK_ggC_all_gene_names, file = "UK_ggC_all_gene_names.rds")
+```
+
+# create intermediate frequency dataframes
+```{r}
+UK_ggCaller_byYear_intermed <- vector(mode = "list", length = length(UKPP_time_points))
+
+for (i in 1:length(UKPP_time_points)) {
+  UK_ggCaller_year <- data.frame(matrix(0, nrow = sum(UK_gene_filter)+1,ncol = length(which(UK_metadata$Year==UKPP_time_points[i]))+1))
+  if(ncol(UK_ggCaller_byYear[[i]])>1){
+    UK_ggCaller_year <-  UK_ggCaller_byYear[[i]][c(1,which(UK_gene_filter==1)+1),]
+  }
+  else{
+    UK_ggCaller_year <-  data.frame(matrix(UK_ggCaller_byYear[[6]][c(1,which(UK_gene_filter==1)+1),1], nrow = sum(UK_gene_filter)+1,ncol = 1))
+  }
+  rownames(UK_ggCaller_year) <- c("name", which(UK_gene_filter==1))
+  UK_ggCaller_byYear_intermed[[i]] <- UK_ggCaller_year 
+}
+
+UK_ggCaller_intermed <- data.frame(matrix(0, nrow = sum(UK_gene_filter)+1,ncol = ncol(UK_ggCallerPP_bool)))
+UK_ggCaller_intermed <-  UK_ggCallerPP_bool[c(1,which(UK_gene_filter==1)+1),]
+
+# create pre_Vac intermed frequency data frame
+UK_ggCaller_intermed_preVac <- data.frame(matrix(0, nrow = sum(UK_gene_filter)+1,ncol = (sum(unlist(lapply(UK_ggCaller_byYear_intermed,ncol))[1:length(UK_time_points_preVac)]) - length(UK_time_points_preVac) + 1)))
+col_count <- 2
+for (i in 1:length(UK_time_points_preVac)) {
+  if(ncol(UK_ggCaller_byYear_intermed[[i]])>1){
+    UK_ggCaller_intermed_preVac[,(col_count:(col_count + ncol(UK_ggCaller_byYear_intermed[[i]])-1))] <- UK_ggCaller_byYear_intermed[[i]][,-1]
+    col_count <- col_count + ncol(UK_ggCaller_byYear_intermed[[i]])
+  }
+}
+UK_ggCaller_intermed_preVac[,1] <-  UK_ggCaller_byYear_intermed[[1]][,1]
+rownames(UK_ggCaller_intermed_preVac) <- c("name", which(UK_gene_filter==1))
+```
+
+# create consensus gene presence absence matrices for the clusters
+```{r}
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+# overall
+UK_ggCaller_intermed_consensus <- data.frame(matrix(0, nrow = sum(UK_gene_filter)+1, ncol = no_UK_PP+1))
+UK_ggCaller_intermed_consensus[1,-1] <- paste("SeqCl_",unique(UK_PP$Cluster),sep = "")
+
+for (i in unique(UK_PP$Cluster)) {
+  UK_ggCaller_intermed_consensus[-1,(which(unique(UK_PP$Cluster) == i))+1] <- apply(as.matrix(UK_ggCaller_intermed[-1,c(FALSE,UK_seq_clusters_dict[unlist(UK_ggCaller_intermed[1,-1])]==i)]), 1, cons_genomes)
+
+}
+UK_ggCaller_intermed_consensus[,1] <- UK_ggCaller_intermed[,1]
+
+#by year
+UK_ggCaller_byYear_intermed_consensus <- vector(mode = "list", length = length(UK_time_points))
+
+for (i in 1:length(UK_time_points)) {
+  UK_ggCaller_year <- data.frame(matrix(0, nrow = sum(UK_gene_filter)+1,ncol = no_UK_PP+1))
+  UK_ggCaller_year[1,-1] <- paste("SeqCl_",unique(UK_PP$Cluster),sep = "")
+  for (j in unique(UK_PP$Cluster)) {
+    UK_ggCaller_year[-1,(which(unique(UK_PP$Cluster) == j))+1] <- apply(as.matrix(UK_ggCaller_byYear_intermed[[i]][-1,c(FALSE,UK_seq_clusters_dict[unlist(UK_ggCaller_byYear_intermed[[i]][1,-1])]==j)]), 1, cons_genomes)
+  }
+  UK_ggCaller_year[,1] <- UK_ggCaller_byYear_intermed[[i]][,1]
+  UK_ggCaller_byYear_intermed_consensus[[i]] <- UK_ggCaller_year
+}
+
+saveRDS(UK_ggCaller_intermed_consensus,"UK_ggCaller_intermed_consensus.rds")
+
+UK_ggC_intermed_gene_names <- UK_ggCaller_intermed_consensus[-1,1]
+saveRDS(UK_ggC_intermed_gene_names, file = "UK_ggC_intermed_gene_names.rds")
+```
+
+# Calculate VT/NVT for clusters
+```{r}
+# introduction of PCV7 in 2006 and PCV13 in 2010
+
+# create dictionary for VTs of the PCV7
+# 1, 4, 5, 6b, 7f, 9V, 14, 18c, 19f and 23f serotypes (source: NCBI)
+#PCV7: 4, 6B, 9V, 14, 18C, 19F and 23F. (source: https://journals.plos.org/plospathogens/article?id=10.1371/journal.ppat.1006966#sec018)
+# PCV13: (1, 3, 4, 5, 6A and 6B, 7F, 9V, 14, 19A, and 19F, 18C, and 23F) (source: https://www.ncbi.nlm.nih.gov/books/NBK507794/)
+PCV13_VTs <- rep(0,length(unique(UK_metadata$Serotype)))
+names(PCV13_VTs) <- unique(UK_metadata$Serotype)
+PCV13_VTs[c("1", "3", "4","5","6A","6B", "7F", "9V", "14", "18C", "19A", "19F", "23F")] <- 1
+
+PCV7_VTs_no6A <- rep(0,length(unique(UK_metadata$Serotype)))
+names(PCV7_VTs_no6A) <- unique(UK_metadata$Serotype)
+PCV7_VTs_no6A[c("4","6B", "9V", "14", "18C", "19F", "23F")] <- 1
+
+# add 6A to PCV7 because there is strong cross-immunity btw PVC7 and 6A (4.Croucher, N. J. et al. Population genomics of post-vaccine changes in pneumococcal epidemiology. Nat. Genet. 45, 656–663 (2013).)
+PCV7_VTs <- rep(0,length(unique(UK_metadata$Serotype)))
+names(PCV7_VTs) <- unique(UK_metadata$Serotype)
+PCV7_VTs[c("4","6A", "6B", "9V", "14", "18C", "19F", "23F")] <- 1
+
+UK_SeqToSero_dict <- UK_metadata$Serotype
+names(UK_SeqToSero_dict) <- UK_metadata$Accession
+
+# calculate Vaccine Type consensus for clusters
+UK_VT_no6A <- rep(0, no_UK_PP)
+
+for (i in unique(UK_PP$Cluster)){
+  UK_VT_no6A[(which(unique(UK_PP$Cluster) == i))] <- ceiling(median(as.integer(PCV7_VTs_no6A[UK_SeqToSero_dict[UK_PP[UK_PP$Cluster == i,"Taxon"]]])))
+}
+
+# calculate Vaccine Type consensus for clusters
+UK_VT <- rep(0, no_UK_PP)
+
+for (i in unique(UK_PP$Cluster)){
+  UK_VT[(which(unique(UK_PP$Cluster) == i))] <- ceiling(median(as.integer(PCV7_VTs[UK_SeqToSero_dict[UK_PP[UK_PP$Cluster == i,"Taxon"]]])))
+}
+# 1 means VT
+# 0 means NVT
+# if cluster is 50/50 it will count as VT
+
+# calculate Vaccine Type consensus for clusters for PCV13
+UK_VT2 <- rep(0, no_UK_PP)
+
+for (i in unique(UK_PP$Cluster)){
+  UK_VT2[(which(unique(UK_PP$Cluster) == i))] <- ceiling(median(as.integer(PCV13_VTs[UK_SeqToSero_dict[UK_PP[UK_PP$Cluster == i,"Taxon"]]])))
+}
+```
+
+```{r}
+#save VTs
+saveRDS(UK_VT_no6A, file = "UK_VT_no6A.rds")
+saveRDS(UK_VT, file = "UK_VT.rds")
+saveRDS(UK_VT2, file = "UK_VT2.rds")
+```
+
+# calculate cluster frequencies for different years
+```{r}
+UK_cluster_freqs <- vector(mode = "list", length = length(UK_time_points))
+
+for(j in 1:length(UK_time_points)){
+  UK_cluster_freqs[[j]] <- rep(NA, no_UK_PP)
+  for (i in unique(UK_PP$Cluster)){
+    UK_cluster_freqs[[j]][which(unique(UK_PP$Cluster) == i)] <- length(which(UK_metadata[UK_meta_IDtoInd[UK_PP[UK_PP$Cluster == i,"Taxon"]],]$Year==UK_time_points[j]))
+  }
+}
+
+for(j in 1:length(UK_time_points)){
+  if(sum(UK_cluster_freqs[[j]])==0){
+    UK_cluster_freqs[[j]] <- rep(NA, no_UK_PP)
+  }
+}
+
+#UK_cluster_freqs[[6]] <- rep(NA, no_UK_PP)
+# 901 data points in total
+UK_cluster_freqs_preVac <- rep(0, no_UK_PP)
+for (i in 1:length(UK_time_points_preVac)) {
+  UK_cluster_freqs_preVac <- UK_cluster_freqs_preVac + replace(UK_cluster_freqs[[i]],which(is.na(UK_cluster_freqs[[i]])),0)
+}
+
+for (i in 1:length(UK_time_points)) {
+  file_name <- paste("UK_cluster_freqs_", as.character(i),".rds", sep = "")
+  saveRDS(UK_cluster_freqs[[i]], file_name)
+}
+
+
+# do the same for Strain x Serotype model
+UK_cluster_freqs_sero <- vector(mode = "list", length = length(UK_time_points))
+
+for(j in 1:length(UK_time_points)){
+  UK_cluster_freqs_sero[[j]] <- matrix(NA, ncol =  length(unique(UK_PP$Serotype)), nrow = no_UK_PP)
+  for (i in unique(UK_PP$Cluster)){
+    for (k in unique(UK_PP$Serotype)) {
+      UK_cluster_freqs_sero[[j]][which(unique(UK_PP$Cluster) == i),which(unique(UK_PP$Serotype) == k)] <- length(which(UK_metadata[UK_meta_IDtoInd[UK_PP[UK_PP$Cluster == i,"Taxon"]],][UK_metadata[UK_meta_IDtoInd[UK_PP[UK_PP$Cluster == i,"Taxon"]],]$Serotype==k,]$Year==UK_time_points[j]))
+    }
+  }
+}
+for(j in 1:length(UK_time_points)){
+  if(sum(UK_cluster_freqs_sero[[j]])==0){
+    UK_cluster_freqs_sero[[j]] <- matrix(NA, ncol =  length(unique(UK_PP$Serotype)), nrow = no_UK_PP)
+  }
+}
+
+for (i in 1:length(UK_time_points)) {
+  file_name <- paste("UK_cluster_freqs_sero_", as.character(i),".rds", sep = "")
+  saveRDS(UK_cluster_freqs_sero[[i]], file_name)
+}
+
+
+```
+
+#create initial population
+```{r}
+### create initial population that is based on the first time point data set
+# sample from it with an Poisson process
+expand_factor <- 15000 / sum(UK_cluster_freqs_preVac)
+exp_noise <- 10
+UK_model_start_pop <- (sapply((UK_cluster_freqs_preVac + rexp(n = length(UK_cluster_freqs_preVac), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(UK_cluster_freqs_preVac/sum(UK_cluster_freqs_preVac))
+points(UK_model_start_pop/sum(UK_model_start_pop), col = "red")
+
+expand_factor <- 15000 / sum(UK_cluster_freqs[[1]])
+exp_noise <- 10
+UK_model_start_pop <- (sapply((UK_cluster_freqs[[1]] + rexp(n = length(UK_cluster_freqs[[1]]), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(UK_cluster_freqs[[1]]/sum(UK_cluster_freqs[[1]]))
+points(UK_model_start_pop/sum(UK_model_start_pop), col = "red")
+
+saveRDS(UK_model_start_pop, "UK_model_start_pop.rds")
+```
+
+
+# calculate delta ranking
+# I will do last data point - all pre_vac data points combined
+```{r}
+# For strong and weak selection in the model, I need to calculate the beta statistics.
+
+# calculate gene frequencies first, separate for three time points
+UK_gene_freq_preVac <- apply(UK_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
+UK_gene_freq_postVac <- apply(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)]][-1,-1], 1, sum_as_int) + apply(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-1]][-1,-1], 1, sum_as_int) + apply(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-2]][-1,-1], 1, sum_as_int)
+
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+#UK_gene_freq_preVac_rel <- UK_gene_freq_preVac/sum(UK_gene_freq_preVac) # no, I don't want to divide by the sum - I want to divide by the number of sequences
+# UK_gene_freq_postVac_rel <- UK_gene_freq_postVac/sum(UK_gene_freq_postVac) # same
+UK_gene_freq_preVac_rel <- UK_gene_freq_preVac/(ncol(UK_ggCaller_intermed_preVac) -1)
+UK_gene_freq_postVac_rel <- UK_gene_freq_postVac/((ncol(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)]]) -1) + (ncol(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-1]]) -1) + (ncol(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-2]]) -1))
+
+# calculate delta statistic (refer to Corander et al. for more info)
+UK_delta_data <- (UK_gene_freq_postVac_rel - UK_gene_freq_preVac_rel) ^ 2 / (1 - UK_gene_freq_preVac_rel * (1 - UK_gene_freq_preVac_rel))
+UK_delta_ranking <- rank(UK_delta_data)
+
+saveRDS(UK_delta_ranking,"UK_delta_ranking.rds")
+saveRDS(UK_delta_data,"UK_delta_data.rds")
+```
+
+### Data processing for PPxSero model
+```{r}
+UK_clusters <- readRDS("UK_PP.rds")
+UK_model_start_pop <- readRDS("UK_model_start_pop.rds")
+UK_clusters_no <- length(unique(UK_clusters$Cluster))
+UK_avg_cluster_freq <- rep(1/UK_clusters_no, UK_clusters_no)
+
+
+PPxSero_matrix <- matrix(0, nrow = length(unique(UK_clusters$Cluster)), ncol = length(unique(UK_clusters$Serotype)))
+# sort(unique(UK_clusters$Serotype))
+# [1] "10A"   "11A"   "14"    "15A"   "15B/C" "15F"   "16F"   "17F"   "18C"   "19A"   "19F"   "21"    "22F"   "23A"
+#[15] "23B"   "23F"   "3"     "31"    "33F"   "34"    "35B"   "35F"   "37"    "38"    "6A"    "6B"    "6C"    "7C" 
+#[29] "7F"    "9N"    "9V"    "NT"
+
+SerotypeToIndex_dict <- 1:length(unique(UK_clusters$Serotype))
+names(SerotypeToIndex_dict) <- (unique(UK_clusters$Serotype))
+
+IndexToSerotype_dict <- sort(unique(UK_clusters$Serotype))
+names(IndexToSerotype_dict) <- 1:length(unique(UK_clusters$Serotype))
+
+PPclustToIndex_dict <- 1:length(unique(UK_clusters$Cluster))
+names(PPclustToIndex_dict) <- (unique(UK_clusters$Cluster))
+
+for (i in 1:nrow(UK_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(UK_clusters$Cluster[i])],SerotypeToIndex_dict[UK_clusters$Serotype[i]]] <- 1
+}
+# matrix shows information whether PP and serotype co-occur in the dataset (1=TRUE)
+# this can be used as the migration matrix:
+#PPxSero_matrix_prob <- PPxSero_matrix / sum(PPxSero_matrix)
+#PPxSero_matrix_prob <- matrix(sapply(PPxSero_matrix_prob,as.double), nrow = nrow(PPxSero_matrix), ncol = ncol(PPxSero_matrix))
+#saveRDS(PPxSero_matrix_prob, "Navajo_PPsero_mig.rds")
+
+
+PPxSero_matrix_prob2 <-  matrix(0, nrow = length(unique(UK_clusters$Cluster)), ncol = length(unique(UK_clusters$Serotype)))
+for (i in 1:length(unique(UK_clusters$Cluster))) {
+  PPxSero_matrix_prob2[i,] <- ((PPxSero_matrix[i,] * UK_avg_cluster_freq[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPxSero_matrix_prob2, "UK_PPsero_mig.rds")
+# new migration matrix that is closer to original one
+
+# start population:
+PPsero_startpop <- matrix(0, nrow = length(unique(UK_clusters$Cluster)), ncol = length(unique(UK_clusters$Serotype)))
+
+for (i in which(UK_clusters$SeqYear=="1998")) {
+  PPsero_startpop[PPclustToIndex_dict[UK_clusters$Cluster[i]],SerotypeToIndex_dict[UK_clusters$Serotype[i]]] <- PPsero_startpop[PPclustToIndex_dict[UK_clusters$Cluster[i]],SerotypeToIndex_dict[UK_clusters$Serotype[i]]] + 1
+}
+#PPsero_startpop <- PPsero_startpop * 15000 / sum(PPsero_startpop)
+
+
+PP_expand_factor <- 15000 / sum(PPsero_startpop)
+exp_noise <- 10
+#PPsero_startpop_corr <- matrix(sapply((PPsero_startpop + matrix(rexp(n = ncol(PPsero_startpop) * nrow(PPsero_startpop), rate = exp_noise), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))) * PP_expand_factor, rpois, n=1), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#PPsero_startpop_corr <- matrix(sapply(PPsero_startpop_corr,as.double), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#saveRDS(PPsero_startpop_corr, "PPsero_startpop.rds")
+
+# this lead to a start population that is way too evenly distributed across the different clusters
+# instead, I could maybe use the existing PP_model_start_pop and distribute it to the different serotypes?
+PPsero_startpop2 <-  matrix(0, nrow = length(unique(UK_clusters$Cluster)), ncol = length(unique(UK_clusters$Serotype)))
+for (i in 1:length(unique(UK_clusters$Cluster))) {
+  PPsero_startpop2[i,] <- round((PPxSero_matrix[i,] * UK_model_start_pop[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPsero_startpop2, "UK_PPsero_startpop.rds")
+# this is very close to the original PP_model_start_pop
+# maybe I am giving out too much information because the serotype distribution is exactly the real one?
+
+plot(rowSums(UK_cluster_freqs_sero[[1]])/sum(rowSums(UK_cluster_freqs_sero[[1]])))
+points(rowSums(PPsero_startpop2)/sum(rowSums(PPsero_startpop2)), col = "red")
+
+plot(colSums(UK_cluster_freqs_sero[[1]])/sum(colSums(UK_cluster_freqs_sero[[1]])))
+points(colSums(PPsero_startpop2)/sum(colSums(PPsero_startpop2)), col = "red")
+# the serotype distribution is quite far off
+
+# same as PPsero_startpop6 for Mass
+PPsero_startpop4 <- matrix(0, nrow = length(unique(UK_clusters$Cluster)), ncol = length(unique(UK_clusters$Serotype)))
+PP_expand_factor <- 15000 / sum(UK_cluster_freqs_sero[[1]])
+exp_noise <- 1000
+for (i in 1:nrow(PPsero_startpop4)) {
+    PPsero_startpop4[i,] <- (sapply((UK_cluster_freqs_sero[[1]][i,] + rexp(n = length(UK_cluster_freqs_sero[[1]][i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[i,])
+  #PPsero_startpop5[i,] <- PP_mass_cluster_freq_1_sero[i,] + ceiling(PPxSero_matrix_prob[i,])
+}
+saveRDS(PPsero_startpop4, "UK_PPsero_startpop.rds")
+# see next bit, I had already implemented that
+
+plot(rowSums(UK_cluster_freqs_sero[[1]])/sum(rowSums(UK_cluster_freqs_sero[[1]])))
+points(rowSums(PPsero_startpop4)/sum(rowSums(PPsero_startpop4)), col = "red")
+
+plot(colSums(UK_cluster_freqs_sero[[1]])/sum(colSums(UK_cluster_freqs_sero[[1]])))
+points(colSums(PPsero_startpop4)/sum(colSums(PPsero_startpop4)), col = "red")
+# the serotype distribution is much closter now
+
+# serotype VT vector
+SeroVT <- rep(0, length(unique(UK_clusters$Serotype)))
+for (i in 1:nrow(UK_clusters)) {
+  SeroVT[SerotypeToIndex_dict[UK_clusters$Serotype[i]]] <- as.integer(UK_clusters$VT_PCV7[i]=="VT")
+}
+saveRDS(SeroVT, "UK_SeroVT.rds")
+
+# serotype VT vector PCV13
+SeroVT_PCV13 <- rep(0, length(unique(UK_clusters$Serotype)))
+for (i in 1:nrow(UK_clusters)) {
+  SeroVT_PCV13[SerotypeToIndex_dict[UK_clusters$Serotype[i]]] <- as.integer(UK_clusters$VT_PCV13[i]=="VT")
+}
+saveRDS(SeroVT_PCV13, "UK_SeroVT_PCV13.rds")
+```
+
+```{r}
+# Create PP clusters, split by serotype
+#calculate the frequency of the gene clusters and year and serotype
+UK_mass_cluster_freq_1_sero <- matrix(0,nrow = UK_clusters_no, ncol = length(unique(UK_clusters$Serotype)))
+
+for (i in 1:UK_clusters_no){
+  for (k in unique(UK_clusters$Serotype)){
+  UK_mass_cluster_freq_1_sero[i,which(unique(UK_clusters$Serotype)==k)] <- length(which(UK_clusters[which(UK_clusters$Cluster==unique(UK_clusters$Cluster)[i]),][UK_clusters[which(UK_clusters$Cluster==unique(UK_clusters$Cluster)[i]),]$Serotype ==k, ]$"Time"==sort(unique(UK_clusters$Time))[1]))
+  }
+}
+
+#save sequence cluster frequencies
+saveRDS(UK_mass_cluster_freq_1_sero, file = "UK_mass_cluster_freq_1_sero.rds")
+
+PPxSero_matrix_prob2 <- readRDS("UK_PPsero_mig.rds")
+
+UK_PPsero_startpop3 <- matrix(0,nrow = UK_clusters_no, ncol = length(unique(UK_clusters$Serotype)))
+PP_expand_factor <- 15000 / sum(UK_mass_cluster_freq_1_sero)
+exp_noise <- 1000
+for (i in 1:nrow(UK_PPsero_startpop3)) {
+    UK_PPsero_startpop3[i,] <- (sapply((UK_mass_cluster_freq_1_sero[i,] + rexp(n = length(UK_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[i,])
+}
+plot(colSums(UK_mass_cluster_freq_1_sero)/sum(colSums(UK_mass_cluster_freq_1_sero)))
+points(colSums(UK_PPsero_startpop3)/sum(colSums(UK_PPsero_startpop3)), col = "red")
+
+plot(rowSums(UK_mass_cluster_freq_1_sero)/sum((UK_mass_cluster_freq_1_sero)))
+points(rowSums(UK_PPsero_startpop3)/sum(rowSums(UK_PPsero_startpop3)), col = "red")
+
+saveRDS(UK_PPsero_startpop3, file = "UK_PPsero_startpop3.rds")
+```
+
+# US
+
+```{r}
+#US_time_points <- c("2001", "2003", "2007")
+#US_ggCaller_byYear <- vector(mode = "list", length = length(US_time_points))
+
+#for (i in 1:length(US_time_points)) {
+#  US_ggCaller_year <- data.frame(matrix(0, nrow = nrow(US_ggCallerPP_bool), ncol = length(which(Mass_Samples_accCodes$`Year of Isolation`==US_time_points[i]))+1)) # initialize data frame
+#  US_ggCaller_year[1,-1] <- US_ggCallerPP_bool[1,c(FALSE,SeqYear_dict_Taxon[unlist(US_ggCallerPP_bool[1,-1])]==US_time_points[i])] # fill in first row (seq names)
+#  US_ggCaller_year[-1,1] <- US_ggCallerPP_bool[-1,1] # fill in first column (gene cluster names)
+#  US_ggCaller_year[-1,-1] <- US_ggCallerPP_bool[-1,c(FALSE,SeqYear_dict_Taxon[unlist(US_ggCallerPP_bool[1,-1])]==US_time_points[i])] # fill in presence absence information
+  #print(i)
+#  US_ggCaller_byYear[[i]] <- US_ggCaller_year
+#}
+```
+
+```{r}
+# create time-point specific gene presence absence matrices
+# SeqYear_dict has sequence years as values and isolate names as keys
+# I need to first translate between ggCaller names (from file names) to isolate names via Accesscion number, using filenameToAccNo_dict and AccNoToIsolate_dict
+
+# empty gene presence absence matrix
+ggCaller_gene_presence_absence_2001 <- data.frame(matrix(0, nrow = nrow(US_ggCallerPP_bool), ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)+1))
+ggCaller_gene_presence_absence_2001[1,-1] <- US_ggCallerPP_bool[1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(US_ggCallerPP_bool[1,-1])]]]==2001)]
+ggCaller_gene_presence_absence_2001[-1,1] <- US_ggCallerPP_bool[-1,1]
+ggCaller_gene_presence_absence_2001[-1,-1] <- US_ggCallerPP_bool[-1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(US_ggCallerPP_bool[1,-1])]]]==2001)]
+
+ggCaller_gene_presence_absence_2004 <- data.frame(matrix(0, nrow = nrow(US_ggCallerPP_bool), ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)+1))
+ggCaller_gene_presence_absence_2004[1,-1] <- US_ggCallerPP_bool[1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(US_ggCallerPP_bool[1,-1])]]]==2004)]
+ggCaller_gene_presence_absence_2004[-1,1] <- US_ggCallerPP_bool[-1,1]
+ggCaller_gene_presence_absence_2004[-1,-1] <- US_ggCallerPP_bool[-1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(US_ggCallerPP_bool[1,-1])]]]==2004)]
+
+ggCaller_gene_presence_absence_2007 <- data.frame(matrix(0, nrow = nrow(US_ggCallerPP_bool), ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)+1))
+ggCaller_gene_presence_absence_2007[1,-1] <- US_ggCallerPP_bool[1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(US_ggCallerPP_bool[1,-1])]]]==2007)]
+ggCaller_gene_presence_absence_2007[-1,1] <- US_ggCallerPP_bool[-1,1]
+ggCaller_gene_presence_absence_2007[-1,-1] <- US_ggCallerPP_bool[-1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(US_ggCallerPP_bool[1,-1])]]]==2007)]
+```
+
+```{r}
+#saveRDS(ggCaller_gene_presence_absence_2001, file = "ggCaller_gene_presence_absence_2001.rds")
+#saveRDS(ggCaller_gene_presence_absence_2004, file = "ggCaller_gene_presence_absence_2004.rds")
+#saveRDS(ggCaller_gene_presence_absence_2007, file = "ggCaller_gene_presence_absence_2007.rds")
+```
+
+```{r}
+# Find intermediate frequency genes in 2001 data set
+# compute gene frequencies
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+ggC_gene_freq_2001 <- rep(0, nrow(ggCaller_gene_presence_absence_2001)-1)
+ggC_gene_freq_2001 <- apply(ggCaller_gene_presence_absence_2001[-1,-1],1, sum_as_int)
+ggC_gene_freq_2001 <- ggC_gene_freq_2001 / (length(ggCaller_gene_presence_absence_2001[1,-1]))
+
+ggC_filter <- as.integer(ggC_gene_freq_2001<=0.95 & ggC_gene_freq_2001>=0.05)
+
+ggC_intermed_gene_names <- ggCaller_gene_presence_absence_2001[which(ggC_filter==1),1]
+saveRDS(ggC_intermed_gene_names, file = "Mass_ggC_intermed_gene_names.rds")
+
+ggC_intermed_gene_freqs <- ggC_gene_freq_2001[which(ggC_filter==1)]
+saveRDS(ggC_intermed_gene_freqs, file = "Mass_ggC_intermed_gene_freqs.rds")
+
+ggC_all_gene_freqs <- ggC_gene_freq_2001
+saveRDS(ggC_all_gene_freqs, file = "Mass_ggC_all_gene_freqs.rds")
+
+ggC_all_gene_names <- ggCaller_gene_presence_absence_2001[-1,1]
+saveRDS(ggC_all_gene_names, file = "Mass_ggC_all_gene_names.rds")
+
+# intermediate gene presence absence matrices filtered by genes that are present at 5-95% frequency in 2001
+ggC_intermed_gene_presence_absence_2001 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence_2001 <- ggCaller_gene_presence_absence_2001[c(1,which(ggC_filter==1)+1),]
+
+ggC_intermed_gene_presence_absence_2004 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence_2004 <- ggCaller_gene_presence_absence_2004[c(1,which(ggC_filter==1)+1),]
+
+ggC_intermed_gene_presence_absence_2007 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence_2007 <- ggCaller_gene_presence_absence_2007[c(1,which(ggC_filter==1)+1),]
+
+ggC_intermed_gene_presence_absence <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence <- US_ggCallerPP_bool[c(1,which(ggC_filter==1)+1),]
+```
+
+```{r}
+#Compute consensus genomes for sequence clusters
+ggCPP_Mass_seq_clusters_dict <- PopPUNK_clusters$Cluster
+names(ggCPP_Mass_seq_clusters_dict) <- PopPUNK_clusters$Taxon
+
+ggCPP_intermed_gene_presence_absence_consensus <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+ggCPP_intermed_gene_presence_absence_consensus_2001 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus_2001[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+ggCPP_intermed_gene_presence_absence_consensus_2004 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus_2004[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+ggCPP_intermed_gene_presence_absence_consensus_2007 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus_2007[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in unique(PopPUNK_clusters$Cluster)) {
+  ggCPP_intermed_gene_presence_absence_consensus[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence[1,-1])]==i)]), 1, cons_genomes)
+  ggCPP_intermed_gene_presence_absence_consensus_2001[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2001[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence_2001[1,-1])]==i)]), 1, cons_genomes)
+    ggCPP_intermed_gene_presence_absence_consensus_2004[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2004[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence_2004[1,-1])]==i)]), 1, cons_genomes)
+    ggCPP_intermed_gene_presence_absence_consensus_2007[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2007[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence_2007[1,-1])]==i)]), 1, cons_genomes)
+}
+
+ggCPP_intermed_gene_presence_absence_consensus[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCPP_intermed_gene_presence_absence_consensus_2001[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCPP_intermed_gene_presence_absence_consensus_2004[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCPP_intermed_gene_presence_absence_consensus_2007[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+```
+
+
+```{r}
+#save intermed gene presence absence matrices
+saveRDS(ggCPP_intermed_gene_presence_absence_consensus, file = "ggCPP_intermed_gene_presence_absence_consensus.rds")
+#saveRDS(ggCPP_intermed_gene_presence_absence_consensus_2001, file = "ggCPP_intermed_gene_presence_absence_consensus_2001.rds")
+#saveRDS(ggCPP_intermed_gene_presence_absence_consensus_2004, file = "ggCPP_intermed_gene_presence_absence_consensus_2004.rds")
+#saveRDS(ggCPP_intermed_gene_presence_absence_consensus_2007, file = "ggCPP_intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+```{r}
+# For strong and weak selection in the model, I need to calculate the delta statistics.
+#calculate the frequency of the sequence clusters and year
+mass_clusters <- length(unique(Mass_Samples_accCodes$SequenceCluster))
+mass_cluster_freq_1 <- rep(0,mass_clusters)
+mass_cluster_freq_2 <- rep(0,mass_clusters)
+mass_cluster_freq_3 <- rep(0,mass_clusters)
+for (i in 1:mass_clusters){
+  mass_cluster_freq_1[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$SequenceCluster==i-1),]$"Year of Isolation"==2001))
+  mass_cluster_freq_2[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$SequenceCluster==i-1),]$"Year of Isolation"==2004))
+  mass_cluster_freq_3[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$SequenceCluster==i-1),]$"Year of Isolation"==2007))
+}
+
+
+# calculate gene frequencies first, separate for three time points
+ggC_mass_gene_freq_1 <- apply(ggC_intermed_gene_presence_absence_2001[-1,-1], 1, sum_as_int)
+ggC_mass_gene_freq_2 <- apply(ggC_intermed_gene_presence_absence_2004[-1,-1], 1, sum_as_int)
+ggC_mass_gene_freq_3 <- apply(ggC_intermed_gene_presence_absence_2007[-1,-1], 1, sum_as_int)
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+ggC_pre_peri_vacc_gene_freq <- (ggC_mass_gene_freq_1 + ggC_mass_gene_freq_2) / (sum(mass_cluster_freq_1) + sum(mass_cluster_freq_2))
+ggC_pre_vacc_gene_freq <- (ggC_mass_gene_freq_1) / sum(mass_cluster_freq_1)
+ggC_post_vacc_gene_freq <- ggC_mass_gene_freq_3 / sum(mass_cluster_freq_3)
+ggC_peri_post <- (ggC_mass_gene_freq_2 + ggC_mass_gene_freq_3) / (sum(mass_cluster_freq_2) + sum(mass_cluster_freq_3))
+ggC_peri_vacc_gene_freq <- (ggC_mass_gene_freq_2) / sum(mass_cluster_freq_2)
+
+# calculate delta statistic (refer to Corander et al. for more info)
+
+ggC_delta_data2 <- (ggC_post_vacc_gene_freq - ggC_pre_vacc_gene_freq) ^ 2 / (1 - ggC_pre_vacc_gene_freq * (1 - ggC_pre_vacc_gene_freq))
+ggC_delta_ranking2 <- rank(ggC_delta_data2)
+```
+
+```{r}
+#save delta ranking
+saveRDS(ggC_delta_ranking2, file = "ggC_delta_ranking.rds")
+saveRDS(ggC_delta_data2, file = "ggC_delta_data2.rds")
+```
+
+```{r}
+#calculate the frequency of the gene clusters and year
+PP_mass_cluster_freq_1 <- rep(0,no_PopPUNK_clusters)
+PP_mass_cluster_freq_2 <- rep(0,no_PopPUNK_clusters)
+PP_mass_cluster_freq_3 <- rep(0,no_PopPUNK_clusters)
+for (i in 1:no_PopPUNK_clusters){
+  PP_mass_cluster_freq_1[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2001))
+  PP_mass_cluster_freq_2[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2004))
+  PP_mass_cluster_freq_3[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2007))
+}
+```
+
+```{r}
+#save sequence cluster frequencies
+saveRDS(PP_mass_cluster_freq_1, file = "PP_mass_cluster_freq_1.rds")
+saveRDS(PP_mass_cluster_freq_2, file = "PP_mass_cluster_freq_2.rds")
+saveRDS(PP_mass_cluster_freq_3, file = "PP_mass_cluster_freq_3.rds")
+```
+
+# calculate delta across countries instead of time
+```{r}
+# find overlapping intermediate-freq genes btw UK and US
+US_UK_intermed_genes <- intersect(names(ggC_mass_gene_freq_1), names(UK_gene_freq_preVac)) # 1535 genes overlap
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+ggC_pre_vacc_gene_freq <- (ggC_mass_gene_freq_1) / sum(mass_cluster_freq_1)
+ggC_post_vacc_gene_freq <- ggC_mass_gene_freq_3 / sum(mass_cluster_freq_3)
+
+# calculate delta statistic (refer to Corander et al. for more info)
+ggC_delta_data2_sharedUSUK <- (ggC_post_vacc_gene_freq[US_UK_intermed_genes] - ggC_pre_vacc_gene_freq[US_UK_intermed_genes]) ^ 2 / (1 - ggC_pre_vacc_gene_freq[US_UK_intermed_genes] * (1 - ggC_pre_vacc_gene_freq[US_UK_intermed_genes]))
+ggC_delta_ranking2_sharedUSUK <- rank(ggC_delta_data2_sharedUSUK)
+
+UK_gene_freq_preVac_rel <- UK_gene_freq_preVac/(ncol(UK_ggCaller_intermed_preVac) -1)
+UK_gene_freq_postVac_rel <- UK_gene_freq_postVac/((ncol(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)]]) -1) + (ncol(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-1]]) -1) + (ncol(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-2]]) -1))
+
+# calculate delta statistic (refer to Corander et al. for more info)
+UK_delta_data_sharedUSUK <- (UK_gene_freq_postVac_rel[US_UK_intermed_genes] - UK_gene_freq_preVac_rel[US_UK_intermed_genes]) ^ 2 / (1 - UK_gene_freq_preVac_rel[US_UK_intermed_genes] * (1 - UK_gene_freq_preVac_rel[US_UK_intermed_genes]))
+UK_delta_ranking_sharedUSUK <- rank(UK_delta_data_sharedUSUK)
+
+
+US_UK_delta_data <- (UK_gene_freq_preVac_rel[US_UK_intermed_genes] - ggC_pre_vacc_gene_freq[US_UK_intermed_genes]) ^ 2 / (1 - ggC_pre_vacc_gene_freq[US_UK_intermed_genes] * (1 - ggC_pre_vacc_gene_freq[US_UK_intermed_genes]))
+US_UK_delta_ranking <- rank(US_UK_delta_data)
+
+UK_US_delta_data <- (ggC_pre_vacc_gene_freq[US_UK_intermed_genes] - UK_gene_freq_preVac_rel[US_UK_intermed_genes]) ^ 2 / (1 - UK_gene_freq_preVac_rel[US_UK_intermed_genes] * (1 - UK_gene_freq_preVac_rel[US_UK_intermed_genes]))
+UK_US_delta_ranking <- rank(UK_US_delta_data)
+
+
+plot(US_UK_delta_ranking, UK_US_delta_ranking) # very strong correlation, i.e. does not matter whether I define US as the "post" or UK
+
+# but no correlation with the original delta-rankings...
+plot(US_UK_delta_ranking[US_UK_intermed_genes], ggC_delta_ranking2[US_UK_intermed_genes])
+plot(US_UK_delta_ranking[US_UK_intermed_genes], UK_delta_ranking[US_UK_intermed_genes])
+
+plot(ggC_delta_ranking2[US_UK_intermed_genes], UK_delta_ranking[US_UK_intermed_genes])
+plot(ggC_delta_ranking2_sharedUSUK, UK_delta_ranking_sharedUSUK)
+
+# create ranking for US dataset, based on US-UK ranking, set rest to max
+ggC_delta_ranking_USUK <- rep(max(ggC_delta_ranking2), length(ggC_delta_ranking2))
+names(ggC_delta_ranking_USUK) <- names(ggC_delta_ranking2)
+ggC_delta_ranking_USUK[US_UK_intermed_genes] <- UK_US_delta_ranking[US_UK_intermed_genes]
+
+plot(US_UK_delta_ranking[US_UK_intermed_genes], ggC_delta_ranking_USUK[US_UK_intermed_genes])
+
+# same for UK
+UK_delta_ranking_USUK <- rep(max(UK_delta_ranking),length(UK_delta_ranking))
+names(UK_delta_ranking_USUK) <- names(UK_delta_ranking)
+UK_delta_ranking_USUK[US_UK_intermed_genes] <- UK_US_delta_ranking[US_UK_intermed_genes]
+
+plot(US_UK_delta_ranking[US_UK_intermed_genes], UK_delta_ranking_USUK[US_UK_intermed_genes])
+
+plot(ggC_pre_vacc_gene_freq[US_UK_intermed_genes], UK_gene_freq_preVac_rel[US_UK_intermed_genes], ylim = c(0,1), xlim = c(0,1))
+plot(ggC_post_vacc_gene_freq[US_UK_intermed_genes], UK_gene_freq_postVac_rel[US_UK_intermed_genes], ylim = c(0,1), xlim = c(0,1))
+# checking the correlation btw gene freqs btw US & UK, and pre-/post-vacc
+cor(ggC_pre_vacc_gene_freq[US_UK_intermed_genes], UK_gene_freq_preVac_rel[US_UK_intermed_genes])
+# 0.8269251
+cor(ggC_post_vacc_gene_freq[US_UK_intermed_genes], UK_gene_freq_postVac_rel[US_UK_intermed_genes])
+# 0.8700141
+cor(ggC_pre_vacc_gene_freq[US_UK_intermed_genes],ggC_post_vacc_gene_freq[US_UK_intermed_genes])
+# 0.963727
+cor(UK_gene_freq_preVac_rel[US_UK_intermed_genes], UK_gene_freq_postVac_rel[US_UK_intermed_genes])
+# 0.8814543
+
+plot(ggC_pre_vacc_gene_freq[US_UK_intermed_genes], UK_gene_freq_preVac_rel[US_UK_intermed_genes], ylim = c(0,1), xlim = c(0,1))
+#points()
+
+
+# investigate gene correlation
+joined_gene_freq_list <- vector(mode = "list", length = 3) # ggCaller gene freq list for UK, US, Nepal
+names(joined_gene_freq_list) <- c("UK", "US", "Nepal")
+
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+for (country in names(joined_ggCaller_list)) {
+  geneSum <- apply(joined_ggCaller_list_UKUSNepal[[country]][-1,-1],1, sum_as_int)
+  names(geneSum) <- joined_ggCaller_list_UKUSNepal[[country]][-1,1]
+  joined_gene_freq_list[[country]] <- geneSum / (ncol(joined_ggCaller_list_UKUSNepal[[country]]) - 1)
+}
+plot(joined_gene_freq_list[["UK"]], joined_gene_freq_list[["US"]])
+plot(joined_gene_freq_list[["UK"]][paste("group_",US_UK_intermed_genes, sep = "")], joined_gene_freq_list[["US"]][paste("group_",US_UK_intermed_genes, sep = "")]) # these are the genes that are at intermed-freq in the beginning...?!
+
+saveRDS(US_UK_delta_ranking,"US_UK_delta_ranking.rds")
+saveRDS(ggC_delta_ranking_USUK, "ggC_delta_ranking_USUK.rds")
+saveRDS(UK_delta_ranking_USUK, "UK_delta_ranking_USUK.rds")
+
+
+# maybe n~=100 is just not enough?
+# use whole US and UK dataset?
+US_intermed_gene_freq <- (ggC_mass_gene_freq_1 + ggC_mass_gene_freq_2 + ggC_mass_gene_freq_3) / (sum(mass_cluster_freq_1) + sum(mass_cluster_freq_2) + sum(mass_cluster_freq_3))
+UK_intermed_gene_freq <- apply(UK_ggCaller_intermed[-1,-1], 1, sum_as_int)/(ncol(UK_ggCaller_intermed)-1)
+
+US_UK_delta_data_all_time <- (UK_intermed_gene_freq[US_UK_intermed_genes] - US_intermed_gene_freq[US_UK_intermed_genes]) ^ 2 / (1 - US_intermed_gene_freq[US_UK_intermed_genes] * (1 - US_intermed_gene_freq[US_UK_intermed_genes]))
+US_UK_delta_ranking_all_time <- rank(US_UK_delta_data_all_time)
+
+# but no correlation with the original delta-rankings... (still not!)
+plot(US_UK_delta_ranking_all_time[US_UK_intermed_genes], ggC_delta_ranking2[US_UK_intermed_genes])
+plot(US_UK_delta_ranking_all_time[US_UK_intermed_genes], UK_delta_ranking[US_UK_intermed_genes])
+```
+

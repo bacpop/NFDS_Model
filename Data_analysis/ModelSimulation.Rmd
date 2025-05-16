@@ -1,0 +1,532 @@
+---
+title: "Simulating data from model"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+# Simulate data from model.
+# Then fit model to data.
+# Then make observations more noisy / sparse and observe what happens to the model fit.
+# Also, fit model on some time steps and make predictions for the next steps.
+
+```{r}
+WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+```
+
+```{r}
+# define test parameters
+set.seed(13)
+dt_test <- 1/12
+species_no_test <- 20
+sero_no_test <- 15
+gene_no_test <- 1000
+# generate start population
+sero_distr_test <- rmultinom(1, 7500, prob = (1:15)/sum(1:15))
+Pop_ini_test <- t(rmultinom(20, 2, prob = rep(1/15, 15)))
+Pop_ini_test <- Pop_ini_test * c(sero_distr_test)
+saveRDS(data.frame(Pop_ini_test), "Pop_ini_test.rds")
+Pop_ini_test <- readRDS("Pop_ini_test.rds")
+Pop_ini_test_mtx <- sapply(Pop_ini_test,as.double)
+### check how well Pop_ini matches reality:
+# Mass
+PPsero_startpop6 <- readRDS("PPsero_startpop6.rds")
+plot(sort(rowSums(PPsero_startpop6))) # lots of rare genotypes, some with high freq
+plot(sort(rowSums(Pop_ini_test))) # not the same. Just a few rare ones and then ~linear
+# same is true for serotypes
+# better than multinom would be gamma distribution then I think.
+#sero_distr_test <- as.matrix(rgamma(15 * 20, shape = 0.05), nrow = 15, ncol = 20)
+#Pop_ini_test <- t(replicate(20, rgamma(15, shape = 0.45))) * 200
+#Pop_ini_test <- t(rmultinom(20, 2, prob = rep(1/15, 15)))
+#Pop_ini_test <- Pop_ini_test * c(sero_distr_test) 
+# quite difficult to get the right distribution
+# maybe it's easier to sample from real values
+Pop_ini_test <- matrix(sample(PPsero_startpop6, 15*20), nrow = 20, ncol = 15)
+saveRDS(data.frame(Pop_ini_test), "Pop_ini_test.rds")
+Pop_ini_test <- readRDS("Pop_ini_test.rds")
+Pop_ini_test_mtx <- sapply(Pop_ini_test,as.double)
+# generate genotypes
+gene_freq_test <- (sample((5:95), gene_no_test, replace = TRUE))/100 # random gene frequencies
+sample_genomes <- function(gene_freq){
+  sample(0:1, 20, replace=T,prob=c(1-gene_freq,gene_freq))
+}
+Genotypes_test_m1 <- t(sapply(gene_freq_test, sample_genomes))
+Genotypes_test <- data.frame(Genotypes_test_m1)
+saveRDS(Genotypes_test, "Genotypes_test.rds")
+#Genotypes_test <- apply(Genotypes_test,c(1,2),as.double)
+
+Genotypes_test <- readRDS(file = "Genotypes_test.rds")
+Genotypes_test_matrix <- sapply(Genotypes_test,as.double)
+#compare to real data
+ggCPP_intermed_gene_presence_absence_consensus <- readRDS("ggCPP_intermed_gene_presence_absence_consensus.rds")
+ggCPP_intermed_gene_presence_absence_consensus_mtx <- sapply(ggCPP_intermed_gene_presence_absence_consensus[-1,-1],as.double)
+plot(cut(rowSums(ggCPP_intermed_gene_presence_absence_consensus_mtx)/52,breaks = (0:gene_no_test)/gene_no_test))
+# hmm, the real genotype matrix looks different than expected because it is already filtered for intermediate frequency genes and because it is clustered into GPSCs --> this messes with the gene frequencies. So the peak at low frequencies probably comes from the rare genotypes.
+plot(cut(rowSums(Genotypes_test)/20,breaks = (0:gene_no_test)/gene_no_test))
+# my simulation is more homogeneous but I will leave it for now
+
+# generate delta ranking
+delta_test <- c(1,1:(length(gene_freq_test)-1))
+names(delta_test) <- rank(delta_test)
+# generate migration vector
+non_zero_entry <- function(a){
+  if(a>0){
+    a <- 1
+  }
+  a
+}
+migMatr_test <- apply(Pop_ini_test, c(1,2), non_zero_entry)
+migMatr_test <- migMatr_test / sum(migMatr_test)
+saveRDS(data.frame(migMatr_test), "migMatr_test.rds")
+migMatr_test <- readRDS("migMatr_test.rds")
+migMatr_test_mtx <- sapply(migMatr_test, as.double)
+# generate vacc types
+vaccTypes_test <- sample(0:1, 15, replace = TRUE, prob = c(0.85,0.15))
+saveRDS(data.frame(vaccTypes_test), "vaccTypes_test.rds")
+vaccTypes_test <- readRDS("vaccTypes_test.rds")
+vaccTypes_test_mtx <- c(sapply(vaccTypes_test, as.double))
+# instead of randomly choosing them, I will choose the three most common serotypes
+serotype_3rdcommon_test <- sort(colSums(Pop_ini_test_mtx), decreasing = TRUE)[3]
+vaccTypes_test <- rep(0,15)
+vaccTypes_test[which(colSums(Pop_ini_test_mtx)>=serotype_3rdcommon_test)] <- 1
+saveRDS(data.frame(vaccTypes_test), "vaccTypes_test.rds")
+vaccTypes_test <- readRDS("vaccTypes_test.rds")
+vaccTypes_test_mtx <- c(sapply(vaccTypes_test, as.double))
+
+PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.28835, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
+                         time = 0,
+                         n_particles = 10L,
+                         n_threads = 4L,
+                         seed = 1L)
+#WFmodel_ppxSero$run(1)
+
+simMean_clust <- rowMeans(WFmodel_ppxSero$run(0)[2:(species_no_test+1),])
+simMean_all <- rowMeans(WFmodel_ppxSero$run(0)[-(1:(species_no_test+1)),])
+simMean_matrix <- matrix(simMeanggCPP1_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+simMean_sero <- colSums(simMeanggCPP1_matrix)
+
+
+simulated_data <- list()
+for (i in 1:20) {
+  simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_data[[i]] <- simMean_matrix
+}
+simulated_data_over_time_short_clust <- sapply(simulated_data, rowSums)
+
+simulated_data_over_time_short_clust_df <- as.data.frame(simulated_data_over_time_short_clust)
+
+simulated_data_long <- list()
+simulated_sum_data_long <- list()
+for (i in 0:240) {
+  simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_data_long[[i+1]] <- simMean_matrix
+  simSum_all <- rowSums(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simSum_matrix <- matrix(simSum_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_sum_data_long[[i+1]] <- simSum_matrix
+}
+simulated_data_over_time_clust <- sapply(simulated_data_long, rowSums)
+simulated_data_over_time_clust_df <- as.data.frame(simulated_data_over_time_clust)
+simulated_data_over_time_filtered <- simulated_data_over_time_clust[,((1:20)*12)+1]
+simulated_data_over_time_filtered_df <- as.data.frame(rbind(1:20,simulated_data_over_time_filtered))
+
+simulated_data_sum_over_time_clust <- sapply(simulated_sum_data_long, rowSums)
+simulated_data_sum_over_time_filtered <- simulated_data_sum_over_time_clust[,((1:20)*12)+1]
+```
+
+```{r}
+simulated_data_over_time <- sapply(simulated_data, rowSums)
+
+plot(0:19, simulated_data_over_time[1,],type = "l", ylim = c(min(simulated_data_over_time), max(simulated_data_over_time)))
+for (i in 1:nrow(simulated_data_over_time)) {
+  lines(0:19,simulated_data_over_time[i,])
+}
+#apply(simulated_data_over_time, 1, lines)
+
+# now, serotypes
+simulated_serotypes_over_time <- sapply(simulated_data, colSums)
+colour_vacc_vec <- rep("black",nrow(simulated_data_over_time))
+colour_vacc_vec[which(vaccTypes_test_mtx==1)] <- "red"
+
+plot(0:19, simulated_serotypes_over_time[1,],type = "l", ylim = c(min(simulated_serotypes_over_time), max(simulated_serotypes_over_time)))
+for (i in 1:nrow(simulated_serotypes_over_time)) {
+  lines(0:19,simulated_serotypes_over_time[i,],col = colour_vacc_vec[i])
+}
+
+plot(1:20, simulated_serotypes_over_time[1,]-simulated_serotypes_over_time[1,1],type = "l", ylim = c(min(simulated_serotypes_over_time - simulated_serotypes_over_time[,1]), max(simulated_serotypes_over_time - simulated_serotypes_over_time[,1])))
+for (i in 1:nrow(simulated_serotypes_over_time)) {
+  lines(simulated_serotypes_over_time[i,]-simulated_serotypes_over_time[i,1], col = colour_vacc_vec[i])
+}
+```
+
+### Fitting the model to the simulated data
+```{r}
+library(odin.dust)
+#install.packages("mcstate")
+library(mcstate)
+#install.packages("mcstate")
+library(mcstate)
+library(coda)
+
+combined_compare <- function(state, observed, pars = NULL) {
+  result <- 0
+  #data_size <- sum(unlist(observed))
+  data_size <- sum(unlist(observed[as.character(1:(length(unlist(observed))-4))]))
+  model_size = sum(unlist(state[-1, , drop = TRUE]))
+  exp_noise <- 1e6
+  data_vals <- unlist(observed[as.character(1:(length(unlist(observed))-4))])
+  #model_vals <- state[-1, , drop = TRUE]
+  model_vals <- rep(0, length(unlist(observed))-4)
+  data_missing <- FALSE
+  for (i in 1:(length(unlist(observed))-4)){ 
+    state_name <- paste("sum_clust", i, sep = "")
+    model_vals[i] <- state[state_name, , drop = TRUE]
+    if (is.na(observed[[as.character(i)]])) {
+      #Creates vector of zeros in ll with same length, if no data
+      #ll_obs <- numeric(length( state[state_name, , drop = TRUE]))
+      data_missing <- TRUE
+    } 
+  }
+  models_vals_err <- model_vals + rexp(n = length(model_vals), rate = exp_noise)
+  if(data_missing){
+    ll_obs <- 0
+  }
+  else{
+    ll_obs <- dmultinom(x = (data_vals), prob = models_vals_err/model_size, log = TRUE)   
+  }
+  result <- ll_obs
+  #for (i in 1:(length(unlist(observed))-4)){ 
+  #  state_name <- paste("sum_clust", i, sep = "")
+  #  if (is.na(observed[[as.character(i)]])) {
+  #    #Creates vector of zeros in ll with same length, if no data
+  #    ll_obs <- numeric(length( state[state_name, , drop = TRUE]))
+  #  } else {
+  #lambda <-  state[state_name, , drop = TRUE]/model_size * data_size + rexp(n = length( state[state_name, , drop = TRUE]/model_size * data_size), rate = exp_noise)
+  #ll_obs <- dpois(x = observed[[as.character(i)]], lambda = lambda, log = TRUE)
+  #    ll_obs <- dmultinom(x = (data_vals), prob = model_vals/model_size, log = TRUE)
+  #  }
+  
+  #  result <- result + ll_obs
+  #}
+  result
+}
+
+Fit_model_to_sim_data <- function(fitting_data, fitting_params){
+  WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+
+  #print(fitting_mass_data)
+  det_filter <- particle_deterministic$new(data = fitting_data,
+                                         model = WF,
+                                         compare = combined_compare)
+  
+  #complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus, capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no)
+  complex_params = fitting_params
+  #complex_params <- c(Pop_ini, Pop_eq, Genotypes, capacity, delta, species_no, gene_no, vacc_time, dt, migVec,vT)
+  
+  make_transform <- function(m) {
+    function(theta) {
+      as_double_mtx <- function(x){
+        sapply(x,as.double)
+      }
+      c(lapply(m, as_double_mtx), as.list(theta))
+    }
+  }
+  
+  
+  proposal_matrix <- diag(0.1,4) # the proposal matrix defines the covariance-variance matrix for a mult normal dist
+  #mcmc_pars$names()
+  #mcmc_pars$model(mcmc_pars$initial())
+  # read this: https://mrc-ide.github.io/mcstate/reference/pmcmc_parameters.html
+  # it explains how to not fit all parameters but just the ones I want
+  # non-scalar parameters have to be transformed for this.
+  
+  index <- function(info) {
+    list(run = c(sum_clust = info$index$Pop_tot),
+         state = c(Pop = info$index$Pop))
+  }
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", -0.597837, min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", 0.125, min = 0, max = 1), mcstate::pmcmc_parameter("m", -4, min = -1000, max = 0), mcstate::pmcmc_parameter("v", 0.05, min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  proposal_matrix <- diag(c(exp(1), 0.1, exp(1), 0.1))
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  
+  mcmc_pars$initial()
+  #mcmc_pars$model(mcmc_pars$initial())
+  
+  #WF$public_methods$has_openmp()
+  det_filter <- particle_deterministic$new(data = fitting_data,
+                                           model = WF,
+                                           index = index,
+                                           compare = combined_compare)
+  
+  n_steps <- 5
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains = 1)
+  det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
+  
+  n_steps <- 1000
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains =8, n_workers = 8,
+    n_threads_total = 8)
+  
+  #n_chains = 8, n_workers = 8,
+  #n_threads_total = 8
+  
+  det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
+  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run, burnin = 500, thin = 1)
+  parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
+  print(parameter_mean_hpd)
+  
+  det_mcmc1 <- coda::as.mcmc(cbind(det_pmcmc_run$probabilities, det_pmcmc_run$pars))
+  #pdf(file = paste(output_filename,"4param_det_mcmc1.pdf",sep = "_"),   # The directory you want to save the file in
+  #    width = 6, # The width of the plot in inches
+  #    height = 12)
+  #plot(det_mcmc1)
+  #dev.off()
+  print("det_mcmc_1 final log likelihood")
+  processed_chains$probabilities[nrow(processed_chains$probabilities),2]
+  print("det_mcmc_1 mean log likelihood")
+  mean(processed_chains$probabilities[,2])
+  det_proposal_matrix <- cov(processed_chains$pars)
+  
+  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  
+  det_filter <- particle_deterministic$new(data = fitting_data,
+                                           model = WF,
+                                           index = index,
+                                           compare = combined_compare)
+  
+  n_steps <- 5
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains = 1)
+  det_pmcmc_run <- mcstate::pmcmc(det_mcmc_pars, det_filter, control = control)
+  
+  n_steps <- 5000
+  #n_steps <- 2000
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains = 4, n_workers = 4, n_threads_total = 4)
+  det_pmcmc_run2 <- mcstate::pmcmc(det_mcmc_pars, det_filter, control = control)
+  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run2, burnin = 500, thin = 1)
+  parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
+  print(parameter_mean_hpd)
+  par(mfrow = c(1,1))
+  
+  det_mcmc2 <- coda::as.mcmc(cbind(processed_chains$probabilities, processed_chains$pars))
+  percentile95_low <- apply(det_mcmc2,2,quantile,.025)
+  percentile95_up <- apply(det_mcmc2,2,quantile,.975)
+  print("lower 95 percentile")
+  print(percentile95_low)
+  print("upper 95 percentile")
+  print(percentile95_up)
+  #pdf(file = paste(output_filename,"_4param_det_mcmc2.pdf",sep = "_"),   # The directory you want to save the file in
+  #    width = 6, # The width of the plot in inches
+  #    height = 12)
+  plot(det_mcmc2)
+  #dev.off()
+  print("det_mcmc_2 final log likelihood")
+  processed_chains$probabilities[nrow(processed_chains$probabilities),2]
+  print("det_mcmc_2 mean log likelihood")
+  mean(processed_chains$probabilities[,2])
+  return(det_pmcmc_run2)
+}
+
+```
+
+```{r}
+# fitting to data (as if sampled once per year)
+
+#simulated_data_long_filtered <- simulated_data_long[[((0:19)*12)+1]]
+#fitting_test_data <- data.frame("year" = 1:19, t(sapply(simulated_data, rowSums))[-1,])
+fitting_test_data <- data.frame("year" = 1:19, t(simulated_data_over_time_filtered)[-1,])
+names(fitting_test_data) <- c("year", as.character(1:20))
+
+#fitting_test_data <- data.frame("year" = 1:19, t(simulated_data_sum_over_time_filtered)[-1,])
+#names(fitting_test_data) <- c("year", as.character(1:20))
+
+
+fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,
+                                                   time = "year",
+                                                   rate = 1 / dt_test,
+                                                   initial_time = 0)
+
+fitting_test_params <- list(species_no = species_no_test, Pop_ini = Pop_ini_test, Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = Genotypes_test, capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = (migMatr_test), sero_no = sero_no_test)
+
+MCMC_chain_sample1year_run <- Fit_model_to_sim_data(fitting_data = fitting_test_data_2, fitting_params = fitting_test_params)
+
+processed_chains_1year <- mcstate::pmcmc_thin(MCMC_chain_sample1year_run, burnin = 1000, thin = 2)
+MCMC_chain_sample1year <- coda::as.mcmc(cbind(processed_chains_1year$probabilities, processed_chains_1year$pars))
+
+mean_sample1year <- apply(MCMC_chain_sample1year,2,mean)
+percentile95_low_sample1year <- apply(MCMC_chain_sample1year,2,quantile,.025)
+percentile95_up_sample1year <- apply(MCMC_chain_sample1year,2,quantile,.975)
+# Fit
+#    sigma_f      prop_f           m           v 
+# -2.1823362      0.2804796     -3.1022142      0.2073798 
+# -2.4399009      0.2631021     -3.3342032      0.1610635 
+# -2.0097900      0.2977094     -2.9505450      0.2424334 
+
+# Original parameter values
+#  sigma_f     prop_f          m          v 
+# -3.366796   0.28835  -4.319991    0.0814 
+
+# trying out whether I can plot the chains over one another
+# seems a bit complicated (at least with coda)
+#mcmc_test_obj <- coda::as.mcmc(cbind(MCMC_chain_sample1year$probabilities, MCMC_chain_sample1year$pars))
+#test_mtx <- as.matrix(mcmc_test_obj, iters = TRUE, chains = TRUE)
+#test_mtx <- cbind(test_mtx, c(rep(1,100),rep(2,100),rep(3,100), rep(4,100)))
+#colnames(test_mtx)[9] <- "CHAIN"
+
+#mcmc_test_obj_1 <- coda::as.mcmc(mcmc_test_obj[1:90,])
+#mcmc_test_obj_2 <- coda::as.mcmc(mcmc_test_obj[91:180,])
+#mcmc_test_obj_3 <- coda::as.mcmc(mcmc_test_obj[181:270,])
+#mcmc_test_obj_4 <- coda::as.mcmc(mcmc_test_obj[271:360,])
+#mcmc_test_list <- coda::as.mcmc.list(c(mcmc_test_obj_1, mcmc_test_obj_2,mcmc_test_obj_3,mcmc_test_obj_4))
+test_list <- list()
+test_list[[1]] <- coda::as.mcmc(MCMC_chain_sample1year[1:(0.25 * nrow(MCMC_chain_sample1year)),])
+test_list[[2]] <- coda::as.mcmc(MCMC_chain_sample1year[((0.25 * nrow(MCMC_chain_sample1year)) +1):(0.5 * nrow(MCMC_chain_sample1year)),])
+test_list[[3]] <- coda::as.mcmc(MCMC_chain_sample1year[((0.5 * nrow(MCMC_chain_sample1year)) +1):(0.75 * nrow(MCMC_chain_sample1year)),])
+test_list[[4]] <- coda::as.mcmc(MCMC_chain_sample1year[((0.75 * nrow(MCMC_chain_sample1year)) +1):(nrow(MCMC_chain_sample1year)),])
+mcmc_test_list <- as.mcmc.list(test_list)
+plot(mcmc_test_list, trace = TRUE,density = TRUE, smooth =FALSE)
+```
+
+```{r}
+# fitting to data (sampling once every three years)
+simulated_data_over_time_filtered_3y <- sapply(simulated_data_long, rowSums)
+simulated_data_over_time_filtered_3y <- simulated_data_over_time_filtered_3y[,((0:6)*36)+1]
+
+fitting_test_data_3y <- data.frame("year" = (1:6)*3, t(simulated_data_over_time_filtered_3y)[-1,])
+names(fitting_test_data_3y) <- c("year", as.character((1:20)))
+
+fitting_test_params <- list(species_no = species_no_test, Pop_ini = Pop_ini_test, Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = Genotypes_test, capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = (migMatr_test), sero_no = sero_no_test)
+
+MCMC_chain_sample3year <- Fit_model_to_sim_data(fitting_data = fitting_test_data_3y, fitting_params = fitting_test_params)
+
+
+# Fit
+#    sigma_f      prop_f           m           v 
+# -3.28745830  0.27534203 -4.29236662  0.07751977 
+# -3.39333127  0.26434745 -4.35846884  0.06684704
+# -3.19938456  0.28876884 -4.19211048  0.09690647 
+
+
+# Original parameter values
+#  sigma_f     prop_f          m          v 
+# -3.366796   0.28835  -4.319991    0.0814 
+```
+
+```{r}
+# plot the mcmc fits in boxplots
+# Libraries
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+
+# create a dataset
+data_1yr <- data.frame(
+  name=c( rep("sigma_f",length(MCMC_chain_sample1year[,4])), rep("prop_f",length(MCMC_chain_sample1year[,4])), rep("m",length(MCMC_chain_sample1year[,4])), rep('v', length(MCMC_chain_sample1year[,4]))  ),
+  value=c( MCMC_chain_sample1year[,4],MCMC_chain_sample1year[,5],MCMC_chain_sample1year[,6],MCMC_chain_sample1year[,7] ),
+  true_values = c(rep(-3.366796, length(MCMC_chain_sample1year[,4])), rep(0.28835, length(MCMC_chain_sample1year[,4])), rep(-4.319991, length(MCMC_chain_sample1year[,4])), rep(0.0814,length(MCMC_chain_sample1year[,4])))
+)
+
+data_1yr_sigma_f <- data.frame(
+  name=c( rep("sigma_f",length(MCMC_chain_sample1year[,4]))),
+  value=c( MCMC_chain_sample1year[,4]),
+  true_values = c(-3.366796)
+)
+data_1yr_prop_f <- data.frame(
+  name=c( rep("prop_f",length(MCMC_chain_sample1year[,4]))),
+  value=c( MCMC_chain_sample1year[,5]),
+  true_values = c(0.28835)
+)
+data_1yr_m <- data.frame(
+  name=c( rep("m",length(MCMC_chain_sample1year[,4]))),
+  value=c( MCMC_chain_sample1year[,6]),
+  true_values = c(-4.319991)
+)
+data_1yr_v <- data.frame(
+  name=c( rep("v",length(MCMC_chain_sample1year[,4]))),
+  value=c( MCMC_chain_sample1year[,7]),
+  true_values = c(0.0814)
+)
+
+# Plot
+boxplot_mcmc <- function(gg_data){
+  ggplot(gg_data, aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    geom_jitter(color="black", size=0.4, alpha=0.9) +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("A boxplot with jitter") +
+    xlab("")
+} 
+
+boxplot_mcmc(data_1yr_sigma_f) + geom_point(aes(y=true_values), colour="green")
+boxplot_mcmc(data_1yr_prop_f) + geom_point(aes(y=true_values), colour="green")
+boxplot_mcmc(data_1yr_m) + geom_point(aes(y=true_values), colour="green")
+boxplot_mcmc(data_1yr_v) + geom_point(aes(y=true_values), colour="green")
+
+# Boxplot basic
+boxplot_mcmc <- ggplot(data_1yr, aes(x=name, y=value, fill=name)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Basic boxplot") +
+    xlab("")
+
+boxplot_mcmc + geom_point(aes(y=true_val), colour="green")
+
+# Violin basic
+data_1yr %>%
+  ggplot( aes(x=name, y=value, fill=name)) +
+    geom_violin() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Violin chart") +
+    xlab("")
+```
+

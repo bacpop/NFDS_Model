@@ -1,0 +1,11 @@
+Data_analysis/*.rds
+Data_analysis/*.pdf
+Data_analysis/*.png
+Data_analysis/*.html
+Data_analysis/.RData
+Data_analysis/.
+Data_analysis/..
+Data_analysis/.Rhistory
+Data_analysis/.Rproj.user
+Data_analysis/.DS_Store
+Data_analysis/.Rapp.history

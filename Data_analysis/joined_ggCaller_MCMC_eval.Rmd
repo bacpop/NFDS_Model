@@ -1,0 +1,51 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(bayestestR)
+### Mass
+
+# 4-parameter model with GPSCs
+Mass_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_08/Mass_PPxSero2/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Mass_4param_mcmc2_probs <- coda::as.mcmc(cbind(Mass_4param_mcmc2$probabilities, Mass_4param_mcmc2$pars))
+#coda::effectiveSize(Mass_4param_mcmc2_probs)
+#summary(coda::as.mcmc(Mass_4param_mcmc2_probs))
+Mass_likelihood_4param <- median(Mass_4param_mcmc2_probs[,"log_likelihood"])
+#mean(Mass_4param_mcmc2_probs[,"log_likelihood"])
+param_estimates <- map_estimate(Mass_4param_mcmc2$pars)
+# -3.27, 0.24, -4.36, 0.08
+# GPSCs:
+# -3.24, 0.24, -4.31, 0.08
+param_mean <- apply(Mass_4param_mcmc2_probs, 2, mean)
+percentile95_low <- apply(Mass_4param_mcmc2_probs,2,quantile,.025)
+percentile95_up <- apply(Mass_4param_mcmc2_probs,2,quantile,.975)
+#     log_prior log_likelihood  log_posterior        sigma_f         prop_f              m              v 
+#    0.00000000  -216.93700171  -216.93700171    -3.46685002     0.34412010    -4.20067157     0.09226522 
+#    0.00000000  -221.10809628  -221.10809628    -3.96755164     0.26854095    -4.70350782     0.07083447
+#    0.0000000   -214.7636318   -214.7636318     -2.9528191      0.4381072     -3.6808380      0.1190635
+rm(Mass_4param_mcmc2)
+rm(Mass_4param_mcmc2_probs)
+
+```
+
+```{r}
+### UK
+
+# 4-parameter model GPSC version
+UK_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_08/UK_PPxSero/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+UK_4param_mcmc2_probs <- coda::as.mcmc(cbind(UK_4param_mcmc2$probabilities, UK_4param_mcmc2$pars))
+UK_4param_mcmc2_probs_burnin <- UK_4param_mcmc2_probs[c(1001:20000, 21001:40000, 41001:60000, 61001:80000),]
+UK_likelihood_4param <- median(UK_4param_mcmc2_probs_burnin[,"log_likelihood"])
+#mean(UK_4param_mcmc2_probs[,"log_likelihood"])
+param_mean <- apply(UK_4param_mcmc2_probs_burnin, 2, mean)
+percentile95_low <- apply(UK_4param_mcmc2_probs_burnin,2,quantile,.025)
+percentile95_up <- apply(UK_4param_mcmc2_probs_burnin,2,quantile,.975)
+#     log_prior log_likelihood  log_posterior        sigma_f         prop_f              m              v 
+#     0.0000000   -540.3097118   -540.3097118     -3.8361059      0.2264006     -4.1091828      0.1032453
+#     0.00000000  -544.09425023  -544.09425023    -4.38824513     0.13255969    -4.42922249     0.08848182
+#     0.0000000   -538.2036833   -538.2036833     -3.3356316      0.3513341     -3.8118126      0.1195111 
+rm(UK_4param_mcmc2)
+
+```

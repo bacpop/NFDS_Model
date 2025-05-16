@@ -1,0 +1,938 @@
+---
+title: "Nepal Data Processing"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+path_to_data <- "~/Documents/PhD_Project/Data/"
+```
+
+### new data, December 2024
+
+# read in meta data (esp. serotype, sequencing year)
+```{r}
+#Nepal_meta_data <- read.csv(paste(path_to_data, "StrepPneumo_Nepal/GPS_data/gps1+gps2_metadata_results_leonie.csv",sep = ""))
+library(readxl)
+Nepal_meta_data <- read_excel("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/GPS1_and_GPS2_Nepal_dataset_3Dec2024.xlsx")
+
+sheets <- readxl::excel_sheets("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/GPS1_and_GPS2_Nepal_dataset_3Dec2024.xlsx") 
+tibble <- lapply(sheets, function(x) readxl::read_excel("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/GPS1_and_GPS2_Nepal_dataset_3Dec2024.xlsx", sheet = x)) 
+
+# turn tibbles into proper data frames
+# GPS1
+Nepal_meta_data_gps1 <-   as.data.frame(readxl::read_excel("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/GPS1_and_GPS2_Nepal_dataset_3Dec2024.xlsx", sheet = "GPS1"))
+Nepal_meta_data_gps1_selection <- Nepal_meta_data_gps1[,c(2:6,8:13, 25, 75)]
+Nepal_meta_data_gps1_selection$GPS <- 1
+
+#GPS2 serotypes
+Nepal_gps2_serotyping <- read.csv("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/SerotypeSummary.csv", header = FALSE)
+colnames(Nepal_gps2_serotyping) <- c("Sample","Serotype","Genetic_Variant","Contamination_Status")
+
+spl_serotype_names <- function(serotype_str){
+  split1 <- strsplit(serotype_str, "/data/SerotypingResults/", fixed = TRUE)[[1]][2]
+  split2 <- strsplit(split1, "_RESULT", fixed = TRUE)[[1]][1]
+  split2
+}
+Nepal_gps2_serotyping$Sample <- as.vector(sapply(Nepal_gps2_serotyping$Sample,spl_serotype_names))
+
+gps2_serotype_dict <- Nepal_gps2_serotyping$Serotype
+names(gps2_serotype_dict) <- Nepal_gps2_serotyping$Sample
+
+# GPS2
+Nepal_meta_data_gps2 <- as.data.frame(readxl::read_excel("~/Documents/PhD_Project/Data/StrepPneumo_Nepal_gps_v2/GPS1_and_GPS2_Nepal_dataset_3Dec2024.xlsx", sheet = "GPS2")) 
+Nepal_meta_data_gps2_selection <- Nepal_meta_data_gps2[,c(1,2,4:11,21,22)]
+Nepal_meta_data_gps2_selection$GPS <- 2
+colnames(Nepal_meta_data_gps2_selection)[2] <- "Public_name"
+Nepal_meta_data_gps2_selection$"In_silico_serotype" <- rep(NA, nrow(Nepal_meta_data_gps2_selection))
+Nepal_meta_data_gps2_selection$"In_silico_serotype" <- gps2_serotype_dict[Nepal_meta_data_gps2_selection$"Lane_id"]
+#note: there are 66 entries in here that do not have genome data available 
+
+Nepal_meta_data_gps_joined <- rbind(Nepal_meta_data_gps1_selection, Nepal_meta_data_gps2_selection)
+
+# if sequence is from second half of the year, assign it to the next year (winter)
+Nepal_meta_data_gps_joined$Winter <- Nepal_meta_data_gps_joined$Year +as.integer(sapply(Nepal_meta_data_gps_joined$Month[1:10], is.element, c("JUL","AUG","SEP","OCT","NOV","DEC")))
+
+#Nepal_time_points <- sort(unique(Nepal_meta_data_gps_joined$Year))
+Nepal_time_points <- sort(unique(Nepal_meta_data_gps_joined$Winter))
+
+Nepal_SeqYear_dict <- Nepal_meta_data_gps_joined$Winter
+names(Nepal_SeqYear_dict) <- Nepal_meta_data_gps_joined$Lane_id
+
+Nepal_meta_IDtoInd <- 1:nrow(Nepal_meta_data_gps_joined)
+names(Nepal_meta_IDtoInd) <- Nepal_meta_data_gps_joined$Lane_id
+```
+
+```{r}
+seq_no_per_year <- rep(0, length(Nepal_time_points))
+names(seq_no_per_year) <- Nepal_time_points
+for (i in 1:length(Nepal_time_points)) {
+  #seq_no_per_year[i] <- length(which(Nepal_meta_data_gps_joined$Year==Nepal_time_points[i]))
+  seq_no_per_year[i] <- length(which(Nepal_meta_data_gps_joined$Winter==Nepal_time_points[i]))
+}
+barplot(seq_no_per_year, xlab = "Sequencing Years", ylim = c(0, 1200), ylab = "Sequence Counts")
+# PCV10 was introduced in 2015
+# number of sequences fluctuates a lot from year to year. take just 2009, 2012, 2014, 2017, 2018, 2019?
+# or summaries the years somehow?
+#Nepal_time_points_selected <- Nepal_time_points[c(5,7,9,12,13)]
+# No, I want all the years
+#Nepal_time_points_selected <- Nepal_time_points
+#Nepal_time_points_preVac <- Nepal_time_points[1:10]
+Nepal_time_points_selected <- min(Nepal_time_points):max(Nepal_time_points)
+Nepal_time_points_preVac <- Nepal_time_points_selected[1:11]
+```
+
+```{r}
+# serotyping seems to be a bit difficult in this dataset
+#unique(Nepal_meta_dataPP$In_silico_serotype)
+#> length(which(Nepal_meta_data$In_silico_serotype == "UNTYPABLE"))
+#[1] 163
+#> length(which(Nepal_meta_data$In_silico_serotype == "COVERAGE TOO LOW"))
+#[1] 29
+#length(which(Nepal_meta_data$In_silico_serotype == "SWISS_NT"))
+#[1] 26
+# > length(which(Nepal_meta_data$In_silico_serotype == "ALTERNATIVE_ALIB_NT"))
+#[1] 7
+# think about what you want to do with these before proceeding.
+# I will not include them in the analysis
+
+# make dictionary to know which ones to include for Nepal_PP and Nepal_meta_dataPP
+#Nepal_has_serotype <- rep(TRUE, nrow(Nepal_meta_data))
+#names(Nepal_has_serotype) <- Nepal_meta_data$Lane_id
+#Nepal_has_serotype[Nepal_meta_data$Lane_id[which(Nepal_meta_data$In_silico_serotype == "UNTYPABLE")]] <- FALSE
+#Nepal_has_serotype[Nepal_meta_data$Lane_id[which(Nepal_meta_data$In_silico_serotype == "COVERAGE TOO LOW")]] <- FALSE
+#Nepal_has_serotype[Nepal_meta_data$Lane_id[which(Nepal_meta_data$In_silico_serotype == "SWISS_NT")]] <- FALSE
+
+# wait, I also have the phenotypic seroytype. I will use this one. 
+# and if it does not exist, use in silico and then see how many cases remain
+# no - in-silico is more reliable
+Nepal_has_serotype <- rep(FALSE, nrow(Nepal_meta_data_gps_joined))
+names(Nepal_has_serotype) <- Nepal_meta_data_gps_joined$Lane_id
+
+
+Nepal_has_serotype[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_" & Nepal_meta_data_gps_joined$Phenotypic_serotype != "NT")]] <- TRUE
+Nepal_has_serotype[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$In_silico_serotype != "UNTYPABLE" & Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "SWISS_NT" & Nepal_meta_data_gps_joined$In_silico_serotype != "ALTERNATIVE_ALIB_NT")]] <- TRUE
+
+### TIDY UP SEROTYPES 
+# e.g. these (Nepal 6B)  (Vellor 6B) need to be merged into 6B
+# I am not sure whether the phenotypic serotype or the in-silico serotype is more reliable
+
+# this has 237 without serotype
+
+# store values for those serotypes
+Nepal_Serotype_dict <- rep(NA, nrow(Nepal_meta_data_gps_joined))
+names(Nepal_Serotype_dict) <- Nepal_meta_data_gps_joined$Lane_id
+
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$In_silico_serotype != "UNTYPABLE" & Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "SWISS_NT"  & Nepal_meta_data_gps_joined$In_silico_serotype != "ALTERNATIVE_ALIB_NT")]] <- Nepal_meta_data_gps_joined$In_silico_serotype[which(Nepal_meta_data_gps_joined$In_silico_serotype != "UNTYPABLE" & Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "SWISS_NT" & Nepal_meta_data_gps_joined$In_silico_serotype != "ALTERNATIVE_ALIB_NT")]
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_" & Nepal_meta_data_gps_joined$Phenotypic_serotype != "NT")]] <- Nepal_meta_data_gps_joined$Phenotypic_serotype[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_" & Nepal_meta_data_gps_joined$Phenotypic_serotype != "NT")]
+
+is_equal <- function(a,b){
+  identical(a,b)
+}
+
+length(which(as.vector(sapply(Nepal_meta_data_gps_joined$Phenotypic_serotype, is_equal, Nepal_meta_data_gps_joined$In_silico_serotype, simplify = TRUE))==FALSE))
+
+in_silico_copy <- Nepal_meta_data_gps_joined$In_silico_serotype
+in_silico_copy[which(in_silico_copy=="UNTYPABLE")] <- "NT"
+in_silico_copy[which(in_silico_copy=="SWISS_NT")] <- "NT"
+in_silico_copy[which(in_silico_copy=="ALTERNATIVE_ALIB_NT")] <- "NT"
+
+not_the_same <- 0
+not_same_pheno <- c()
+not_same_insilico <- c()
+for (i in 1:length(Nepal_meta_data_gps_joined$Phenotypic_serotype)) {
+  #print(Nepal_meta_data_gps_joined$Phenotypic_serotype[i])
+  #print(Nepal_meta_data_gps_joined$In_silico_serotype[i])
+  if(!is.na(Nepal_meta_data_gps_joined$Phenotypic_serotype[i]) & !is.na(Nepal_meta_data_gps_joined$In_silico_serotype[i])){
+    if(Nepal_meta_data_gps_joined$Phenotypic_serotype[i] != in_silico_copy[i]){
+    not_the_same <- not_the_same + 1
+    not_same_pheno[not_the_same] <- Nepal_meta_data_gps_joined$Phenotypic_serotype[i]
+    not_same_insilico[not_the_same] <- Nepal_meta_data_gps_joined$In_silico_serotype[i]
+  }
+  } 
+}
+
+not_same_serotype_df <- as.data.frame(cbind(not_same_pheno, not_same_insilico))
+
+# okay, based on John's and Steph's feedback:
+# trust the in-silico phenotype
+# and then use the phenotypic one only for those that are not in-silico typed
+
+# store values for those serotypes
+Nepal_Serotype_dict <- rep(NA, nrow(Nepal_meta_data_gps_joined))
+names(Nepal_Serotype_dict) <- Nepal_meta_data_gps_joined$Lane_id
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_")]] <- Nepal_meta_data_gps_joined$Phenotypic_serotype[which(Nepal_meta_data_gps_joined$Phenotypic_serotype != "_")]
+
+Nepal_Serotype_dict[Nepal_meta_data_gps_joined$Lane_id[which(Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "coverage too low")]] <- Nepal_meta_data_gps_joined$In_silico_serotype[which(Nepal_meta_data_gps_joined$In_silico_serotype != "COVERAGE TOO LOW" & Nepal_meta_data_gps_joined$In_silico_serotype != "coverage too low")]
+
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "UNTYPABLE" | Nepal_Serotype_dict == "SWISS_NT" | Nepal_Serotype_dict == "ALTERNATIVE_ALIB_NT" | Nepal_Serotype_dict == "untypable" | Nepal_Serotype_dict == "NCC1_pspK_non_encapsulated" | Nepal_Serotype_dict == "NCC3_aliD_non_encapsulated" | Nepal_Serotype_dict == "NCC2_S_mitis_aliC_aliD_non_encapsulated" | Nepal_Serotype_dict == "NCC2_aliC_aliD_non_encapsulated")] <- "NT"
+
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "(Nepal 2) (vellor 2)")] <- "2"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "23B1")] <- "23B"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "01")] <- "1"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "02")] <- "2"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "03")] <- "3"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "04")] <- "4"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "05")] <- "5"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06A")] <- "6A"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06B")] <- "6B"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06C")] <- "6C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "06D")] <- "6D"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "07B")] <- "7B"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "07C")] <- "7C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "07F")] <- "7F"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "08")] <- "8"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "09L")] <- "9L"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "09N")] <- "9N"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "09V")] <- "9V"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "15B")] <- "15B/15C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "15C")] <- "15B/15C"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "20A")] <- "20"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "20B")] <- "20"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "24F")] <- "24B/24C/24F"
+Nepal_Serotype_dict[which(Nepal_Serotype_dict == "33F")] <- "33A/33E/33F"
+
+# keep 23B1? subtype of 23B
+# And SEROGROUP 24? It seems that in GPS1 they called 24F and 24A separately but in GPS2, they only called SEROGROUP 24. I will assume that this is the newer, correct way to do it.
+
+#Nepal_Serotype_dict[which(Nepal_Serotype_dict == "24F" | Nepal_Serotype_dict == "24A")] <- "SEROGROUP 24"
+# not necessary anymore after doing my own serotyping
+
+length(unique(Nepal_Serotype_dict))
+#[1] 69
+```
+
+
+
+# read in PopPUNK results
+```{r}
+PP_all <- read.csv(paste(path_to_data, "StrepPneumo_Nepal_gps_v2/poppunk_clusters_GPSCs_v9/poppunk_clusters_external_clusters.csv",sep = ""))
+# since Nepal was in the database, I had to run PopPUNK with --write-references
+# so now I need to filter this dataset to only have the real Nepal sequences
+
+# remove appendix "_contigs_velvet"
+#remove_contigs_velvet <- function(str_with_app){
+#  str_without_app <- strsplit(str_with_app, "_contigs_velvet", fixed = TRUE)[[1]][1]
+#  str_without_app
+#}
+
+#PP_all$Taxon <- sapply(PP_all$Taxon, remove_contigs_velvet)
+PP_all <- PP_all[!duplicated(PP_all$sample),]
+
+PP_taxon_ind_dict <- 1:nrow(PP_all)
+names(PP_taxon_ind_dict) <- PP_all$sample
+
+PP_is_Nepal_dict <- rep(FALSE,nrow(PP_all))
+names(PP_is_Nepal_dict) <- PP_all$sample
+
+for (i in 1:length(Nepal_meta_data_gps_joined$Lane_id)) {
+  if(Nepal_has_serotype[i]){ # checks if we have serotype for this sequence and only includes it in PP dataset if yes
+    PP_is_Nepal_dict[Nepal_meta_data_gps_joined$Lane_id[i]] <- TRUE
+  }
+}
+
+Nepal_PP <- PP_all[which(PP_is_Nepal_dict[PP_all$sample]),]
+Nepal_PP <- Nepal_PP[which(!(is.na(Nepal_PP$GPSC))),]
+no_Nepal_PP <- length(unique(Nepal_PP$GPSC)) 
+# now: 169 (GPSCs)
+# before: (PopPUNK clusters, not directly based on GPSCs)
+# 187 clusters 
+# before: (with misassemblies)
+# 181 clusters
+
+Nepal_seq_clusters_dict <- Nepal_PP$GPSC
+names(Nepal_seq_clusters_dict) <- Nepal_PP$sample
+```
+
+# filter meta data by PopPUNK sequences (PopPUNK qc removed some of the sequences)
+```{r}
+#Nepal_meta_dataPP <- Nepal_meta_data_gps_joined[sort(Nepal_meta_IDtoInd[Nepal_PP$sample]),c("Lane_id", "Year")]
+Nepal_meta_dataPP <- Nepal_meta_data_gps_joined[sort(Nepal_meta_IDtoInd[Nepal_PP$sample]),c("Lane_id", "Winter")]
+Nepal_meta_dataPP$Serotype <- Nepal_Serotype_dict[Nepal_meta_dataPP$Lane_id]
+colnames(Nepal_meta_dataPP) <- c("Lane_id", "Year", "Serotype")
+
+# length(which(Nepal_meta_dataPP$Serotype == "SEROGROUP 24"))
+#[1] 19
+# I think I will leave them in for now
+# now 39
+# now none 
+rownames(Nepal_meta_dataPP) <- 1:nrow(Nepal_meta_dataPP)
+
+Nepal_meta_IDtoIndPP <- 1:nrow(Nepal_meta_dataPP)
+names(Nepal_meta_IDtoIndPP) <- Nepal_meta_dataPP$Lane_id
+```
+
+```{r}
+#saveRDS(Nepal_meta_dataPP, "Nepal_meta_dataPP.rds")
+```
+
+```{r}
+# Add Serotype Information to PP
+#Nepal_Serotype_dict <- Nepal_meta_dataPP$In_silico_serotype
+#names(Nepal_Serotype_dict) <- Nepal_meta_dataPP$Lane_id
+# I created a new version of this above, that takes phenotypic serotype when possible
+
+Nepal_PP$Serotype <- Nepal_Serotype_dict[Nepal_PP$sample]
+
+# create dictionary for VTs of the PCV10
+# 1, 4, 5, 6b, 7f, 9V, 14, 18c, 19f and 23f serotypes (source: NCBI)
+PCV10_VTsPP <- rep("NVT",length(unique(Nepal_PP$Serotype)))
+names(PCV10_VTsPP) <- unique(Nepal_PP$Serotype)
+PCV10_VTsPP[c("1","4","5","6B", "7F", "9V", "14", "18C", "19F", "23F")] <- "VT"
+
+Nepal_PP$VT <- PCV10_VTsPP[Nepal_PP$Serotype]
+
+
+
+#saveRDS(Nepal_PP,"Nepal_PP.rds")
+```
+
+# read in ggCaller results
+```{r}
+Nepal_ggCaller <- read.csv(paste(path_to_data, "StrepPneumo_Nepal_gps_v2/ggCaller_output/gene_presence_absence.csv", sep = ""), header=FALSE)
+```
+
+```{r}
+# converting the gene presence absence matrix into a boolean df (0 = gene not present, 1 = gene present)
+convert_to_bool <- function(x){
+  if (x=="") 0 else 1
+}
+
+Nepal_ggCaller_bool <- Nepal_ggCaller[,c(-2,-3)]
+Nepal_ggCaller_bool[-1,-1] <- apply(Nepal_ggCaller_bool[-1,-1],c(1,2), convert_to_bool)
+#Nepal_ggCaller_bool[1,-1] <- unlist(strsplit(Nepal_ggCaller_bool[1,-1],".contigs_velvet"))
+
+Nepal_ggCaller_bool[1,-1] <- sapply(Nepal_ggCaller_bool[1,-1], strsplit, split = ".contigs_velvet") # remove contigs appendix
+colnames(Nepal_ggCaller_bool) <- Nepal_ggCaller_bool[1,]
+
+# filter ggCaller results by the ones 
+Nepal_ggCallerPP_bool <- data.frame(matrix(0, nrow = nrow(Nepal_ggCaller_bool), ncol = length(Nepal_PP$sample)+1))
+Nepal_ggCallerPP_bool[-1,-1] <- Nepal_ggCaller_bool[-1,c(Nepal_PP$sample)]
+colnames(Nepal_ggCallerPP_bool) <- c("Gene",Nepal_PP$sample)
+Nepal_ggCallerPP_bool[1,] <- c("Gene",Nepal_PP$sample)
+Nepal_ggCallerPP_bool[,1] <- Nepal_ggCaller_bool[,1]
+```
+
+```{r}
+saveRDS(Nepal_ggCallerPP_bool, "Nepal_ggCaller_bool.rds")
+```
+
+# split ggCaller gene presence absence matrix into different time points
+```{r}
+### continue working here
+Nepal_ggCaller_byYear <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  Nepal_ggCaller_year <- data.frame(matrix(0, nrow = nrow(Nepal_ggCallerPP_bool), ncol = length(which(Nepal_meta_dataPP$Year==Nepal_time_points_selected[i]))+1)) # initialize data frame
+  Nepal_ggCaller_year[1,-1] <- Nepal_ggCallerPP_bool[1,c(FALSE,Nepal_SeqYear_dict[unlist(Nepal_ggCallerPP_bool[1,-1])]==Nepal_time_points_selected[i])] # fill in first row (seq names)
+  Nepal_ggCaller_year[-1,1] <- Nepal_ggCallerPP_bool[-1,1] # fill in first column (gene cluster names)
+  Nepal_ggCaller_year[-1,-1] <- Nepal_ggCallerPP_bool[-1,c(FALSE,Nepal_SeqYear_dict[unlist(Nepal_ggCallerPP_bool[1,-1])]==Nepal_time_points_selected[i])] # fill in presence absence information
+  Nepal_ggCaller_byYear[[i]] <- Nepal_ggCaller_year
+}
+```
+
+# find intermediate frequency genes
+# I will combine all pre-vaccine data points for this
+```{r}
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+Nepal_gene_freq_preVac <- rep(0, nrow(Nepal_ggCaller_byYear[[1]])-1)
+preVac_datapoints <- 0
+for (i in 1:length(Nepal_time_points_preVac)) {
+  Nepal_gene_freq_preVac <- Nepal_gene_freq_preVac + apply(Nepal_ggCaller_byYear[[i]][-1,-1],1, sum_as_int)
+  preVac_datapoints <- preVac_datapoints + length(Nepal_ggCaller_byYear[[i]][1,-1])
+}
+Nepal_gene_freq_preVac <- Nepal_gene_freq_preVac / preVac_datapoints
+
+Nepal_gene_filter <- as.integer(Nepal_gene_freq_preVac<=0.95 & Nepal_gene_freq_preVac>=0.05)
+# 2120 intermediate-frequency genes (of 6533)
+# now: 2890 intermediate-frequency genes (of 9059)
+```
+
+# create intermediate frequency dataframes
+```{r}
+Nepal_ggCaller_byYear_intermed <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  Nepal_ggCaller_year <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,ncol = length(which(Nepal_meta_dataPP$Year==Nepal_time_points_selected[i]))+1))
+  if(ncol(Nepal_ggCaller_byYear[[i]])>1){
+    Nepal_ggCaller_year <-  Nepal_ggCaller_byYear[[i]][c(1,which(Nepal_gene_filter==1)+1),]
+  }
+  else{
+    Nepal_ggCaller_year <-  data.frame(matrix(Nepal_ggCaller_byYear[[6]][c(1,which(Nepal_gene_filter==1)+1),1], nrow = sum(Nepal_gene_filter)+1,ncol = 1))
+  }
+  Nepal_ggCaller_byYear_intermed[[i]] <- Nepal_ggCaller_year 
+}
+
+Nepal_ggCaller_intermed <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,ncol = ncol(Nepal_ggCallerPP_bool)))
+Nepal_ggCaller_intermed <-  Nepal_ggCallerPP_bool[c(1,which(Nepal_gene_filter==1)+1),]
+
+# create pre_Vac intermed frequency data frame
+#Nepal_ggCaller_intermed_preVac <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,ncol = (sum(unlist(lapply(Nepal_ggCaller_byYear_intermed,ncol))[1:length(Nepal_time_points_preVac)]) - length(Nepal_time_points_preVac) + 1)))
+#col_count <- 2
+#for (i in 1:length(Nepal_time_points_preVac)) {
+#  if(ncol(Nepal_ggCaller_byYear_intermed[[i]])>1){
+#    Nepal_ggCaller_intermed_preVac[,(col_count:(col_count + ncol(Nepal_ggCaller_byYear_intermed[[i]])-1))] <- Nepal_ggCaller_byYear_intermed[[i]][,-1]
+#    col_count <- col_count + ncol(Nepal_ggCaller_byYear_intermed[[i]])
+#  }
+#}
+#Nepal_ggCaller_intermed_preVac[,1] <-  Nepal_ggCaller_byYear_intermed[[1]][,1]
+
+# use 2009 as preVac reference
+Nepal_ggCaller_intermed_preVac <- Nepal_ggCaller_byYear_intermed[[5]]
+```
+
+# create consensus gene presence absence matrices for the clusters
+```{r}
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+# overall
+Nepal_ggCaller_intermed_consensus <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1, ncol = no_Nepal_PP+1))
+Nepal_ggCaller_intermed_consensus[1,-1] <- paste("SeqCl_",unique(Nepal_PP$GPSC),sep = "")
+
+for (i in unique(Nepal_PP$GPSC)) {
+  Nepal_ggCaller_intermed_consensus[-1,(which(unique(Nepal_PP$GPSC) == i))+1] <- apply(as.matrix(Nepal_ggCaller_intermed[-1,c(FALSE,Nepal_seq_clusters_dict[unlist(Nepal_ggCaller_intermed[1,-1])]==i)]), 1, cons_genomes)
+
+}
+Nepal_ggCaller_intermed_consensus[,1] <- Nepal_ggCaller_intermed[,1]
+
+#by year
+Nepal_ggCaller_byYear_intermed_consensus <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  Nepal_ggCaller_year <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,ncol = no_Nepal_PP+1))
+  Nepal_ggCaller_year[1,-1] <- paste("SeqCl_",unique(Nepal_PP$GPSC),sep = "")
+  for (j in unique(Nepal_PP$GPSC)) {
+    Nepal_ggCaller_year[-1,(which(unique(Nepal_PP$GPSC) == j))+1] <- apply(as.matrix(Nepal_ggCaller_byYear_intermed[[i]][-1,c(FALSE,Nepal_seq_clusters_dict[unlist(Nepal_ggCaller_byYear_intermed[[i]][1,-1])]==j)]), 1, cons_genomes)
+  }
+  Nepal_ggCaller_year[,1] <- Nepal_ggCaller_byYear_intermed[[i]][,1]
+  Nepal_ggCaller_byYear_intermed_consensus[[i]] <- Nepal_ggCaller_year
+}
+
+saveRDS(Nepal_ggCaller_intermed_consensus,"Nepal_ggCaller_intermed_consensus.rds")
+```
+
+# Calculate VT/NVT for clusters
+```{r}
+# create dictionary for VTs of the PCV10
+# 1, 4, 5, 6b, 7f, 9V, 14, 18c, 19f and 23f serotypes (source: NCBI)
+PCV10_VTs <- rep(0,length(unique(Nepal_meta_dataPP$Serotype)))
+names(PCV10_VTs) <- unique(Nepal_meta_dataPP$Serotype)
+PCV10_VTs[c("1","4","5","6B", "7F", "9V", "14", "18C", "19F", "23F")] <- 1
+
+Nepal_SeqToSero_dict <- Nepal_meta_dataPP$Serotype
+names(Nepal_SeqToSero_dict) <- Nepal_meta_dataPP$Lane_id
+
+# calculate Vaccine Type consensus for clusters
+Nepal_VT <- rep(0, no_Nepal_PP)
+
+for (i in unique(Nepal_PP$GPSC)){
+  Nepal_VT[(which(unique(Nepal_PP$GPSC) == i))] <- ceiling(median(as.integer(PCV10_VTs[Nepal_SeqToSero_dict[Nepal_PP[Nepal_PP$GPSC == i,"sample"]]])))
+}
+# 1 means VT
+# 0 means NVT
+# if cluster is 50/50 it will count as VT
+
+# make VT-vector with VT, NVT, and mixed
+Nepal_VT_mixed <- rep(0, no_Nepal_PP)
+
+for (i in unique(Nepal_PP$GPSC)){
+  Nepal_VT_mixed[(which(unique(Nepal_PP$GPSC) == i))] <- (mean(as.integer(PCV10_VTs[Nepal_SeqToSero_dict[Nepal_PP[Nepal_PP$GPSC == i,"sample"]]])))
+}
+```
+
+```{r}
+#save VTs
+saveRDS(Nepal_VT, file = "Nepal_VT.rds")
+```
+
+# calculate cluster frequencies for different years
+```{r}
+Nepal_cluster_freqs <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for(j in 1:length(Nepal_time_points_selected)){
+  Nepal_cluster_freqs[[j]] <- rep(0, no_Nepal_PP)
+  for (i in unique(Nepal_PP$GPSC)){
+    Nepal_cluster_freqs[[j]][which(unique(Nepal_PP$GPSC) == i)] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == i,"sample"]],]$Year==Nepal_time_points_selected[j]))
+  }
+}
+
+Nepal_cluster_freqs[[6]] <- rep(NA, no_Nepal_PP)
+# 901 data points in total
+#Nepal_cluster_freqs_preVac <- rep(0, no_Nepal_PP)
+#for (i in 1:length(Nepal_time_points_preVac)) {
+#  Nepal_cluster_freqs_preVac <- Nepal_cluster_freqs_preVac + replace(Nepal_cluster_freqs[[i]],which(is.na(Nepal_cluster_freqs[[i]])),0)
+#}
+
+# I will use 2009 as start population I think
+Nepal_cluster_freqs_preVac <- Nepal_cluster_freqs[[5]]
+
+for (i in 1:length(Nepal_time_points_selected)) {
+  file_name <- paste("Nepal_cluster_freqs_", as.character(i),".rds", sep = "")
+  saveRDS(Nepal_cluster_freqs[[i]], file_name)
+}
+```
+
+#create initial population
+```{r}
+### create initial population that is based on the first time point data set
+# sample from it with an Poisson process
+expand_factor <- 15000 / sum(Nepal_cluster_freqs_preVac)
+exp_noise <- 10
+Nepal_model_start_pop <- (sapply((Nepal_cluster_freqs_preVac + rexp(n = length(Nepal_cluster_freqs_preVac), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(Nepal_cluster_freqs_preVac/sum(Nepal_cluster_freqs_preVac))
+points(Nepal_model_start_pop/sum(Nepal_model_start_pop), col = "red")
+
+# aha, I compared the data but 90% of the data are actually coming from 2009 (of the preVac era)
+# so it would be much better to only use that time point I think
+
+Nepal_model_start_pop <- (sapply((Nepal_cluster_freqs[[5]] + rexp(n = length(Nepal_cluster_freqs[[5]]), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(Nepal_cluster_freqs[[5]]/sum(Nepal_cluster_freqs[[5]]))
+points(Nepal_model_start_pop/sum(Nepal_model_start_pop), col = "red")
+
+saveRDS(Nepal_model_start_pop, "Nepal_model_start_pop.rds")
+```
+
+
+# calculate delta ranking
+# I will do 2019 - 2009
+```{r}
+# For strong and weak selection in the model, I need to calculate the beta statistics.
+
+# calculate gene frequencies first, separate for three time points
+#Nepal_gene_freq_preVac <- apply(Nepal_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
+#Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[length(Nepal_ggCaller_byYear_intermed)]][-1,-1], 1, sum_as_int)
+Nepal_gene_freq_preVac <- apply(Nepal_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
+Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[15]][-1,-1], 1, sum_as_int)
+
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+Nepal_gene_freq_preVac_rel <- Nepal_gene_freq_preVac/sum(Nepal_gene_freq_preVac)
+Nepal_gene_freq_postVac_rel <- Nepal_gene_freq_postVac/sum(Nepal_gene_freq_postVac)
+
+# calculate delta statistic (refer to Corander et al. for more info)
+Nepal_delta_data <- (Nepal_gene_freq_postVac_rel - Nepal_gene_freq_preVac_rel) ^ 2 / (1 - Nepal_gene_freq_preVac_rel * (1 - Nepal_gene_freq_preVac_rel))
+Nepal_delta_ranking <- rank(Nepal_delta_data)
+
+saveRDS(Nepal_delta_ranking,"Nepal_delta_ranking.rds")
+```
+
+### Data processing for PPxSero model
+```{r}
+PopPUNK_clusters <- readRDS("Nepal_PP.rds")
+Nepal_model_start_pop <- readRDS("Nepal_model_start_pop.rds")
+mass_clusters <- length(unique(PopPUNK_clusters$GPSC))
+Nepal_avg_cluster_freq <- rep(1/mass_clusters, mass_clusters)
+
+
+PPxSero_matrix <- matrix(0, nrow = length(unique(PopPUNK_clusters$GPSC)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+# sort(unique(PopPUNK_clusters$Serotype))
+# [1] "10A"   "11A"   "14"    "15A"   "15B/C" "15F"   "16F"   "17F"   "18C"   "19A"   "19F"   "21"    "22F"   "23A"
+#[15] "23B"   "23F"   "3"     "31"    "33F"   "34"    "35B"   "35F"   "37"    "38"    "6A"    "6B"    "6C"    "7C" 
+#[29] "7F"    "9N"    "9V"    "NT"
+# now, 74 serotypes
+
+SerotypeToIndex_dict <- 1:length(unique(PopPUNK_clusters$Serotype))
+names(SerotypeToIndex_dict) <- sort(unique(PopPUNK_clusters$Serotype))
+
+IndexToSerotype_dict <- sort(unique(PopPUNK_clusters$Serotype))
+names(IndexToSerotype_dict) <- 1:length(unique(PopPUNK_clusters$Serotype))
+
+PPclustToIndex_dict <- 1:length(unique(PopPUNK_clusters$GPSC))
+names(PPclustToIndex_dict) <- sort(unique(PopPUNK_clusters$GPSC))
+
+for (i in 1:nrow(PopPUNK_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(PopPUNK_clusters$GPSC[i])],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- 1
+}
+# matrix shows information whether PP and serotype co-occur in the dataset (1=TRUE)
+# this can be used as the migration matrix:
+#PPxSero_matrix_prob <- PPxSero_matrix / sum(PPxSero_matrix)
+#PPxSero_matrix_prob <- matrix(sapply(PPxSero_matrix_prob,as.double), nrow = nrow(PPxSero_matrix), ncol = ncol(PPxSero_matrix))
+#saveRDS(PPxSero_matrix_prob, "Navajo_PPsero_mig.rds")
+
+
+PPxSero_matrix_prob2 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$GPSC)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:length(unique(PopPUNK_clusters$GPSC))) {
+  PPxSero_matrix_prob2[i,] <- ((PPxSero_matrix[i,] * Nepal_avg_cluster_freq[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPxSero_matrix_prob2, "Nepal_PPsero_mig.rds")
+# new migration matrix that is closer to original one
+
+# start population:
+PPsero_startpop <- matrix(0, nrow = length(unique(PopPUNK_clusters$GPSC)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+
+for (i in which(PopPUNK_clusters$SeqYear=="1998")) {
+  PPsero_startpop[PPclustToIndex_dict[PopPUNK_clusters$GPSC[i]],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- PPsero_startpop[PPclustToIndex_dict[PopPUNK_clusters$GPSC[i]],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] + 1
+}
+#PPsero_startpop <- PPsero_startpop * 15000 / sum(PPsero_startpop)
+
+
+PP_expand_factor <- 15000 / sum(PPsero_startpop)
+exp_noise <- 10
+#PPsero_startpop_corr <- matrix(sapply((PPsero_startpop + matrix(rexp(n = ncol(PPsero_startpop) * nrow(PPsero_startpop), rate = exp_noise), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))) * PP_expand_factor, rpois, n=1), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#PPsero_startpop_corr <- matrix(sapply(PPsero_startpop_corr,as.double), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#saveRDS(PPsero_startpop_corr, "PPsero_startpop.rds")
+
+# this lead to a start population that is way too evenly distributed across the different clusters
+# instead, I could maybe use the existing PP_model_start_pop and distribute it to the different serotypes?
+PPsero_startpop2 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$GPSC)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:length(unique(PopPUNK_clusters$GPSC))) {
+  PPsero_startpop2[i,] <- round((PPxSero_matrix[i,] * Nepal_model_start_pop[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPsero_startpop2, "Nepal_PPsero_startpop.rds")
+# this is very close to the original PP_model_start_pop
+# maybe I am giving out too much information because the serotype distribution is exactly the real one?
+
+# serotype VT vector
+SeroVT <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:nrow(PopPUNK_clusters)) {
+  SeroVT[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
+}
+saveRDS(SeroVT, "Nepal_SeroVT.rds")
+```
+
+
+
+```{r}
+#plot strain frequencies over time
+# Nepal_SeqYear_dict already exists
+# Nepal_seq_clusters_dict also exists already
+
+Nepal_GPSC_numbers_per_clust <- list()
+for (i in Nepal_time_points) {
+  print(length(which(Nepal_SeqYear_dict == i)))
+  count_vec <- rep(0, length(unique(Nepal_seq_clusters_dict)))
+  names(count_vec) <- unique(Nepal_seq_clusters_dict)
+  counts_year <- table(Nepal_seq_clusters_dict[names(which(Nepal_SeqYear_dict == i))])
+  count_vec[names(counts_year)] <- counts_year
+  Nepal_GPSC_numbers_per_clust[[as.character(i)]] <- count_vec
+}
+
+# much better to have one list entry per cluster
+Nepal_GPSC_numbers_per_year <- list()
+for (i in unique(Nepal_seq_clusters_dict)) {
+ count_vec <- rep(0, length(sort(unique(Nepal_SeqYear_dict))))
+ names(count_vec) <- as.character(sort(unique(Nepal_SeqYear_dict)))
+ counts_year <- table(Nepal_SeqYear_dict[names(which(Nepal_seq_clusters_dict == i))])
+ count_vec[names(counts_year)] <- counts_year
+ Nepal_GPSC_numbers_per_year[[as.character(i)]] <- count_vec 
+}
+
+# seq_no_per_year seems to have too many sequences (probably that I filtered out because of quality concerns)  2610 vs 2454
+seq_no_per_year_filtered <- rowSums(as.matrix(data.frame(Nepal_GPSC_numbers_per_year)))
+
+seq_no_per_year_filtered_goodYears <- seq_no_per_year_filtered[which(seq_no_per_year_filtered>=40)]
+# do a version with only those years with >=40 sequences
+Nepal_GPSC_numbers_per_good_year <- list()
+for (i in unique(Nepal_seq_clusters_dict)) {
+ count_vec <- rep(0, length(sort(unique(Nepal_SeqYear_dict))))
+ names(count_vec) <- as.character(sort(unique(Nepal_SeqYear_dict)))
+ counts_year <- table(Nepal_SeqYear_dict[names(which(Nepal_seq_clusters_dict == i))])
+ count_vec[names(counts_year)] <- counts_year
+ Nepal_GPSC_numbers_per_good_year[[as.character(i)]] <- count_vec[names(seq_no_per_year_filtered_goodYears)]
+}
+
+# well, I would definitively need to plot relative counts
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[["1"]]/seq_no_per_year_filtered, type = "l", ylim = c(0, 1))
+for (i in unique(Nepal_seq_clusters_dict)) {
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[i]]/seq_no_per_year_filtered)
+}
+
+# use Nepal_VT_mixed for colouring in by VTs
+col_clb <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7") #8 colorblind friendly colors
+Nepal_VT_mixed_cols <- rep("#E69F00",length(Nepal_VT_mixed))
+Nepal_VT_mixed_cols[which(Nepal_VT_mixed == 0)] <- "black"
+Nepal_VT_mixed_cols[which(Nepal_VT_mixed == 1)] <- "#CC79A7"
+
+Nepal_VT_mixed_cols_2 <- rep("#E69F0050",length(Nepal_VT_mixed))
+Nepal_VT_mixed_cols_2[which(Nepal_VT_mixed == 0)] <- "#00000050"
+Nepal_VT_mixed_cols_2[which(Nepal_VT_mixed == 1)] <- "#CC79A750"
+
+Nepal_VT_cols <- rep("black",length(Nepal_VT_mixed))
+#Nepal_VT_cols[which(Nepal_VT_mixed == 0)] <- "black"
+Nepal_VT_cols[which(Nepal_VT == 1)] <- "#CC79A7"
+
+Nepal_VT_cols_2 <- rep("#00000050",length(Nepal_VT_mixed))
+#Nepal_VT_cols_2[which(Nepal_VT_mixed == 0)] <- "#00000050"
+Nepal_VT_cols_2[which(Nepal_VT == 1)] <- "#CC79A750"
+
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[["1"]]/seq_no_per_year_filtered, type = "l", ylim = c(0, 0.7))
+for (i in 1:length(unique(Nepal_seq_clusters_dict))) {
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered, col = Nepal_VT_mixed_cols[i])
+}
+
+# add confidence levels to plot
+library(DescTools)
+Nepal_GPSC_numbers_per_year_conf_low <- list()
+Nepal_GPSC_numbers_per_year_conf_up <- list()
+for (i in unique(Nepal_seq_clusters_dict)){
+  clust <- Nepal_GPSC_numbers_per_year[[i]]
+  for(year in 1:length(clust)){
+    conf_int <- BinomCI(x = clust[year], n = seq_no_per_year_filtered[year],  conf.level = 0.66)
+    Nepal_GPSC_numbers_per_year_conf_low[[as.character(i)]][(names(Nepal_GPSC_numbers_per_year[["1"]]))[year]] <- conf_int[1,2]
+    Nepal_GPSC_numbers_per_year_conf_up[[as.character(i)]][(names(Nepal_GPSC_numbers_per_year[["1"]]))[year]] <- conf_int[1,3]
+  }
+}
+#binom_conf_data <- t(sapply(PP_mass_cluster_freq_3, BinomCI, sum(PP_mass_cluster_freq_3,conf.level = 0.66)))
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[["1"]]/seq_no_per_year_filtered, type = "l", ylim = c(0, 1))
+for (i in 1:length(unique(Nepal_seq_clusters_dict))) {
+  lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered, col = Nepal_VT_mixed_cols[i])
+}
+
+
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[["1"]]/seq_no_per_year_filtered, type = "l", ylim = c(0, 1))
+for (i in 1:length(unique(Nepal_seq_clusters_dict))) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered, col = Nepal_VT_mixed_cols[i])
+  points((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered, col = Nepal_VT_mixed_cols[i])
+}
+
+# filter for common clusters (>5% present in at least one year?)
+Nepal_seq_clusters_dict_common <- rep(FALSE, length(unique(Nepal_seq_clusters_dict)))
+names(Nepal_seq_clusters_dict_common) <- unique(Nepal_seq_clusters_dict)
+for (clust in names(Nepal_seq_clusters_dict_common)) {
+  Nepal_seq_clusters_dict_common[clust] <- (max(Nepal_GPSC_numbers_per_year[[clust]]/seq_no_per_year_filtered)>0.05)
+}
+
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[["1"]]/seq_no_per_year_filtered, type = "l", ylim = c(0, 1))
+for (i in 1:length((Nepal_seq_clusters_dict_common))) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered, col = Nepal_VT_mixed_cols[i])
+  points((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered, col = Nepal_VT_mixed_cols[i])
+}
+
+# stack them
+prev_points <- rep(0, length(seq_no_per_year_filtered))
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[order(Nepal_VT_mixed_cols)[1]]]/seq_no_per_year_filtered, type = "l", ylim = c(0, 1), col = sort(Nepal_VT_mixed_cols)[1], xlab = "Time", xaxt = "n")
+axis(1, at = as.integer(names(Nepal_GPSC_numbers_per_year[["1"]])))
+for (i in 1:length(unique(Nepal_seq_clusters_dict))) {
+#for (i in 1:1) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_mixed_cols)[i]]]]/seq_no_per_year_filtered, col = sort(Nepal_VT_mixed_cols)[i])
+  points((names(Nepal_GPSC_numbers_per_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_mixed_cols)[i]]]]/seq_no_per_year_filtered, col = sort(Nepal_VT_mixed_cols)[i])
+  polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), rev(names(Nepal_GPSC_numbers_per_year[["1"]]))), c(prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_mixed_cols)[i]]]]/seq_no_per_year_filtered, rev(prev_points)), col = (Nepal_VT_mixed_cols_2)[order(Nepal_VT_mixed_cols)[i]], border = NA)
+  prev_points <- prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_mixed_cols)[i]]]]/seq_no_per_year_filtered
+}
+abline(v = 2015, col = "red")
+
+# only VT / NVT
+prev_points <- rep(0, length(seq_no_per_year_filtered))
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[order(Nepal_VT_cols)[1]]]/seq_no_per_year_filtered, type = "l", ylim = c(0, 1), col = sort(Nepal_VT_cols)[1], xlab = "Time", xaxt = "n")
+axis(1, at = as.integer(names(Nepal_GPSC_numbers_per_year[["1"]])))
+for (i in 1:length(unique(Nepal_seq_clusters_dict))) {
+#for (i in 1:1) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered, col = sort(Nepal_VT_cols)[i])
+  points((names(Nepal_GPSC_numbers_per_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered, col = sort(Nepal_VT_cols)[i])
+  polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), rev(names(Nepal_GPSC_numbers_per_year[["1"]]))), c(prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered, rev(prev_points)), col = (Nepal_VT_cols_2)[order(Nepal_VT_cols)[i]], border = NA)
+  prev_points <- prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered
+}
+abline(v = 2015, col = "red")
+
+# absolute
+prev_points <- rep(0, length(seq_no_per_year_filtered))
+plot((names(Nepal_GPSC_numbers_per_year[["1"]])), Nepal_GPSC_numbers_per_year[[order(Nepal_VT_cols)[1]]], type = "l", ylim = c(0, 900), col = sort(Nepal_VT_cols)[1], xlab = "Time", xaxt = "n")
+axis(1, at = as.integer(names(Nepal_GPSC_numbers_per_year[["1"]])))
+for (i in 1:length(unique(Nepal_seq_clusters_dict))) {
+#for (i in 1:1) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]], col = sort(Nepal_VT_cols)[i])
+  points((names(Nepal_GPSC_numbers_per_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]], col = sort(Nepal_VT_cols)[i])
+  polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), rev(names(Nepal_GPSC_numbers_per_year[["1"]]))), c(prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]], rev(prev_points)), col = (Nepal_VT_cols_2)[order(Nepal_VT_cols)[i]], border = NA)
+  prev_points <- prev_points + Nepal_GPSC_numbers_per_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]
+}
+abline(v = 2015, col = "red")
+
+# only plot those year that have >=40 sequences
+prev_points <- rep(0, length(seq_no_per_year_filtered_goodYears))
+plot((names(Nepal_GPSC_numbers_per_good_year[["1"]])), Nepal_GPSC_numbers_per_good_year[[order(Nepal_VT_cols)[1]]]/seq_no_per_year_filtered_goodYears, type = "l", ylim = c(0, 1), col = sort(Nepal_VT_cols)[1], xlab = "Time", xaxt = "n")
+axis(1, at = as.integer(names(Nepal_GPSC_numbers_per_year[["1"]])))
+for (i in 1:length(unique(Nepal_seq_clusters_dict))) {
+#for (i in 1:1) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_mixed_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_good_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered_goodYears, col = sort(Nepal_VT_cols)[i])
+  points((names(Nepal_GPSC_numbers_per_good_year[["1"]])), prev_points + Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered_goodYears, col = sort(Nepal_VT_cols)[i])
+  polygon(c((names(Nepal_GPSC_numbers_per_good_year[["1"]])), rev(names(Nepal_GPSC_numbers_per_good_year[["1"]]))), c(prev_points + Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered_goodYears, rev(prev_points)), col = (Nepal_VT_cols_2)[order(Nepal_VT_cols)[i]], border = NA)
+  prev_points <- prev_points + Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[order(Nepal_VT_cols)[i]]]]/seq_no_per_year_filtered_goodYears
+}
+abline(v = 2015, col = "red")
+
+# create separate plots for VTs and NVTs
+VT_Nepal_seq_clusters_dict_common <- Nepal_seq_clusters_dict_common[which(Nepal_VT == 1)]
+NVT_Nepal_seq_clusters_dict_common <- Nepal_seq_clusters_dict_common[which(Nepal_VT == 0)]
+
+plot((names(Nepal_GPSC_numbers_per_good_year[["1"]])), Nepal_GPSC_numbers_per_good_year[["1"]]/seq_no_per_year_filtered_goodYears, type = "l", ylim = c(0, 0.3))
+for (i in which(Nepal_VT == 1)) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_good_year[["1"]])), Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered_goodYears, col = Nepal_VT_cols[i])
+  points((names(Nepal_GPSC_numbers_per_good_year[["1"]])), Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered_goodYears, col = Nepal_VT_cols[i])
+}
+
+# together, not stacked, NVTs in background
+Nepal_VT_cols_v2 <- Nepal_VT_cols
+Nepal_VT_cols_v2[which(Nepal_VT_cols_v2 == "black")] <- "#00000010"
+plot((names(Nepal_GPSC_numbers_per_good_year[["1"]])), Nepal_GPSC_numbers_per_good_year[["1"]]/seq_no_per_year_filtered_goodYears, type = "l", ylim = c(0, 0.15), lwd = 2)
+for (i in 1:length(Nepal_seq_clusters_dict_common <- Nepal_seq_clusters_dict_common)) {
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_low[["1"]])), Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_cols_2[i])
+  #lines((names(Nepal_GPSC_numbers_per_year_conf_up[["1"]])), Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]], col = Nepal_VT_cols_2[i])
+  #polygon(c((names(Nepal_GPSC_numbers_per_year[["1"]])), (names(Nepal_GPSC_numbers_per_year[["1"]]))), c(Nepal_GPSC_numbers_per_year_conf_low[[unique(Nepal_seq_clusters_dict)[i]]], Nepal_GPSC_numbers_per_year_conf_up[[unique(Nepal_seq_clusters_dict)[i]]]), col = "grey", density = 10, angle = 45)
+  lines((names(Nepal_GPSC_numbers_per_good_year[["1"]])), Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered_goodYears, col = Nepal_VT_cols_v2[i], lwd = 2)
+  points((names(Nepal_GPSC_numbers_per_good_year[["1"]])), Nepal_GPSC_numbers_per_good_year[[unique(Nepal_seq_clusters_dict)[i]]]/seq_no_per_year_filtered_goodYears, col = Nepal_VT_cols_v2[i], lwd = 2)
+}
+```
+
+```{r}
+# try ggplot instead
+library(ggplot2)
+library(dplyr)
+
+# create df
+time <- as.integer(rep(names(seq_no_per_year_filtered_goodYears),times=length(names(Nepal_GPSC_numbers_per_good_year))))  # x Axis
+value <- unlist(Nepal_GPSC_numbers_per_good_year, use.names=FALSE) # y Axis
+group <- rep(names(Nepal_GPSC_numbers_per_good_year),each=length(seq_no_per_year_filtered_goodYears))        # group, one shape per group
+Nepal_VT_mixed_012 <- Nepal_VT_mixed
+Nepal_VT_mixed_012[which(Nepal_VT_mixed == 1)] <- "VT"
+Nepal_VT_mixed_012[which(Nepal_VT_mixed == 0)] <- "NVT"
+Nepal_VT_mixed_012[intersect(which(Nepal_VT_mixed > 0), which(Nepal_VT_mixed <1))] <- "mixed"
+vt <- as.character(rep(Nepal_VT_mixed_012, each=length(seq_no_per_year_filtered_goodYears)))
+Nepal_VT_for_df <- Nepal_VT
+Nepal_VT_for_df[which(Nepal_VT == 1)] <- "VT"
+Nepal_VT_for_df[which(Nepal_VT == 0)] <- "NVT"
+vt_binary <- as.character(rep(Nepal_VT_for_df, each=length(seq_no_per_year_filtered_goodYears)))
+Nepal_gpscs_over_time_df <- data.frame(time, value, group,vt,vt_binary)
+Nepal_gpscs_over_time_df_ord <- Nepal_gpscs_over_time_df[rev(order(vt_binary)),]
+Nepal_gpscs_over_time_df_ord$group <- factor(Nepal_gpscs_over_time_df_ord$group , levels=unique(Nepal_PP$GPSC)[order(Nepal_VT, decreasing = FALSE)] )
+
+grouped_df <-
+  Nepal_gpscs_over_time_df_ord %>%
+  group_by(vt_binary, time) %>%
+  summarise(sum_val = sum(value))
+grouped_df$vt_binary <- factor(grouped_df$vt_binary, levels= c("NVT","VT"))
+
+# stacked area chart
+ggplot(Nepal_gpscs_over_time_df_ord, aes(x=time, y=value, fill=group)) + 
+    geom_area() + guides(fill="none") + 
+  geom_vline(xintercept = 2015, size = 0.3) +
+  annotate("text", x = 2015, y = 500, label = "Vaccine Introduction", angle=90,vjust = -1) + ggtitle("Counts of Vaccine Types and Non-Vaccine Types over time") +
+  ylab("Count") + scale_x_continuous("Time", breaks=seq(2010,2020,1)) 
+
+ggplot(Nepal_gpscs_over_time_df_ord, aes(x=time, y=value, fill=group)) + 
+    geom_area() + guides(fill="none") + 
+  geom_vline(xintercept = 2015, size = 0.3) +
+  annotate("text", x = 2015, y = 500, label = "Vaccine Introduction", angle=90,vjust = -1) + ggtitle("Counts of Vaccine Types and Non-Vaccine Types over time") +
+  ylab("Count") + scale_x_continuous("Time", breaks=seq(2010,2020,1)) +
+  geom_line(data=grouped_df, position = "stack", aes(x=time, y = sum_val, fill = vt_binary), linewidth = 1) 
+ 
+
+# create df for plotting by vt 
+Nepal_gpscs_over_time_df_vt <- Nepal_gpscs_over_time_df_ord %>% 
+  group_by(vt, time) %>% 
+  summarise(across(value, sum))
+
+ggplot(Nepal_gpscs_over_time_df_vt, aes(x=time, y=value, fill=vt)) + 
+    geom_area()
+
+# proportional stacked area plot
+Nepal_gpscs_over_time_df_rel <- Nepal_gpscs_over_time_df_ord  %>%
+  group_by(time, group) %>%
+  summarise(n = sum(value)) %>%
+  mutate(percentage = n / sum(n))
+Nepal_gpscs_over_time_df_rel$group <- factor(Nepal_gpscs_over_time_df_rel$group , levels=unique(Nepal_PP$GPSC)[order(Nepal_VT, decreasing = FALSE)] )
+
+grouped_rel_df <-
+  Nepal_gpscs_over_time_df_ord %>%
+  group_by(time, vt_binary) %>%
+  summarise(n = sum(value)) %>%
+  mutate(percentage = n / sum(n))
+  
+grouped_rel_df$vt_binary <- factor(grouped_rel_df$vt_binary, levels= c("NVT","VT"))
+
+# Plot
+ggplot(Nepal_gpscs_over_time_df_rel, aes(x=time, y=percentage, fill=group)) + 
+    geom_area(alpha=0.6 , size=0.1, colour="black", linetype = 3) + guides(fill="none") +
+  geom_vline(xintercept = 2015, size = 0.3) +
+  annotate("text", x = 2015, y = 0.2, label = "Vaccine Introduction", angle=90,vjust = -1) + ggtitle("Counts of Vaccine Types and Non-Vaccine Types over time") +
+  ylab("Count") + scale_x_continuous("Time", breaks=seq(2010,2020,1)) +
+  geom_line(data=grouped_rel_df, position = "stack", aes(x=time, y = percentage, fill = vt_binary), linewidth = 1) 
+
+
+
+Nepal_gpscs_over_time_df_vt_rel <- Nepal_gpscs_over_time_df_vt  %>%
+  group_by(time, vt) %>%
+  summarise(n = sum(value)) %>%
+  mutate(percentage = n / sum(n))
+
+ggplot(Nepal_gpscs_over_time_df_vt_rel, aes(x=time, y=percentage, fill=vt)) + 
+    geom_area(alpha=0.6 , size=1, colour="black") + 
+  geom_vline(xintercept = 2015, size = 0.3) +
+  annotate("text", x = 2015, y = 0.35, label = "Vaccine Introduction", angle=90,vjust = -1)
+
+# try this with binary VT
+Nepal_gpscs_over_time_df_binvt <- Nepal_gpscs_over_time_df %>% 
+  group_by(vt_binary, time) %>% 
+  summarise(across(value, sum))
+
+ggplot(Nepal_gpscs_over_time_df_binvt, aes(x=time, y=value, fill=vt_binary)) + 
+    geom_area() + 
+  geom_vline(xintercept = 2015, size = 0.3) +
+  annotate("text", x = 2015, y = 500, label = "Vaccine Introduction", angle=90,vjust = -1) + ggtitle("Counts of Vaccine Types and Non-Vaccine Types over time") +
+  ylab("Count") + scale_x_continuous("Time", breaks=seq(2010,2020,1))
+
+ggplot(Nepal_gpscs_over_time_df_binvt, aes(x=time, y=value, fill=vt_binary)) + 
+    geom_area() + guides(colour="none") + 
+  geom_vline(xintercept = 2015, size = 0.3) +
+  annotate("text", x = 2015, y = 500, label = "Vaccine Introduction", angle=90,vjust = -1) + ggtitle("Counts of Vaccine Types and Non-Vaccine Types over time") +
+  ylab("Count") + scale_x_continuous("Time", breaks=seq(2010,2020,1)) + 
+  geom_line(data=Nepal_gpscs_over_time_df_ord, position = "stack", aes(x=time, y = value, colour = group), linetype = 3)  +
+    scale_color_manual(values=rep('black',173))
+
+
+Nepal_gpscs_over_time_df_binvt_rel <- Nepal_gpscs_over_time_df_binvt  %>%
+  group_by(time, vt_binary) %>%
+  summarise(n = sum(value)) %>%
+  mutate(percentage = n / sum(n))
+
+ggplot(Nepal_gpscs_over_time_df_binvt_rel, aes(x=time, y=percentage, fill=vt_binary)) + 
+    geom_area(alpha=0.6 , size=1, colour="black") + 
+  geom_vline(xintercept = 2015, size = 0.3) +
+  annotate("text", x = 2015, y = 0.55, label = "Vaccine Introduction", angle=90,vjust = -1) + ggtitle("Proportion of Vaccine Types and Non-Vaccine Types over time") +
+  ylab("Proportion") + scale_x_continuous("Time", breaks=seq(2010,2020,1))
+
+ggplot(Nepal_gpscs_over_time_df_binvt_rel, aes(x=time, y=percentage, fill=vt_binary)) + guides(colour="none") +
+geom_area(alpha=0.6 , size=1, colour="black") + ggtitle("Proportion of Vaccine Types and Non-Vaccine Types over time") +
+  ylab("Proportion") + scale_x_continuous("Time", breaks=seq(2010,2020,1)) +
+  geom_line(data=Nepal_gpscs_over_time_df_rel, position = "stack", aes(x=time, y = percentage, colour = group, fill = NULL), linetype = 3) +
+    scale_color_manual(values=rep('#00000050',173)) + 
+  geom_vline(xintercept = 2015, size = 0.5, colour = "red") +
+  annotate("text", x = 2016, y = 0.95, colour = "red", label = "Vaccine Introduction", hjust = 0.75) 
+```
+

@@ -1,0 +1,1365 @@
+---
+title: "Massachusetts Data Processing for NFDS model"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+path_to_data <- "~/Documents/PhD_Project/Data/"
+```
+
+```{r}
+### Reading in the Accession Codes, Population and the Sequence Clusters
+library(readxl)
+Samples_accCodes <- read_excel(paste(path_to_data, "Massachusetts_data_NickCroucher/SupplementaryDataPaper/Samples_accCodes.xlsx", sep = ""))
+Mass_Samples_accCodes <- Samples_accCodes[Samples_accCodes$Population=="Massachusetts",]
+Mass_Isolates <- Mass_Samples_accCodes$`Isolate Name`
+Mass_Isolates_dict <- 1:length(Mass_Isolates)
+names(Mass_Isolates_dict) <- Mass_Isolates
+
+Isolates <- Samples_accCodes$`Isolate Name`
+Isolates_dict <- 1:length(Isolates)
+names(Isolates_dict) <- Isolates
+
+Isolate_from_Mass_dict <- rep(0, length(Isolates))
+names(Isolate_from_Mass_dict) <- Isolates
+Isolate_from_Mass_dict[Mass_Isolates] <- 1
+```
+
+```{r}
+#saveRDS(Mass_Samples_accCodes, file = "Mass_Samples_accCodes.rds")
+```
+
+```{r}
+### Reading in the Gene Cluster information
+#gene_cluster <- read.table(paste(path_to_data, "v2_Massachusetts_data_NickCroucher/gCOG_sequences/CLS00005.out", sep = ""), quote="\"", comment.char="")[ c(TRUE,FALSE), ]
+
+#function for reading cluster files
+read_cls_file <- function(path_to_file){
+  read.table(path_to_file, quote="\"", comment.char="")[ c(TRUE,FALSE), ]
+}
+
+#function for splitting the COG from the gene start
+split_isolate_name <- function(text_line){
+  name_vec <- strsplit(strsplit(text_line,">")[[1]][2],"_")
+  paste(head(name_vec[[1]],-1), collapse = "_")
+}
+#isolates_gene_cluster <- unlist(lapply(gene_cluster, split_isolate_name))
+
+# filter for Mass only
+#Mass_isolates_gene_cluster <- isolates_gene_cluster[Isolate_from_Mass_dict[isolates_gene_cluster]==1]
+
+# returns the Massachusetts-specific index of any Mass COG
+return_isolate_index <- function(name){
+  Mass_Isolates_dict[[name]]
+}
+#indices_gene_clusters <- unlist(lapply(Mass_isolates_gene_cluster, return_isolate_index))
+```
+
+```{r}
+# list of input files
+cls_files <- list.files(paste(path_to_data, "v2_Massachusetts_data_NickCroucher/gCOG_sequences", sep = ""), full.names = TRUE, recursive = FALSE)
+
+# empty gene presence absence matrix
+gene_presence_absence <- data.frame(matrix(0, nrow = length(cls_files)+1, ncol = length(Mass_Isolates)+1))
+gene_presence_absence[1,-1] <- Mass_Isolates
+
+# reads in all input files (takes a while, around 2000 files)
+isolates_in_clusters <- (lapply(cls_files, read_cls_file))
+
+# splits isolate names, changes values in gene presence absence matrix to 1 when genes are found
+for (i in 1:length(isolates_in_clusters)) {
+  isolates_gene_cluster <- unlist(lapply(isolates_in_clusters[[i]], split_isolate_name))
+  Mass_isolates_gene_cluster <- isolates_gene_cluster[Isolate_from_Mass_dict[isolates_gene_cluster]==1]
+  indices_gene_clusters <- unlist(lapply(Mass_isolates_gene_cluster, return_isolate_index))
+  help_vector <- rep(0, length(Mass_Isolates))
+  help_vector[indices_gene_clusters] <- 1
+  gene_presence_absence[i+1,] <- c(strsplit(tail(strsplit(cls_files[i],"/")[[1]],1),"\\.")[[1]][1], help_vector)
+}
+```
+
+```{r}
+#saveRDS(gene_presence_absence, file = "gene_presence_absence.rds")
+```
+
+
+```{r}
+# read in gene presence absence matrix
+gene_presence_absence <- readRDS(file = "gene_presence_absence.rds")
+```
+
+```{r}
+# create time-point specific gene presence absence matrices
+Mass_year_dict <- c(rep(2001,length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)), 
+                    rep(2004,length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)),
+                    rep(2007,length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)))
+names(Mass_year_dict) <- c(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`, Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`, Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)
+
+# empty gene presence absence matrix
+gene_presence_absence_2001 <- data.frame(matrix(0, nrow = length(cls_files)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)+1))
+gene_presence_absence_2001[1,-1] <- (Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)
+gene_presence_absence_2001[-1,1] <- gene_presence_absence[-1,1]
+gene_presence_absence_2001[-1,-1] <- gene_presence_absence[-1,c(FALSE,Mass_year_dict[unlist(gene_presence_absence[1,-1])]==2001)]
+
+gene_presence_absence_2004 <- data.frame(matrix(0, nrow = length(cls_files)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)+1))
+gene_presence_absence_2004[1,-1] <- (Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)
+gene_presence_absence_2004[-1,1] <- gene_presence_absence[-1,1]
+gene_presence_absence_2004[-1,-1] <- gene_presence_absence[-1,c(FALSE,Mass_year_dict[unlist(gene_presence_absence[1,-1])]==2004)]
+
+gene_presence_absence_2007 <- data.frame(matrix(0, nrow = length(cls_files)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)+1))
+gene_presence_absence_2007[1,-1] <- (Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)
+gene_presence_absence_2007[-1,1] <- gene_presence_absence[-1,1]
+gene_presence_absence_2007[-1,-1] <- gene_presence_absence[-1,c(FALSE,Mass_year_dict[unlist(gene_presence_absence[1,-1])]==2007)]
+
+saveRDS(gene_presence_absence_2001, "COG_Mass_gene_presence_absence_2001.rds")
+```
+
+```{r}
+# Find intermediate frequency genes in 2001 data set
+# compute gene frequencies
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+gene_freq_2001 <- rep(0, nrow(gene_presence_absence_2001)-1)
+gene_freq_2001 <- apply(gene_presence_absence_2001[-1,-1],1, sum_as_int)
+gene_freq_2001 <- gene_freq_2001 / (length(gene_presence_absence_2001[1,-1]))
+
+cog_filter <- as.integer(gene_freq_2001<=0.95 & gene_freq_2001>=0.05)
+
+cog_all_gene_freqs <- gene_freq_2001
+saveRDS(cog_all_gene_freqs, file = "Mass_cog_all_gene_freqs.rds")
+
+cog_all_gene_names <- gene_presence_absence_2001[-1,1]
+saveRDS(cog_all_gene_names, file = "Mass_cog_all_gene_names.rds")
+
+# intermediate gene presence absence matrices filtered by genes that are present at 5-95% frequency in 2001
+intermed_gene_presence_absence_2001 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)+1))
+intermed_gene_presence_absence_2001 <- gene_presence_absence_2001[c(1,which(cog_filter==1)+1),]
+
+intermed_gene_presence_absence_2004 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)+1))
+intermed_gene_presence_absence_2004 <- gene_presence_absence_2004[c(1,which(cog_filter==1)+1),]
+
+intermed_gene_presence_absence_2007 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)+1))
+intermed_gene_presence_absence_2007 <- gene_presence_absence_2007[c(1,which(cog_filter==1)+1),]
+
+intermed_gene_presence_absence <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(Mass_Samples_accCodes$`Isolate Name`)+1))
+intermed_gene_presence_absence <- gene_presence_absence[c(1,which(cog_filter==1)+1),]
+```
+
+```{r}
+#save intermed gene presence absence matrices
+#saveRDS(intermed_gene_presence_absence, file = "intermed_gene_presence_absence.rds")
+#saveRDS(intermed_gene_presence_absence_2001, file = "intermed_gene_presence_absence_2001.rds")
+#saveRDS(intermed_gene_presence_absence_2004, file = "intermed_gene_presence_absence_2004.rds")
+#saveRDS(intermed_gene_presence_absence_2007, file = "intermed_gene_presence_absence_2007.rds")
+```
+
+```{r}
+intermed_gene_presence_absence <- readRDS(file = "intermed_gene_presence_absence.rds")
+intermed_gene_presence_absence_2001 <- readRDS(file = "intermed_gene_presence_absence_2001.rds")
+intermed_gene_presence_absence_2004 <- readRDS(file = "intermed_gene_presence_absence_2004.rds")
+intermed_gene_presence_absence_2007 <- readRDS(file = "intermed_gene_presence_absence_2007.rds")
+```
+
+
+```{r}
+#Compute consensus genomes for sequence clusters
+Mass_seq_clusters_dict <- Mass_Samples_accCodes$SequenceCluster
+names(Mass_seq_clusters_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+intermed_gene_presence_absence_consensus <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+intermed_gene_presence_absence_consensus[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+intermed_gene_presence_absence_consensus_2001 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+intermed_gene_presence_absence_consensus_2001[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+intermed_gene_presence_absence_consensus_2004 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+intermed_gene_presence_absence_consensus_2004[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+intermed_gene_presence_absence_consensus_2007 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+intermed_gene_presence_absence_consensus_2007[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in unique(Mass_Samples_accCodes$SequenceCluster)) {
+  intermed_gene_presence_absence_consensus[-1,i+2] <- apply(as.matrix(intermed_gene_presence_absence[-1,c(FALSE,Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence[1,-1])]==i)]), 1, cons_genomes)
+  intermed_gene_presence_absence_consensus_2001[-1,i+2] <- apply(as.matrix(intermed_gene_presence_absence_2001[-1,c(FALSE,Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence_2001[1,-1])]==i)]), 1, cons_genomes)
+    intermed_gene_presence_absence_consensus_2004[-1,i+2] <- apply(as.matrix(intermed_gene_presence_absence_2004[-1,c(FALSE,Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence_2004[1,-1])]==i)]), 1, cons_genomes)
+    intermed_gene_presence_absence_consensus_2007[-1,i+2] <- apply(as.matrix(intermed_gene_presence_absence_2007[-1,c(FALSE,Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence_2007[1,-1])]==i)]), 1, cons_genomes)
+}
+
+intermed_gene_presence_absence_consensus[-1,1] <- intermed_gene_presence_absence[-1,1]
+intermed_gene_presence_absence_consensus_2001[-1,1] <- intermed_gene_presence_absence[-1,1]
+intermed_gene_presence_absence_consensus_2004[-1,1] <- intermed_gene_presence_absence[-1,1]
+intermed_gene_presence_absence_consensus_2007[-1,1] <- intermed_gene_presence_absence[-1,1]
+```
+
+```{r}
+#save intermed gene presence absence matrices
+#saveRDS(intermed_gene_presence_absence_consensus, file = "intermed_gene_presence_absence_consensus.rds")
+#saveRDS(intermed_gene_presence_absence_consensus_2001, file = "intermed_gene_presence_absence_consensus_2001.rds")
+#saveRDS(intermed_gene_presence_absence_consensus_2004, file = "intermed_gene_presence_absence_consensus_2004.rds")
+#saveRDS(intermed_gene_presence_absence_consensus_2007, file = "intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+```{r}
+# read in gene presence absence matrix
+intermed_gene_presence_absence_consensus <- readRDS(file = "intermed_gene_presence_absence_consensus.rds")
+intermed_gene_presence_absence_consensus_2001 <- readRDS(file = "intermed_gene_presence_absence_consensus_2001.rds")
+intermed_gene_presence_absence_consensus_2004 <- readRDS(file = "intermed_gene_presence_absence_consensus_2004.rds")
+intermed_gene_presence_absence_consensus_2007 <- readRDS(file = "intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+```{r}
+# calculate Vaccine Type consensus for clusters
+mass_clusters <- length(unique(Mass_Samples_accCodes$SequenceCluster))
+mass_VT <- rep(0, mass_clusters)
+
+for (i in 1:mass_clusters){
+  mass_VT[i] <- ceiling(median(as.integer(Mass_Samples_accCodes[Mass_Samples_accCodes$SequenceCluster == i-1,"Vaccine Type"]=="VT")))
+}
+# 1 means VT
+# 0 means NVT
+# if cluster is 50/50 it will count as VT
+
+mass_VT_2001 <- rep(0, mass_clusters)
+for (i in 1:mass_clusters){
+     mass_VT_2001[i] <- ceiling(median(as.integer(Mass_Samples_accCodes[Mass_Samples_accCodes$SequenceCluster == i-1 & Mass_Samples_accCodes$`Year of Isolation`==2001,"Vaccine Type"]=="VT")))
+}
+# does not really work because there are multiple clusters that don't appear in 2001
+```
+
+```{r}
+#save VTs
+#saveRDS(mass_VT, file = "mass_VT.rds")
+```
+
+```{r}
+#calculate the frequency of the sequence clusters and year
+mass_cluster_freq_1 <- rep(0,mass_clusters)
+mass_cluster_freq_2 <- rep(0,mass_clusters)
+mass_cluster_freq_3 <- rep(0,mass_clusters)
+for (i in 1:mass_clusters){
+  mass_cluster_freq_1[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$SequenceCluster==i-1),]$"Year of Isolation"==2001))
+  mass_cluster_freq_2[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$SequenceCluster==i-1),]$"Year of Isolation"==2004))
+  mass_cluster_freq_3[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$SequenceCluster==i-1),]$"Year of Isolation"==2007))
+}
+```
+
+```{r}
+#save sequence cluster frequencies
+#saveRDS(mass_cluster_freq_1, file = "mass_cluster_freq_1.rds")
+#saveRDS(mass_cluster_freq_2, file = "mass_cluster_freq_2.rds")
+#saveRDS(mass_cluster_freq_3, file = "mass_cluster_freq_3.rds")
+```
+
+```{r}
+# For strong and weak selection in the model, I need to calculate the beta statistics.
+
+# calculate gene frequencies first, separate for three time points
+mass_gene_freq_1 <- apply(intermed_gene_presence_absence_2001[-1,-1], 1, sum_as_int)
+mass_gene_freq_2 <- apply(intermed_gene_presence_absence_2004[-1,-1], 1, sum_as_int)
+mass_gene_freq_3 <- apply(intermed_gene_presence_absence_2007[-1,-1], 1, sum_as_int)
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+pre_peri_vacc_gene_freq <- (mass_gene_freq_1 + mass_gene_freq_2) / (sum(mass_cluster_freq_1) + sum(mass_cluster_freq_2))
+pre_vacc_gene_freq <- (mass_gene_freq_1) / sum(mass_cluster_freq_1)
+post_vacc_gene_freq <- mass_gene_freq_3 / sum(mass_cluster_freq_3)
+peri_post <- (mass_gene_freq_2 + mass_gene_freq_3) / (sum(mass_cluster_freq_2) + sum(mass_cluster_freq_3))
+
+# calculate delta statistic (refer to Corander et al. for more info)
+delta_data <- (post_vacc_gene_freq - pre_peri_vacc_gene_freq) ^ 2 / (1 - pre_peri_vacc_gene_freq * (1 - pre_peri_vacc_gene_freq))
+plot(sort(delta_data, decreasing = TRUE))
+delta_ranking <- rank(delta_data)
+
+delta_data2 <- (post_vacc_gene_freq - pre_vacc_gene_freq) ^ 2 / (1 - pre_vacc_gene_freq * (1 - pre_vacc_gene_freq))
+delta_ranking2 <- rank(delta_data2)
+
+delta_data3 <- (peri_post - pre_vacc_gene_freq) ^ 2 / (1 - pre_vacc_gene_freq * (1 - pre_vacc_gene_freq))
+plot(sort(delta_data3, decreasing = TRUE))
+delta_ranking3 <- rank(delta_data3)
+delta_ranking <- delta_ranking3
+inv_delta_ranking <- rank(-delta_data3)
+```
+
+```{r}
+#save delta ranking
+#saveRDS(delta_ranking, file = "delta_ranking.rds")
+#saveRDS(inv_delta_ranking, file = "inv_delta_ranking.rds")
+```
+
+```{r}
+### create initial population that is based on the 2001 data set but not an exact sampling from it
+# but a Poisson process
+expand_factor <- 15000 / sum(mass_cluster_freq_1)
+exp_noise <- 10
+model_start_pop <- (sapply((mass_cluster_freq_1 + rexp(n = length(mass_cluster_freq_1), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(mass_cluster_freq_1/sum(mass_cluster_freq_1))
+points(model_start_pop/sum(model_start_pop), col = "red")
+# looks similar enough, I would say
+```
+
+```{r}
+#save model start population
+#saveRDS(model_start_pop, file = "model_start_pop.rds")
+```
+
+
+### PopPUNK
+
+# Read in PopPUNK clusters:
+```{r}
+PopPUNK_clusters_old <- read.csv("~/Documents/PhD_Project/Code/1st_project/odin-dust-examples/Data/refined_modelfitk3_clusters.csv")
+no_PopPUNK_clusters_old <- length(unique(PopPUNK_clusters_old$Cluster)) # number of clusters in dataset
+```
+
+```{r}
+#PopPUNK_all <- read.csv("/Users/llorenz/Documents/PhD_Project/Data/Massachusetts_SeqClusters/PopPUNKwithStandardDB/poppunk_clusters_clusters.csv")
+PopPUNK_all <- read.csv("/Users/llorenz/Documents/PhD_Project/Data/Massachusetts_SeqClusters/poppunk_clusters_GPSCs_v9/poppunk_clusters_external_clusters.csv")
+colnames(PopPUNK_all) <- c("Taxon","Cluster")
+no_PopPUNK_all <- length(unique(PopPUNK_all$Cluster)) # number of clusters in dataset
+```
+
+```{r}
+# Add Isolate Name to PopPUNK data frame
+accNo_to_filename <- read.delim("~/Documents/PhD_Project/Code/1st_project/odin-dust-examples/Data/filereport_read_run_PRJEB2632_tsv.txt")
+accNo_to_filename <- accNo_to_filename[,c(1,8)]
+accNo_to_filename[,3] <- matrix(unlist(strsplit(accNo_to_filename[,2],"/")), ncol=6, byrow = TRUE)[,6]
+accNo_to_filename[,3] <- matrix(unlist(strsplit(accNo_to_filename[,3],"[.]")), ncol=2, byrow = TRUE)[,1]
+accNo_to_filename <- accNo_to_filename[,c(1,3)]
+colnames(accNo_to_filename) <- c(colnames(accNo_to_filename)[1], "filenames")
+
+filenameToAccNo_dict <- accNo_to_filename$run_accession
+names(filenameToAccNo_dict) <- accNo_to_filename$filenames
+
+AccNoToIsolate_dict <- Mass_Samples_accCodes$`Isolate Name`
+names(AccNoToIsolate_dict) <- Mass_Samples_accCodes$`Accession Code`
+
+#PopPUNK_clusters$IsolateName <- AccNoToIsolate_dict[filenameToAccNo_dict[PopPUNK_clusters$Taxon]]
+```
+
+```{r}
+PopPUNK_clusters <- data.frame(matrix(NA, nrow = nrow(Mass_Samples_accCodes), ncol = 3))
+colnames(PopPUNK_clusters) <- c(colnames(PopPUNK_all), "IsolateName")
+
+counter <- 0
+for (i in 1:nrow(PopPUNK_all)) {
+  if(is.element(PopPUNK_all$Taxon[i], names(filenameToAccNo_dict))){
+    if(is.element(filenameToAccNo_dict[PopPUNK_all$Taxon[i]], names(AccNoToIsolate_dict))){
+    counter <- counter + 1
+    PopPUNK_clusters[counter,] <- c(PopPUNK_all[i,],AccNoToIsolate_dict[filenameToAccNo_dict[PopPUNK_all[i,1]]])
+    }
+  }
+}
+
+no_PopPUNK_clusters <- length(unique(PopPUNK_clusters$Cluster)) 
+
+# 52 GPSCs
+# 55 clusters! (used to be 62?)
+```
+
+```{r}
+# Add VT information
+VT_dict <- Mass_Samples_accCodes$`Vaccine Type`
+names(VT_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+PopPUNK_clusters$VT <- VT_dict[PopPUNK_clusters$IsolateName]
+```
+
+```{r}
+# Add sequencing year information
+SeqYear_dict <- Mass_Samples_accCodes$`Year of Isolation`
+names(SeqYear_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+PopPUNK_clusters$SeqYear <- SeqYear_dict[PopPUNK_clusters$IsolateName]
+```
+
+```{r}
+# Add Serotype Information
+Serotype_dict <- Mass_Samples_accCodes$Serotype
+names(Serotype_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+PopPUNK_clusters$Serotype <- Serotype_dict[PopPUNK_clusters$IsolateName]
+```
+
+
+```{r}
+#save model start population
+saveRDS(PopPUNK_clusters, file = "PopPUNK_clusters.rds")
+PopPUNK_clusters <- readRDS(file = "PopPUNK_clusters.rds")
+```
+
+```{r}
+PPnew_dict <- PopPUNK_clusters$Cluster
+names(PPnew_dict) <- PopPUNK_clusters$Taxon
+
+unique(PopPUNK_clusters$Cluster)
+
+PopPUNK_clusters_oldAndNew <- PopPUNK_clusters_old
+PopPUNK_clusters_oldAndNew$ClusterNew <- PPnew_dict[PopPUNK_clusters_oldAndNew$Taxon]
+
+NewClusterToInd <- 1:length(unique(PopPUNK_clusters_oldAndNew$ClusterNew))
+names(NewClusterToInd) <- unique(PopPUNK_clusters_oldAndNew$ClusterNew)
+
+PopPUNK_clusters_oldAndNew$ClusterNewInd <- NewClusterToInd[as.character(PopPUNK_clusters_oldAndNew$ClusterNew)]
+
+cluster_sizes_old <- rep(0, no_PopPUNK_clusters_old)
+cluster_sizes_new <- rep(0, no_PopPUNK_clusters_old)
+for (i in 1:no_PopPUNK_clusters_old) {
+  cluster_sizes_old[i] <- length(which(PopPUNK_clusters_oldAndNew$Cluster==i))
+  cluster_sizes_new[i] <- length(which(PopPUNK_clusters_oldAndNew$ClusterNew==unique(PopPUNK_clusters_oldAndNew$ClusterNew)[i]))
+}
+
+plot(cluster_sizes_old)
+points(cluster_sizes_new, col = "red")
+
+cluster_matching <- list()
+cluster_matching[1:no_PopPUNK_clusters_old] <- 0
+j <- 0
+k <- 0
+help_vec <- c()
+for (i in 1:nrow(PopPUNK_clusters_oldAndNew)) {
+  #if(PopPUNK_clusters_oldAndNew$Cluster[i]!=PopPUNK_clusters_oldAndNew$ClusterNewInd[i]){
+    #print(PopPUNK_clusters_oldAndNew$Taxon[i])
+    #non_matching <- c(non_matching, PopPUNK_clusters_oldAndNew$Taxon[i])
+    
+  #}
+  k <- PopPUNK_clusters_oldAndNew$Cluster[i]
+  if(k>j && k>1){
+    cluster_matching[[j+1]] <- help_vec
+    help_vec <- PopPUNK_clusters_oldAndNew$ClusterNewInd[i]
+    j <- j + 1
+  }
+  else{
+    help_vec <- c(help_vec, PopPUNK_clusters_oldAndNew$ClusterNewInd[i])
+  }
+  
+}
+```
+
+
+```{r}
+#Compute consensus genomes for sequence clusters
+PP_Mass_seq_clusters_dict <- PopPUNK_clusters$Cluster
+names(PP_Mass_seq_clusters_dict) <- PopPUNK_clusters$IsolateName
+
+PP_intermed_gene_presence_absence_consensus <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+PP_intermed_gene_presence_absence_consensus[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+PP_intermed_gene_presence_absence_consensus_2001 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+PP_intermed_gene_presence_absence_consensus_2001[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+PP_intermed_gene_presence_absence_consensus_2004 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+PP_intermed_gene_presence_absence_consensus_2004[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+PP_intermed_gene_presence_absence_consensus_2007 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+PP_intermed_gene_presence_absence_consensus_2007[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in unique(PopPUNK_clusters$Cluster)) {
+  PP_intermed_gene_presence_absence_consensus[-1,(which(unique(PopPUNK_clusters$Cluster) == unique(PopPUNK_clusters$Cluster)[i]))+1] <- apply(as.matrix(intermed_gene_presence_absence[-1,c(FALSE,PP_Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence[1,-1])]==i)]), 1, cons_genomes)
+  PP_intermed_gene_presence_absence_consensus_2001[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(intermed_gene_presence_absence_2001[-1,c(FALSE,PP_Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence_2001[1,-1])]==i)]), 1, cons_genomes)
+    PP_intermed_gene_presence_absence_consensus_2004[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(intermed_gene_presence_absence_2004[-1,c(FALSE,PP_Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence_2004[1,-1])]==i)]), 1, cons_genomes)
+    PP_intermed_gene_presence_absence_consensus_2007[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(intermed_gene_presence_absence_2007[-1,c(FALSE,PP_Mass_seq_clusters_dict[unlist(intermed_gene_presence_absence_2007[1,-1])]==i)]), 1, cons_genomes)
+}
+
+PP_intermed_gene_presence_absence_consensus[-1,1] <- intermed_gene_presence_absence[-1,1]
+PP_intermed_gene_presence_absence_consensus_2001[-1,1] <- intermed_gene_presence_absence[-1,1]
+PP_intermed_gene_presence_absence_consensus_2004[-1,1] <- intermed_gene_presence_absence[-1,1]
+PP_intermed_gene_presence_absence_consensus_2007[-1,1] <- intermed_gene_presence_absence[-1,1]
+```
+
+
+```{r}
+#save intermed gene presence absence matrices
+saveRDS(PP_intermed_gene_presence_absence_consensus, file = "PP_intermed_gene_presence_absence_consensus.rds")
+saveRDS(PP_intermed_gene_presence_absence_consensus_2001, file = "PP_intermed_gene_presence_absence_consensus_2001.rds")
+saveRDS(PP_intermed_gene_presence_absence_consensus_2004, file = "PP_intermed_gene_presence_absence_consensus_2004.rds")
+saveRDS(PP_intermed_gene_presence_absence_consensus_2007, file = "PP_intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+```{r}
+# read in gene presence absence matrix
+PP_intermed_gene_presence_absence_consensus <- readRDS(file = "PP_intermed_gene_presence_absence_consensus.rds")
+PP_intermed_gene_presence_absence_consensus_2001 <- readRDS(file = "PP_intermed_gene_presence_absence_consensus_2001.rds")
+PP_intermed_gene_presence_absence_consensus_2004 <- readRDS(file = "PP_intermed_gene_presence_absence_consensus_2004.rds")
+PP_intermed_gene_presence_absence_consensus_2007 <- readRDS(file = "PP_intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+```{r}
+# calculate Vaccine Type consensus for clusters
+PP_mass_VT <- rep(0, no_PopPUNK_clusters)
+
+for (i in 1:no_PopPUNK_clusters){
+  PP_mass_VT[i] <- ceiling(median(as.integer(PopPUNK_clusters[PopPUNK_clusters$Cluster == unique(PopPUNK_clusters$Cluster)[i],"VT"]=="VT")))
+}
+# 1 means VT
+# 0 means NVT
+# if cluster is 50/50 it will count as VT
+
+#PP_mass_VT_mean <- rep(0, no_PopPUNK_clusters)
+
+#for (i in 1:no_PopPUNK_clusters){
+#  PP_mass_VT_mean[i] <- (mean(as.integer(PopPUNK_clusters[PopPUNK_clusters$Cluster == i,"VT"]=="VT")))
+#}
+#saveRDS(PP_mass_VT_mean, file = "PP_mass_VT_mean.rds")
+```
+
+```{r}
+#save VTs
+saveRDS(PP_mass_VT, file = "PP_mass_VT.rds")
+```
+
+```{r}
+#calculate the frequency of the gene clusters and year
+PP_mass_cluster_freq_1 <- rep(0,no_PopPUNK_clusters)
+PP_mass_cluster_freq_2 <- rep(0,no_PopPUNK_clusters)
+PP_mass_cluster_freq_3 <- rep(0,no_PopPUNK_clusters)
+for (i in 1:no_PopPUNK_clusters){
+  PP_mass_cluster_freq_1[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2001))
+  PP_mass_cluster_freq_2[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2004))
+  PP_mass_cluster_freq_3[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2007))
+}
+```
+
+```{r}
+#save sequence cluster frequencies
+saveRDS(PP_mass_cluster_freq_1, file = "PP_mass_cluster_freq_1.rds")
+saveRDS(PP_mass_cluster_freq_2, file = "PP_mass_cluster_freq_2.rds")
+saveRDS(PP_mass_cluster_freq_3, file = "PP_mass_cluster_freq_3.rds")
+```
+
+```{r}
+### create initial population that is based on the 2001 data set but not an exact sampling from it
+# but a Poisson process
+PP_expand_factor <- 15000 / sum(PP_mass_cluster_freq_1)
+exp_noise <- 10
+PP_model_start_pop <- (sapply((PP_mass_cluster_freq_1 + rexp(n = length(PP_mass_cluster_freq_1), rate = exp_noise)) * PP_expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(PP_mass_cluster_freq_1/sum(PP_mass_cluster_freq_1))
+points(PP_model_start_pop/sum(PP_model_start_pop), col = "red")
+# looks similar enough, I would say
+```
+
+```{r}
+#save model start population
+saveRDS(PP_model_start_pop, file = "PP_model_start_pop.rds")
+```
+
+```{r}
+# Create PP clusters, split by serotype
+#calculate the frequency of the gene clusters and year and serotype
+PP_mass_cluster_freq_1_sero <- matrix(0,nrow = no_PopPUNK_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_2_sero <- matrix(0,nrow = no_PopPUNK_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_3_sero <- matrix(0,nrow = no_PopPUNK_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_sero_names <- unique(PopPUNK_clusters$Serotype)
+for (i in 1:no_PopPUNK_clusters){
+  for (k in unique(PopPUNK_clusters$Serotype)){
+  PP_mass_cluster_freq_1_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2001))
+  PP_mass_cluster_freq_2_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2004))
+  PP_mass_cluster_freq_3_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2007))
+  }
+}
+
+#save sequence cluster frequencies
+saveRDS(PP_mass_cluster_freq_1_sero, file = "PP_mass_cluster_freq_1_seroMod.rds")
+saveRDS(PP_mass_cluster_freq_2_sero, file = "PP_mass_cluster_freq_2_seroMod.rds")
+saveRDS(PP_mass_cluster_freq_3_sero, file = "PP_mass_cluster_freq_3_seroMod.rds")
+```
+
+```{r}
+# create equivalent of PP_mass_cluster_freq for serotypes
+PopPUNK_clusters <- readRDS(file = "PopPUNK_clusters.rds")
+sero_no <- length(unique(PopPUNK_clusters$Serotype))
+#calculate the frequency of the gene clusters and year
+PP_mass_sero_freq_1 <- rep(0,sero_no)
+PP_mass_sero_freq_2 <- rep(0,sero_no)
+PP_mass_sero_freq_3 <- rep(0,sero_no)
+for (i in 1:sero_no){
+  PP_mass_sero_freq_1[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Serotype==unique(PopPUNK_clusters$Serotype)[i]),]$"SeqYear"==2001))
+  PP_mass_sero_freq_2[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Serotype==unique(PopPUNK_clusters$Serotype)[i]),]$"SeqYear"==2004))
+  PP_mass_sero_freq_3[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Serotype==unique(PopPUNK_clusters$Serotype)[i]),]$"SeqYear"==2007))
+}
+```
+
+```{r}
+#save sero frequencies
+saveRDS(PP_mass_sero_freq_1, file = "PP_mass_sero_freq_1.rds")
+saveRDS(PP_mass_sero_freq_2, file = "PP_mass_sero_freq_2.rds")
+saveRDS(PP_mass_sero_freq_3, file = "PP_mass_sero_freq_3.rds")
+```
+
+# create matrix with PP clusters and serotypes
+```{r}
+PPxSero_matrix <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+# sort(unique(PopPUNK_clusters$Serotype))
+# [1] "10A"   "11A"   "14"    "15A"   "15B/C" "15F"   "16F"   "17F"   "18C"   "19A"   "19F"   "21"    "22F"   "23A"
+#[15] "23B"   "23F"   "3"     "31"    "33F"   "34"    "35B"   "35F"   "37"    "38"    "6A"    "6B"    "6C"    "7C" 
+#[29] "7F"    "9N"    "9V"    "NT"
+
+SerotypeToIndex_dict <- 1:length(unique(PopPUNK_clusters$Serotype))
+names(SerotypeToIndex_dict) <- (unique(PopPUNK_clusters$Serotype))
+
+#IndexToSerotype_dict <- (unique(PopPUNK_clusters$Serotype))
+#names(IndexToSerotype_dict) <- 1:length(unique(PopPUNK_clusters$Serotype))
+
+PPclustToIndex_dict <- 1:length(unique(PopPUNK_clusters$Cluster))
+names(PPclustToIndex_dict) <- (unique(PopPUNK_clusters$Cluster))
+
+for (i in 1:nrow(PopPUNK_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(PopPUNK_clusters$Cluster[i])],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- 1
+}
+# matrix shows information whether PP and serotype co-occur in the dataset (1=TRUE)
+# this can be used as the migration matrix:
+PPxSero_matrix_prob <- PPxSero_matrix / sum(PPxSero_matrix)
+PPxSero_matrix_prob <- matrix(sapply(PPxSero_matrix_prob,as.double), nrow = nrow(PPxSero_matrix), ncol = ncol(PPxSero_matrix))
+saveRDS(PPxSero_matrix_prob, "PPsero_mig.rds")
+saveRDS(PPxSero_matrix_prob, "PPsero_mig2.rds")
+
+# do one version that is sorted according to unique(Mass_Samples_accCodes$Serotype)
+#SerotypeToIndex_dict2 <- 1:length(unique(Mass_Samples_accCodes$Serotype))
+#names(SerotypeToIndex_dict2) <- unique(Mass_Samples_accCodes$Serotype)
+#PPxSero_matrix2 <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#for (i in 1:nrow(PopPUNK_clusters)) {
+#  PPxSero_matrix2[PPclustToIndex_dict[as.character(PopPUNK_clusters$Cluster[i])],SerotypeToIndex_dict2[PopPUNK_clusters$Serotype[i]]] <- 1
+#}
+#PPxSero_matrix_prob2 <- PPxSero_matrix2 / sum(PPxSero_matrix2)
+#PPxSero_matrix_prob2 <- matrix(sapply(PPxSero_matrix_prob2,as.double), nrow = nrow(PPxSero_matrix2), ncol = ncol(PPxSero_matrix2))
+#saveRDS(PPxSero_matrix_prob2, "PPsero_mig2.rds")
+
+#PPxSero_matrix_prob2 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#for (i in 1:length(unique(PopPUNK_clusters$Cluster))) {
+#  PPxSero_matrix_prob2[i,] <- ((PPxSero_matrix[i,] * PP_avg_cluster_freq[i])/sum(PPxSero_matrix[i,]))
+#}
+#saveRDS(PPxSero_matrix_prob2, "PPsero_mig.rds")
+# new migration matrix that is closer to original one
+
+# do this, sorted correctly
+#PPxSero_matrix_prob3 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#for (i in 1:length(unique(PopPUNK_clusters$Cluster))) {
+#  PPxSero_matrix_prob3[i,] <- ((PPxSero_matrix2[i,] * PP_avg_cluster_freq[i])/sum(PPxSero_matrix2[i,]))
+#}
+#saveRDS(PPxSero_matrix_prob3, "PPsero_mig3.rds")
+
+# start population:
+#PPsero_startpop <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+
+#for (i in which(PopPUNK_clusters$SeqYear=="2001")) {
+#  PPsero_startpop[PPclustToIndex_dict[PopPUNK_clusters$Cluster[i]],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- PPsero_startpop[PPclustToIndex_dict[PopPUNK_clusters$Cluster[i]],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] + 1
+#}
+#PPsero_startpop <- PPsero_startpop * 15000 / sum(PPsero_startpop)
+
+
+#PP_expand_factor <- 15000 / sum(PPsero_startpop)
+#exp_noise <- 10
+#PPsero_startpop_corr <- matrix(sapply((PPsero_startpop + matrix(rexp(n = ncol(PPsero_startpop) * nrow(PPsero_startpop), rate = exp_noise), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))) * PP_expand_factor, rpois, n=1), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#PPsero_startpop_corr <- matrix(sapply(PPsero_startpop_corr,as.double), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#saveRDS(PPsero_startpop_corr, "PPsero_startpop.rds")
+
+# this lead to a start population that is way too evenly distributed across the different clusters
+# instead, I could maybe use the existing PP_model_start_pop and distribute it to the different serotypes?
+#PPsero_startpop2 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#for (i in 1:length(unique(PopPUNK_clusters$Cluster))) {
+#  PPsero_startpop2[i,] <- round((PPxSero_matrix[i,] * PP_model_start_pop[i])/sum(PPxSero_matrix[i,]))
+#}
+#saveRDS(PPsero_startpop2, "PPsero_startpop.rds")
+# this is very close to the original PP_model_start_pop
+# maybe I am giving out too much information because the serotype distribution is exactly the real one?
+
+# I discovered a new issue. While the cluster distribution is quite close to the real 2001 data, the serotype distribution is not. I think it is favorable to have low levels of strain-serotype combinations in the start population that actually only occur later in the data, it is also important to have a start population that represents the serotype distribution in the dataset.
+# Serotype distribution data vs model
+#PP_mass_cluster_freq_1_sero <- readRDS("PP_mass_cluster_freq_1_sero.rds")
+
+#plot(colSums(PP_mass_cluster_freq_1_sero)/sum(colSums(PP_mass_cluster_freq_1_sero)))
+#points(colSums(PPsero_startpop2)/sum(colSums(PPsero_startpop2)), col = "red")
+# Strain distribution data vs model
+#plot(rowSums(PP_mass_cluster_freq_1_sero)/sum((PP_mass_cluster_freq_1_sero)))
+#points(rowSums(PPsero_startpop2)/sum(rowSums(PPsero_startpop2)), col = "red")
+
+#PPsero_startpop3 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#PPsero_startpop3_cl <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#PPsero_startpop3_sero <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#PPsero_startpop3 <- PPxSero_matrix
+
+#for (i in 1:length(unique(PopPUNK_clusters$Cluster))) {
+#  PPsero_startpop3_cl[i,] <- round((PPxSero_matrix[i,] * rowSums(PP_mass_cluster_freq_1_sero)[i])/sum(PPxSero_matrix[i,]))
+#}
+#for (i in 1:length(unique(PopPUNK_clusters$Serotype))) {
+#  PPsero_startpop3_sero[,i] <- round((PPxSero_matrix[,i] * colSums(PP_mass_cluster_freq_1_sero)[i])/sum(PPxSero_matrix[,i]))
+#}
+#PPsero_startpop3 <- (PPsero_startpop3_cl + PPsero_startpop3_sero)/2
+
+# new try
+#PPsero_startpop4 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+
+#PPsero_startpop4 <- (PPxSero_matrix * matrix(data = rexp(n = (length(unique(PopPUNK_clusters$Serotype)) * length(unique(PopPUNK_clusters$Cluster))), rate = exp_noise), nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype))) + PP_mass_cluster_freq_1_sero) * PP_expand_factor
+
+# test
+#plot(colSums(PP_mass_cluster_freq_1_sero)/sum(colSums(PP_mass_cluster_freq_1_sero)))
+#points(colSums(PPsero_startpop3_sero)/sum(colSums(PPsero_startpop3_sero)), col = "red")
+#points(colSums(PPsero_startpop3)/sum(colSums(PPsero_startpop3)), col = "blue")
+#points(colSums(PPsero_startpop4)/sum(colSums(PPsero_startpop4)), col = "green")
+# Strain distribution data vs model
+#plot(rowSums(PP_mass_cluster_freq_1_sero)/sum((PP_mass_cluster_freq_1_sero)))
+#points(rowSums(PPsero_startpop3_cl)/sum(rowSums(PPsero_startpop3_cl)), col = "red")
+#points(rowSums(PPsero_startpop3)/sum(rowSums(PPsero_startpop3)), col = "blue")
+#points(rowSums(PPsero_startpop4)/sum(rowSums(PPsero_startpop4)), col = "green")
+
+# okay, version 4 looks much better (take all possible strain-serotype combinations and multiply some noise to it, then add the real start population (from the data), and then multiply everything with the expansion factor)
+#saveRDS(PPsero_startpop4, "PPsero_startpop4.rds")
+
+# or take real start distribution + migration matrix
+#PPsero_startpop5 <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+#PP_expand_factor <- 15000 / sum(PP_mass_cluster_freq_1_sero)
+#exp_noise <- 100
+
+#for (i in 1:nrow(PPsero_startpop5)) {
+#    PPsero_startpop5[i,] <- (sapply((PP_mass_cluster_freq_1_sero[i,] + rexp(n = length(PP_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob[i,])
+  #PPsero_startpop5[i,] <- PP_mass_cluster_freq_1_sero[i,] + ceiling(PPxSero_matrix_prob[i,])
+#}
+#plot(colSums(PP_mass_cluster_freq_1_sero)/sum(colSums(PP_mass_cluster_freq_1_sero)))
+#points(colSums(PPsero_startpop5)/sum(colSums(PPsero_startpop5)), col = "red")
+
+#plot(rowSums(PP_mass_cluster_freq_1_sero)/sum((PP_mass_cluster_freq_1_sero)))
+#points(rowSums(PPsero_startpop5)/sum(rowSums(PPsero_startpop5)), col = "red")
+
+#saveRDS(PPsero_startpop5, "PPsero_startpop5.rds")
+
+# same with new sorting 
+PPsero_startpop6 <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_expand_factor <- 15000 / sum(PP_mass_cluster_freq_1_sero)
+exp_noise <- 1000
+for (i in 1:nrow(PPsero_startpop6)) {
+    PPsero_startpop6[i,] <- (sapply((PP_mass_cluster_freq_1_sero[i,] + rexp(n = length(PP_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob[i,])
+  #PPsero_startpop5[i,] <- PP_mass_cluster_freq_1_sero[i,] + ceiling(PPxSero_matrix_prob[i,])
+}
+saveRDS(PPsero_startpop6, "PPsero_startpop6.rds")
+
+plot(colSums(PP_mass_cluster_freq_1_sero)/sum(colSums(PP_mass_cluster_freq_1_sero)))
+points(colSums(PPsero_startpop6)/sum(colSums(PPsero_startpop6)), col = "red")
+
+plot(rowSums(PP_mass_cluster_freq_1_sero)/sum((PP_mass_cluster_freq_1_sero)))
+points(rowSums(PPsero_startpop6)/sum(rowSums(PPsero_startpop6)), col = "red")
+#much better
+
+#saveRDS(colSums(PP_mass_cluster_freq_1_sero), file = "PP_mass_sero_freq_1.rds")
+#saveRDS(colSums(PP_mass_cluster_freq_2_sero), file = "PP_mass_sero_freq_2.rds")
+#saveRDS(colSums(PP_mass_cluster_freq_3_sero), file = "PP_mass_sero_freq_3.rds")
+
+# serotype VT vector
+SeroVT <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:nrow(PopPUNK_clusters)) {
+  SeroVT[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
+}
+saveRDS(SeroVT, "SeroVT.rds")
+saveRDS(SeroVT, "SeroVT2.rds")
+
+# try new VT_vec approach, because I think the order was mixed up
+#unique(Mass_Samples_accCodes$Serotype)
+#SeroVT2 <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+#for (i in 1:nrow(PopPUNK_clusters)) {
+#  SeroVT2[SerotypeToIndex_dict2[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
+#}
+#saveRDS(SeroVT2, "SeroVT2.rds")
+```
+
+
+
+### ggCaller
+
+```{r}
+# reading in the gene presence absence matrix produced by ggCaller
+#ggCaller_gene_presence_absence <- read.csv(paste(path_to_data, "Massachusetts_ggcaller/run2/ggCaller_output/gene_presence_absence.csv", sep = ""), header=FALSE)
+ggCaller_gene_presence_absence <- read.csv(paste(path_to_data, "Massachusetts_ggcaller/run_withFuncAnn/ggCaller_output/gene_presence_absence.csv", sep = ""), header=FALSE)
+
+# converting the gene presence absence matrix into a boolean df (0 = gene not present, 1 = gene present)
+convert_to_bool <- function(x){
+  if (x=="") 0 else 1
+}
+
+ggCaller_bool_gene_presence_absence <- ggCaller_gene_presence_absence[,c(-2,-3)]
+ggCaller_bool_gene_presence_absence[-1,-1] <- apply(ggCaller_bool_gene_presence_absence[-1,-1],c(1,2), convert_to_bool)
+```
+
+```{r}
+#saveRDS(ggCaller_bool_gene_presence_absence, "ggCaller_presence_absence_matrix.rds")
+```
+
+```{r}
+# create time-point specific gene presence absence matrices
+# SeqYear_dict has sequence years as values and isolate names as keys
+# I need to first translate between ggCaller names (from file names) to isolate names via Accesscion number, using filenameToAccNo_dict and AccNoToIsolate_dict
+
+#translation between filename to isolate name
+#AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]
+# find out sequence year
+#SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]]
+
+# empty gene presence absence matrix
+ggCaller_gene_presence_absence_2001 <- data.frame(matrix(0, nrow = nrow(ggCaller_bool_gene_presence_absence), ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)+1))
+ggCaller_gene_presence_absence_2001[1,-1] <- ggCaller_bool_gene_presence_absence[1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]]==2001)]
+ggCaller_gene_presence_absence_2001[-1,1] <- ggCaller_bool_gene_presence_absence[-1,1]
+ggCaller_gene_presence_absence_2001[-1,-1] <- ggCaller_bool_gene_presence_absence[-1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]]==2001)]
+
+ggCaller_gene_presence_absence_2004 <- data.frame(matrix(0, nrow = nrow(ggCaller_bool_gene_presence_absence), ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)+1))
+ggCaller_gene_presence_absence_2004[1,-1] <- ggCaller_bool_gene_presence_absence[1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]]==2004)]
+ggCaller_gene_presence_absence_2004[-1,1] <- ggCaller_bool_gene_presence_absence[-1,1]
+ggCaller_gene_presence_absence_2004[-1,-1] <- ggCaller_bool_gene_presence_absence[-1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]]==2004)]
+
+ggCaller_gene_presence_absence_2007 <- data.frame(matrix(0, nrow = nrow(ggCaller_bool_gene_presence_absence), ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)+1))
+ggCaller_gene_presence_absence_2007[1,-1] <- ggCaller_bool_gene_presence_absence[1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]]==2007)]
+ggCaller_gene_presence_absence_2007[-1,1] <- ggCaller_bool_gene_presence_absence[-1,1]
+ggCaller_gene_presence_absence_2007[-1,-1] <- ggCaller_bool_gene_presence_absence[-1,c(FALSE,SeqYear_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggCaller_bool_gene_presence_absence[1,-1])]]]==2007)]
+```
+
+```{r}
+#saveRDS(ggCaller_gene_presence_absence_2001, file = "ggCaller_gene_presence_absence_2001.rds")
+#saveRDS(ggCaller_gene_presence_absence_2004, file = "ggCaller_gene_presence_absence_2004.rds")
+#saveRDS(ggCaller_gene_presence_absence_2007, file = "ggCaller_gene_presence_absence_2007.rds")
+```
+
+```{r}
+# Find intermediate frequency genes in 2001 data set
+# compute gene frequencies
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+ggC_gene_freq_2001 <- rep(0, nrow(ggCaller_gene_presence_absence_2001)-1)
+ggC_gene_freq_2001 <- apply(ggCaller_gene_presence_absence_2001[-1,-1],1, sum_as_int)
+ggC_gene_freq_2001 <- ggC_gene_freq_2001 / (length(ggCaller_gene_presence_absence_2001[1,-1]))
+
+ggC_filter <- as.integer(ggC_gene_freq_2001<=0.95 & ggC_gene_freq_2001>=0.05)
+
+ggC_intermed_gene_names <- ggCaller_gene_presence_absence_2001[which(ggC_filter==1),1]
+saveRDS(ggC_intermed_gene_names, file = "Mass_ggC_intermed_gene_names.rds")
+
+ggC_intermed_gene_freqs <- ggC_gene_freq_2001[which(ggC_filter==1)]
+saveRDS(ggC_intermed_gene_freqs, file = "Mass_ggC_intermed_gene_freqs.rds")
+
+ggC_all_gene_freqs <- ggC_gene_freq_2001
+saveRDS(ggC_all_gene_freqs, file = "Mass_ggC_all_gene_freqs.rds")
+
+ggC_all_gene_names <- ggCaller_gene_presence_absence_2001[-1,1]
+saveRDS(ggC_all_gene_names, file = "Mass_ggC_all_gene_names.rds")
+
+# intermediate gene presence absence matrices filtered by genes that are present at 5-95% frequency in 2001
+ggC_intermed_gene_presence_absence_2001 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2001,]$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence_2001 <- ggCaller_gene_presence_absence_2001[c(1,which(ggC_filter==1)+1),]
+
+ggC_intermed_gene_presence_absence_2004 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2004,]$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence_2004 <- ggCaller_gene_presence_absence_2004[c(1,which(ggC_filter==1)+1),]
+
+ggC_intermed_gene_presence_absence_2007 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes[Mass_Samples_accCodes$`Year of Isolation`==2007,]$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence_2007 <- ggCaller_gene_presence_absence_2007[c(1,which(ggC_filter==1)+1),]
+
+ggC_intermed_gene_presence_absence <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(Mass_Samples_accCodes$`Isolate Name`)+1))
+ggC_intermed_gene_presence_absence <- ggCaller_bool_gene_presence_absence[c(1,which(ggC_filter==1)+1),]
+```
+
+```{r}
+#save intermed gene presence absence matrices
+#saveRDS(ggC_intermed_gene_presence_absence, file = "ggC_intermed_gene_presence_absence.rds")
+#saveRDS(ggC_intermed_gene_presence_absence_2001, file = "ggC_intermed_gene_presence_absence_2001.rds")
+#saveRDS(ggC_intermed_gene_presence_absence_2004, file = "ggC_intermed_gene_presence_absence_2004.rds")
+#saveRDS(ggC_intermed_gene_presence_absence_2007, file = "ggC_intermed_gene_presence_absence_2007.rds")
+```
+
+```{r}
+#Compute consensus genomes for sequence clusters
+Mass_seq_clusters_dict <- Mass_Samples_accCodes$SequenceCluster
+names(Mass_seq_clusters_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+ggC_intermed_gene_presence_absence_consensus <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+ggC_intermed_gene_presence_absence_consensus[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+ggC_intermed_gene_presence_absence_consensus_2001 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+ggC_intermed_gene_presence_absence_consensus_2001[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+ggC_intermed_gene_presence_absence_consensus_2004 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+ggC_intermed_gene_presence_absence_consensus_2004[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+ggC_intermed_gene_presence_absence_consensus_2007 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$SequenceCluster))+1))
+ggC_intermed_gene_presence_absence_consensus_2007[1,-1] <- paste("SeqCl_",unique(Mass_Samples_accCodes$SequenceCluster),sep = "")
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in unique(Mass_Samples_accCodes$SequenceCluster)) {
+  ggC_intermed_gene_presence_absence_consensus[-1,i+2] <- apply(as.matrix(ggC_intermed_gene_presence_absence[-1,c(FALSE,Mass_seq_clusters_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence[1,-1])]]]==i)]), 1, cons_genomes)
+  ggC_intermed_gene_presence_absence_consensus_2001[-1,i+2] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2001[-1,c(FALSE,Mass_seq_clusters_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence_2001[1,-1])]]]==i)]), 1, cons_genomes)
+    intermed_gene_presence_absence_consensus_2004[-1,i+2] <- apply(as.matrix(intermed_gene_presence_absence_2004[-1,c(FALSE,Mass_seq_clusters_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence_2004[1,-1])]]]==i)]), 1, cons_genomes)
+    intermed_gene_presence_absence_consensus_2007[-1,i+2] <- apply(as.matrix(intermed_gene_presence_absence_2007[-1,c(FALSE,Mass_seq_clusters_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence_2007[1,-1])]]]==i)]), 1, cons_genomes)
+}
+
+ggC_intermed_gene_presence_absence_consensus[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggC_intermed_gene_presence_absence_consensus_2001[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggC_intermed_gene_presence_absence_consensus_2004[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggC_intermed_gene_presence_absence_consensus_2007[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+```
+
+```{r}
+#save intermed gene presence absence matrices
+#saveRDS(ggC_intermed_gene_presence_absence_consensus, file = "ggC_intermed_gene_presence_absence_consensus.rds")
+#saveRDS(ggC_intermed_gene_presence_absence_consensus_2001, file = "ggC_intermed_gene_presence_absence_consensus_2001.rds")
+#saveRDS(ggC_intermed_gene_presence_absence_consensus_2004, file = "ggC_intermed_gene_presence_absence_consensus_2004.rds")
+#saveRDS(ggC_intermed_gene_presence_absence_consensus_2007, file = "ggC_intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+```{r}
+# For strong and weak selection in the model, I need to calculate the beta statistics.
+
+# calculate gene frequencies first, separate for three time points
+ggC_mass_gene_freq_1 <- apply(ggC_intermed_gene_presence_absence_2001[-1,-1], 1, sum_as_int)
+ggC_mass_gene_freq_2 <- apply(ggC_intermed_gene_presence_absence_2004[-1,-1], 1, sum_as_int)
+ggC_mass_gene_freq_3 <- apply(ggC_intermed_gene_presence_absence_2007[-1,-1], 1, sum_as_int)
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+ggC_pre_peri_vacc_gene_freq <- (ggC_mass_gene_freq_1 + ggC_mass_gene_freq_2) / (sum(mass_cluster_freq_1) + sum(mass_cluster_freq_2))
+ggC_pre_vacc_gene_freq <- (ggC_mass_gene_freq_1) / sum(mass_cluster_freq_1)
+ggC_post_vacc_gene_freq <- ggC_mass_gene_freq_3 / sum(mass_cluster_freq_3)
+ggC_peri_post <- (ggC_mass_gene_freq_2 + ggC_mass_gene_freq_3) / (sum(mass_cluster_freq_2) + sum(mass_cluster_freq_3))
+ggC_peri_vacc_gene_freq <- (ggC_mass_gene_freq_2) / sum(mass_cluster_freq_2)
+
+# calculate delta statistic (refer to Corander et al. for more info)
+ggC_delta_data <- (ggC_post_vacc_gene_freq - ggC_pre_peri_vacc_gene_freq) ^ 2 / (1 - ggC_pre_peri_vacc_gene_freq * (1 - ggC_pre_peri_vacc_gene_freq))
+ggC_delta_ranking <- rank(ggC_delta_data)
+
+ggC_delta_data2 <- (ggC_post_vacc_gene_freq - ggC_pre_vacc_gene_freq) ^ 2 / (1 - ggC_pre_vacc_gene_freq * (1 - ggC_pre_vacc_gene_freq))
+ggC_delta_ranking2 <- rank(ggC_delta_data2)
+
+ggC_delta_data4 <- (ggC_peri_vacc_gene_freq - ggC_pre_vacc_gene_freq) ^ 2 / (1 - ggC_pre_vacc_gene_freq * (1 - ggC_pre_vacc_gene_freq))
+ggC_delta_ranking4 <- rank(ggC_delta_data4)
+
+ggC_delta_data5 <- (ggC_post_vacc_gene_freq - ggC_peri_vacc_gene_freq) ^ 2 / (1 - ggC_peri_vacc_gene_freq * (1 - ggC_peri_vacc_gene_freq))
+ggC_delta_ranking5 <- rank(ggC_delta_data5)
+
+ggC_delta_data6 <- abs(ggC_post_vacc_gene_freq - ggC_pre_vacc_gene_freq) / (1 - ggC_pre_vacc_gene_freq)
+ggC_delta_ranking6 <- rank(ggC_delta_data6)
+
+ggC_delta_data7 <- abs(ggC_peri_post - ggC_pre_vacc_gene_freq) / (1 - ggC_pre_vacc_gene_freq)
+ggC_delta_ranking7 <- rank(ggC_delta_data7)
+
+ggC_delta_data8 <- (ggC_peri_post - ggC_pre_vacc_gene_freq) ^ 2
+ggC_delta_ranking8 <- rank(ggC_delta_data8)
+
+ggC_delta_data9 <- (ggC_peri_post - ggC_pre_vacc_gene_freq) ^ 2  / (ggC_pre_vacc_gene_freq * ggC_pre_vacc_gene_freq)
+ggC_delta_ranking9 <- rank(ggC_delta_data9)
+
+ggC_delta_data10 <- (ggC_post_vacc_gene_freq - ggC_peri_vacc_gene_freq) ^ 2 / ((1 - ggC_peri_vacc_gene_freq) * (1 - ggC_peri_vacc_gene_freq))
+ggC_delta_ranking10 <- rank(ggC_delta_data10)
+
+ggC_delta_data3 <- (ggC_peri_post - ggC_pre_vacc_gene_freq) ^ 2 / (1 - ggC_pre_vacc_gene_freq * (1 - ggC_pre_vacc_gene_freq))
+ggC_delta_ranking3 <- rank(ggC_delta_data3)
+ggC_delta_ranking <- ggC_delta_ranking3
+ggC_inv_delta_ranking <- rank(-ggC_delta_data3)
+
+plot((ggC_delta_data3)[names(sort(ggC_delta_data3))], main = "Different delta stats sort by peri_post - pre")
+points((ggC_delta_data2)[names(sort(ggC_delta_data3))], col = "blue")
+points((ggC_delta_data4)[names(sort(ggC_delta_data3))], col = "red")
+legend(0,0.07, title = "delta", c("peri_post - pre", "post - pre", "peri - pre"),fill = c("black", "blue", "red"), cex = 1)
+
+plot((ggC_delta_data3)[names(sort(ggC_delta_data3))], main = "Different delta stats sort by peri_post - pre")
+points((ggC_delta_data2)[names(sort(ggC_delta_data3))], col = "blue")
+legend(0,0.07, title = "delta", c("peri_post - pre", "post - pre"),fill = c("black", "blue"), cex = 1)
+
+plot((ggC_delta_data3)[names(sort(ggC_delta_data3))], main = "Different delta stats sorted by self values")
+points((ggC_delta_data2)[names(sort(ggC_delta_data2))], col = "blue")
+legend(0,0.07, title = "delta", c("peri_post - pre", "post - pre"),fill = c("black", "blue"), cex = 1)
+
+plot(sort(ggC_delta_data3), ylab = "Variation of gene frequencies",xlab = "gene index sorted by variation")
+plot(ggC_delta_data3[names(sort(ggC_pre_vacc_gene_freq))], ylab = "Variation of gene frequencies")
+plot(sort(ggC_pre_vacc_gene_freq),(1 - sort(ggC_pre_vacc_gene_freq) * (1 - sort(ggC_pre_vacc_gene_freq))), ylab = "Denominator of Delta statistic", xlab = "Gene Frequencies")
+```
+
+```{r}
+#save delta ranking
+#saveRDS(ggC_delta_ranking, file = "ggC_delta_ranking.rds")
+saveRDS(ggC_delta_ranking2, file = "ggC_delta_ranking.rds")
+#saveRDS(ggC_inv_delta_ranking, file = "ggC_inv_delta_ranking.rds")
+#saveRDS(ggC_delta_ranking4, file = "ggC_delta_ranking_peri-pre.rds")
+#saveRDS(ggC_delta_ranking2, file = "ggC_delta_ranking_post-pre.rds")
+saveRDS(ggC_delta_data3, file = "ggC_delta_ranking.rds")
+saveRDS(ggC_delta_data2, file = "ggC_delta_data_post-pre.rds")
+saveRDS(ggC_delta_data3, file = "ggC_delta_data3.rds")
+saveRDS(ggC_delta_ranking8, file = "ggC_delta_ranking8.rds")
+saveRDS(ggC_delta_data8, file = "ggC_delta_data8.rds")
+```
+
+```{r}
+### create initial population that is based on the 2001 data set but not an exact sampling from it
+# is the same as for the COGtriangles version
+```
+
+### ggCaller + PopPUNK
+
+```{r}
+#save model start population
+#saveRDS(PopPUNK_clusters, file = "PopPUNK_clusters.rds")
+PopPUNK_clusters <- readRDS(file = "PopPUNK_clusters.rds")
+```
+
+```{r}
+#Compute consensus genomes for sequence clusters
+ggCPP_Mass_seq_clusters_dict <- PopPUNK_clusters$Cluster
+names(ggCPP_Mass_seq_clusters_dict) <- PopPUNK_clusters$Taxon
+
+ggCPP_intermed_gene_presence_absence_consensus <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+ggCPP_intermed_gene_presence_absence_consensus_2001 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus_2001[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+ggCPP_intermed_gene_presence_absence_consensus_2004 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus_2004[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+ggCPP_intermed_gene_presence_absence_consensus_2007 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus_2007[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in unique(PopPUNK_clusters$Cluster)) {
+  ggCPP_intermed_gene_presence_absence_consensus[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence[1,-1])]==i)]), 1, cons_genomes)
+  ggCPP_intermed_gene_presence_absence_consensus_2001[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2001[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence_2001[1,-1])]==i)]), 1, cons_genomes)
+    ggCPP_intermed_gene_presence_absence_consensus_2004[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2004[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence_2004[1,-1])]==i)]), 1, cons_genomes)
+    ggCPP_intermed_gene_presence_absence_consensus_2007[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2007[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence_2007[1,-1])]==i)]), 1, cons_genomes)
+}
+
+ggCPP_intermed_gene_presence_absence_consensus[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCPP_intermed_gene_presence_absence_consensus_2001[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCPP_intermed_gene_presence_absence_consensus_2004[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCPP_intermed_gene_presence_absence_consensus_2007[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+```
+
+
+```{r}
+#save intermed gene presence absence matrices
+saveRDS(ggCPP_intermed_gene_presence_absence_consensus, file = "ggCPP_intermed_gene_presence_absence_consensus.rds")
+saveRDS(ggCPP_intermed_gene_presence_absence_consensus_2001, file = "ggCPP_intermed_gene_presence_absence_consensus_2001.rds")
+saveRDS(ggCPP_intermed_gene_presence_absence_consensus_2004, file = "ggCPP_intermed_gene_presence_absence_consensus_2004.rds")
+saveRDS(ggCPP_intermed_gene_presence_absence_consensus_2007, file = "ggCPP_intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+# checking whether the gene variation and whether genes occur in VTs is correlated
+# variation in genes that do not occur in VTs seems to be higher
+# variation in genes that occur in VTs generally seems lower 
+# but it's not a super strong correlation
+# and because it's this way around, everything should be fine
+
+```{r}
+ggC_mass_genesInVT <- apply(ggCPP_intermed_gene_presence_absence_consensus[-1,which(PP_mass_VT==1) + 1],1,max)
+```
+
+```{r}
+local_colours <- c("#E69F00","black")
+
+plot(sort(ggC_delta_data3), main = "Different delta stats sort by peri_post - pre", col = local_colours[(as.integer(ggC_mass_genesInVT)+1)])
+#points(names(ggC_delta_data3[which(ggC_mass_genesInVT==0)]),(ggC_delta_data3[which(ggC_mass_genesInVT==0)]),col = "red")
+```
+
+
+
+### Filtering PopPUNK for clusters of sizes larger than 1 in at least one time point:
+```{r}
+PP_clust_max <- apply(matrix(c(PP_mass_cluster_freq_1,PP_mass_cluster_freq_2, PP_mass_cluster_freq_3),nrow=3,ncol=length(PP_mass_cluster_freq_1),byrow = TRUE),2,max)
+#PP_clust_max>1
+filt_PP_mass_cluster_freq_1 <- PP_mass_cluster_freq_1[PP_clust_max>1]
+filt_PP_mass_cluster_freq_2 <- PP_mass_cluster_freq_2[PP_clust_max>1]
+filt_PP_mass_cluster_freq_3 <- PP_mass_cluster_freq_3[PP_clust_max>1]
+```
+
+# Filtering COGtriangles by PopPUNK
+```{r}
+#filter gene presence absence matrix
+PP_intermed_gene_presence_absence_consensus <- readRDS(file = "PP_intermed_gene_presence_absence_consensus.rds")
+filt_PP_intermed_gene_presence_absence_consensus <- PP_intermed_gene_presence_absence_consensus[,c(TRUE, PP_clust_max>1)]
+# filter vaccination info
+PP_mass_VT <- readRDS(file = "PP_mass_VT.rds")
+filt_PP_mass_VT <- PP_mass_VT[PP_clust_max>1]
+# filter start pop
+PP_model_start_pop <- readRDS("PP_model_start_pop.rds")
+filt_PP_model_start_pop <- PP_model_start_pop[PP_clust_max>1]
+```
+
+```{r}
+saveRDS(filt_PP_mass_cluster_freq_1, file = "filt_PP_mass_cluster_freq_1.rds")
+saveRDS(filt_PP_mass_cluster_freq_2, file = "filt_PP_mass_cluster_freq_2.rds")
+saveRDS(filt_PP_mass_cluster_freq_3, file = "filt_PP_mass_cluster_freq_3.rds")
+saveRDS(filt_PP_intermed_gene_presence_absence_consensus, file = "filt_PP_intermed_gene_presence_absence_consensus.rds")
+saveRDS(filt_PP_mass_VT, file = "filt_PP_mass_VT.rds")
+saveRDS(filt_PP_model_start_pop, file = "filt_PP_model_start_pop.rds")
+```
+
+# Filtering ggCaller by PopPUNK
+```{r}
+#filter gene presence absence matrix
+ggCPP_intermed_gene_presence_absence_consensus <- readRDS(file = "ggCPP_intermed_gene_presence_absence_consensus.rds")
+filt_ggCPP_intermed_gene_presence_absence_consensus <- ggCPP_intermed_gene_presence_absence_consensus[,c(TRUE, PP_clust_max>1)]
+```
+
+```{r}
+saveRDS(filt_ggCPP_intermed_gene_presence_absence_consensus, file = "filt_ggCPP_intermed_gene_presence_absence_consensus.rds")
+```
+
+
+### use serotypes instead of sequence or PopPUNK clusters:
+```{r}
+#Compute consensus genomes for sequence clusters
+Mass_serotypes_dict <- Mass_Samples_accCodes$Serotype
+names(Mass_serotypes_dict) <- Mass_Samples_accCodes$`Isolate Name`
+
+Sero_intermed_gene_presence_absence_consensus <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+Sero_intermed_gene_presence_absence_consensus[1,-1] <- unique(Mass_Samples_accCodes$Serotype)
+
+Sero_intermed_gene_presence_absence_consensus_2001 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+Sero_intermed_gene_presence_absence_consensus_2001[1,-1] <- unique(Mass_Samples_accCodes$Serotype)
+
+Sero_intermed_gene_presence_absence_consensus_2004 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+Sero_intermed_gene_presence_absence_consensus_2004[1,-1] <- unique(Mass_Samples_accCodes$Serotype)
+
+Sero_intermed_gene_presence_absence_consensus_2007 <- data.frame(matrix(0, nrow = sum(cog_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+Sero_intermed_gene_presence_absence_consensus_2007[1,-1] <- unique(Mass_Samples_accCodes$Serotype)
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in 1:length(unique(Mass_Samples_accCodes$Serotype))) {
+  Sero_intermed_gene_presence_absence_consensus[-1,i+1] <- apply(as.matrix(intermed_gene_presence_absence[-1,c(FALSE,Mass_serotypes_dict[unlist(intermed_gene_presence_absence[1,-1])]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+  Sero_intermed_gene_presence_absence_consensus_2001[-1,i+1] <- apply(as.matrix(intermed_gene_presence_absence_2001[-1,c(FALSE,Mass_serotypes_dict[unlist(intermed_gene_presence_absence_2001[1,-1])]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+    Sero_intermed_gene_presence_absence_consensus_2004[-1,i+1] <- apply(as.matrix(intermed_gene_presence_absence_2004[-1,c(FALSE,Mass_serotypes_dict[unlist(intermed_gene_presence_absence_2004[1,-1])]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+    Sero_intermed_gene_presence_absence_consensus_2007[-1,i+1] <- apply(as.matrix(intermed_gene_presence_absence_2007[-1,c(FALSE,Mass_serotypes_dict[unlist(intermed_gene_presence_absence_2007[1,-1])]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+}
+
+Sero_intermed_gene_presence_absence_consensus[-1,1] <- intermed_gene_presence_absence[-1,1]
+Sero_intermed_gene_presence_absence_consensus_2001[-1,1] <- intermed_gene_presence_absence[-1,1]
+Sero_intermed_gene_presence_absence_consensus_2004[-1,1] <- intermed_gene_presence_absence[-1,1]
+Sero_intermed_gene_presence_absence_consensus_2007[-1,1] <- intermed_gene_presence_absence[-1,1]
+```
+
+```{r}
+#save intermed gene presence absence matrices
+#saveRDS(Sero_intermed_gene_presence_absence_consensus, file = "Sero_intermed_gene_presence_absence_consensus.rds")
+#saveRDS(Sero_intermed_gene_presence_absence_consensus_2001, file = "Sero_intermed_gene_presence_absence_consensus_2001.rds")
+#saveRDS(Sero_intermed_gene_presence_absence_consensus_2004, file = "Sero_intermed_gene_presence_absence_consensus_2004.rds")
+#saveRDS(Sero_intermed_gene_presence_absence_consensus_2007, file = "Sero_intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+```{r}
+# calculate Vaccine Type consensus for clusters
+Sero_mass_VT <- rep(0, length(unique(Mass_Samples_accCodes$Serotype)))
+
+for (i in 1:length(unique(Mass_Samples_accCodes$Serotype))){
+  Sero_mass_VT[i] <- ceiling(median(as.integer(Mass_Samples_accCodes[Mass_Samples_accCodes$Serotype == unique(Mass_Samples_accCodes$Serotype)[i],"Vaccine Type"]=="VT")))
+}
+# taking the median is technically not necessary for serotypes. because they should all be in agreement.
+# 1 means VT
+# 0 means NVT
+# if cluster is 50/50 it will count as VT
+```
+
+```{r}
+#save VTs
+#saveRDS(Sero_mass_VT, file = "Sero_mass_VT.rds")
+```
+
+```{r}
+#calculate the frequency of the sequence clusters and year
+Sero_freq_1 <- rep(0,length(unique(Mass_Samples_accCodes$Serotype)))
+Sero_freq_2 <- rep(0,length(unique(Mass_Samples_accCodes$Serotype)))
+Sero_freq_3 <- rep(0,length(unique(Mass_Samples_accCodes$Serotype)))
+Sero_freq_names <- rep(NA,length(unique(Mass_Samples_accCodes$Serotype)))
+for (i in 1:length(unique(Mass_Samples_accCodes$Serotype))){
+  Sero_freq_1[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$Serotype==unique(Mass_Samples_accCodes$Serotype)[i]),]$"Year of Isolation"==2001))
+  Sero_freq_2[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$Serotype==unique(Mass_Samples_accCodes$Serotype)[i]),]$"Year of Isolation"==2004))
+  Sero_freq_3[i] <- length(which(Mass_Samples_accCodes[which(Mass_Samples_accCodes$Serotype==unique(Mass_Samples_accCodes$Serotype)[i]),]$"Year of Isolation"==2007))
+  Sero_freq_names[i] <- unique(Mass_Samples_accCodes$Serotype)[i]
+}
+```
+
+```{r}
+#save sequence cluster frequencies
+#saveRDS(Sero_freq_1, file = "Sero_freq_1.rds")
+#saveRDS(Sero_freq_2, file = "Sero_freq_2.rds")
+#saveRDS(Sero_freq_3, file = "Sero_freq_3.rds")
+#saveRDS(Sero_freq_names, file = "Sero_freq_names.rds")
+```
+
+```{r}
+### create initial population that is based on the 2001 data set but not an exact sampling from it
+# but a Poisson process
+Sero_expand_factor <- 15000 / sum(Sero_freq_1)
+exp_noise <- 10
+Sero_model_start_pop <- (sapply((Sero_freq_1 + rexp(n = length(Sero_freq_1), rate = exp_noise)) * Sero_expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(Sero_freq_1/sum(Sero_freq_1))
+points(Sero_model_start_pop/sum(Sero_model_start_pop), col = "red")
+# looks similar enough, I would say
+```
+
+```{r}
+#saveRDS(Sero_model_start_pop, file = "Sero_model_start_pop.rds")
+```
+
+### Serotype x ggCaller
+
+```{r}
+#Compute consensus genomes for sequence clusters
+#SeroggC_Mass_seq_clusters_dict <- PopPUNK_clusters$Cluster
+#names(ggCPP_Mass_seq_clusters_dict) <- PopPUNK_clusters$Taxon
+
+ggCsero_intermed_gene_presence_absence_consensus <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+ggCsero_intermed_gene_presence_absence_consensus[1,-1] <-unique(Mass_Samples_accCodes$Serotype)
+
+ggCsero_intermed_gene_presence_absence_consensus_2001 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+ggCsero_intermed_gene_presence_absence_consensus_2001[1,-1] <- unique(Mass_Samples_accCodes$Serotype)
+
+ggCsero_intermed_gene_presence_absence_consensus_2004 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+ggCsero_intermed_gene_presence_absence_consensus_2004[1,-1] <- unique(Mass_Samples_accCodes$Serotype)
+
+ggCsero_intermed_gene_presence_absence_consensus_2007 <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(Mass_Samples_accCodes$Serotype))+1))
+ggCsero_intermed_gene_presence_absence_consensus_2007[1,-1] <- unique(Mass_Samples_accCodes$Serotype)
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in 1:length(unique(Mass_Samples_accCodes$Serotype))) {
+  ggCsero_intermed_gene_presence_absence_consensus[-1,i+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence[-1,c(FALSE,Mass_serotypes_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence[1,-1])]]]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+  ggCsero_intermed_gene_presence_absence_consensus_2001[-1,i+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2001[-1,c(FALSE,Mass_serotypes_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence_2001[1,-1])]]]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+    ggCsero_intermed_gene_presence_absence_consensus_2004[-1,i+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2004[-1,c(FALSE,Mass_serotypes_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence_2004[1,-1])]]]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+    ggCsero_intermed_gene_presence_absence_consensus_2007[-1,i+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence_2007[-1,c(FALSE,Mass_serotypes_dict[AccNoToIsolate_dict[filenameToAccNo_dict[unlist(ggC_intermed_gene_presence_absence_2007[1,-1])]]]==unique(Mass_Samples_accCodes$Serotype)[i])]), 1, cons_genomes)
+}
+
+ggCsero_intermed_gene_presence_absence_consensus[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCsero_intermed_gene_presence_absence_consensus_2001[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCsero_intermed_gene_presence_absence_consensus_2004[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+ggCsero_intermed_gene_presence_absence_consensus_2007[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+```
+
+
+```{r}
+#save intermed gene presence absence matrices
+#saveRDS(ggCsero_intermed_gene_presence_absence_consensus, file = "ggCsero_intermed_gene_presence_absence_consensus.rds")
+#saveRDS(ggCsero_intermed_gene_presence_absence_consensus_2001, file = "ggCsero_intermed_gene_presence_absence_consensus_2001.rds")
+#saveRDS(ggCsero_intermed_gene_presence_absence_consensus_2004, file = "ggCsero_intermed_gene_presence_absence_consensus_2004.rds")
+#saveRDS(ggCsero_intermed_gene_presence_absence_consensus_2007, file = "ggCsero_intermed_gene_presence_absence_consensus_2007.rds")
+```
+
+# format data for the 616-compartments model
+```{r}
+# Mass_Samples_accCodes is the dataframe with all Mass data
+# Mass_Isolates are the isolates names
+mass_seqs <- nrow(Mass_Samples_accCodes)
+mass_seq_freq_1 <- rep(0, mass_seqs)
+mass_seq_freq_2 <- rep(0, mass_seqs)
+mass_seq_freq_3 <- rep(0, mass_seqs)
+
+for (i in 1:mass_seqs){
+  mass_seq_freq_1[i] <- if(Mass_Samples_accCodes[i,]$`Year of Isolation`==2001){1}else{0}
+  mass_seq_freq_2[i] <- if(Mass_Samples_accCodes[i,]$`Year of Isolation`==2004){1}else{0}
+  mass_seq_freq_3[i] <- if(Mass_Samples_accCodes[i,]$`Year of Isolation`==2007){1}else{0}
+}
+```
+
+```{r}
+saveRDS(mass_seq_freq_1,file = "mass_seq_freq_1.rds")
+saveRDS(mass_seq_freq_2, file = "mass_seq_freq_2.rds")
+saveRDS(mass_seq_freq_3, file = "mass_seq_freq_3.rds")
+```
+
+```{r}
+### create initial population that is based on the 2001 data set but not an exact sampling from it
+# but a Poisson process
+seq_expand_factor <- 15000 / sum(mass_seq_freq_1)
+exp_noise <- 10
+seq_model_start_pop <- (sapply((mass_seq_freq_1 + rexp(n = length(mass_seq_freq_1), rate = exp_noise)) * seq_expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(mass_seq_freq_1/sum(mass_seq_freq_1))
+points(seq_model_start_pop/sum(seq_model_start_pop), col = "red")
+# looks quite different from the data
+# maybe for the individual-based model, I need less noise?
+seq_model_start_pop_2 <- (sapply((mass_seq_freq_1 + rexp(n = length(mass_seq_freq_1), rate = 100)) * seq_expand_factor, rpois, n=1))
+```
+
+```{r}
+#save seq start population
+saveRDS(seq_model_start_pop, file = "seq_model_start_pop.rds")
+saveRDS(seq_model_start_pop_2, file = "seq_model_start_pop_2.rds")
+```
+
+```{r}
+# VT vector
+mass_seq_VT <- as.integer(Mass_Samples_accCodes$`Vaccine Type`=="VT")
+```
+
+```{r}
+saveRDS(mass_seq_VT, file = "mass_seq_VT.rds")
+```
+
+
+### ggCaller Functional Annotation
+
+```{r}
+# reading in the gene presence absence matrix produced by ggCaller
+FuncAnn_ggCaller_gene_presence_absence <- read.csv(paste(path_to_data, "Massachusetts_ggcaller/run_withFuncAnn/ggCaller_output/gene_presence_absence.csv", sep = ""), header=FALSE)
+
+FuncAnnOnly_ggCaller <- data.frame(cbind(FuncAnn_ggCaller_gene_presence_absence[,3],rep(NA,length(FuncAnn_ggCaller_gene_presence_absence[,3]))))
+FuncAnnOnly_ggCaller[1,2] <- "Functional Annotation"
+```
+
+# read in functional annoation
+```{r}
+library(readxl)
+Annotation_IntermediateFreqGenes <- read_excel(paste(path_to_data, "Massachusetts_data_NickCroucher/SupplementaryDataPaper/IntermediateFreqGenesAnnotation.xlsx", sep = ""))
+View(Annotation_IntermediateFreqGenes)
+
+FuncAnn_dict <- Annotation_IntermediateFreqGenes$Annotation
+names(FuncAnn_dict) <- Annotation_IntermediateFreqGenes$COG
+```
+
+```{r}
+FuncAnnOnly_ggCaller[2,1]
+strsplit(strsplit(FuncAnnOnly_ggCaller[2,1],";")[[1]],"CLS")
+
+iter <- 1
+for (ggCaller_name in FuncAnnOnly_ggCaller$X1[-1]) {
+  iter <- iter + 1
+  ggCaller_anno <- ""
+  annotations <- strsplit(ggCaller_name,";")[[1]]
+  for (annots in annotations) {
+    CLSname <- strsplit(annots,"CLS")[[1]][2]
+    CLSname <- paste("CLS",CLSname,sep = "")
+    ggCaller_anno <- paste(ggCaller_anno, paste(FuncAnn_dict[CLSname],"; ",sep=""), sep = "")
+  }
+  print(ggCaller_anno)
+  FuncAnnOnly_ggCaller[iter,2] <- ggCaller_anno
+}
+
+# which(ggC_filter==1)
+# I can't use the filtering of the older ggCaller run because the gene ordering won't be the same
+# I will need to intermediate-gene filtering again and then, down the line, also re-do my fits.
+```
+

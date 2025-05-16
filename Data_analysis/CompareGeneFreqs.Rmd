@@ -1,0 +1,58 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+joined_ggCaller_list_UKUSNepal <- readRDS("joined_ggCaller_list.rds")
+```
+
+```{r}
+joined_gene_freq_list <- vector(mode = "list", length = 3) # ggCaller gene freq list for UK, US, Nepal
+names(joined_gene_freq_list) <- c("UK", "US", "Nepal")
+
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+for (country in names(joined_ggCaller_list)) {
+  geneSum <- apply(joined_ggCaller_list_UKUSNepal[[country]][-1,-1],1, sum_as_int)
+  names(geneSum) <- joined_ggCaller_list_UKUSNepal[[country]][-1,1]
+  joined_gene_freq_list[[country]] <- geneSum / (ncol(joined_ggCaller_list_UKUSNepal[[country]]) - 1)
+}
+```
+
+```{r}
+# plot to compare the gene frequencies btw UK, US, and Nepal
+plot(joined_gene_freq_list[["UK"]], joined_gene_freq_list[["US"]])
+plot(joined_gene_freq_list[["UK"]], joined_gene_freq_list[["Nepal"]])
+plot(joined_gene_freq_list[["Nepal"]], joined_gene_freq_list[["US"]])
+```
+
+```{r}
+# compare delta rankings
+
+Nepal_delta_ranking <- readRDS("Nepal_delta_ranking.rds")
+UK_delta_ranking <- readRDS("UK_delta_ranking.rds")
+US_delta_ranking <- readRDS("ggC_delta_ranking.rds")
+
+length(Nepal_delta_ranking) # 2484
+length(UK_delta_ranking) # 2048
+length(US_delta_ranking) # 2035
+
+intermed_genes_UKUSNepal <- intersect(intersect(names(Nepal_delta_ranking), names(UK_delta_ranking)), names(US_delta_ranking))
+# 1536 shared intermed freq genes
+
+US_delta_data <- readRDS("ggC_delta_data2.rds")
+UK_delta_data <- readRDS("UK_delta_data.rds")
+Nepal_delta_data <- readRDS("Nepal_delta_data.rds")
+
+plot(Nepal_delta_data[intermed_genes_UKUSNepal], US_delta_data[intermed_genes_UKUSNepal], ylim = c(0, 0.02), xlim = c(0, 0.02))
+plot(Nepal_delta_data[intermed_genes_UKUSNepal], UK_delta_data[intermed_genes_UKUSNepal], ylim = c(0, 0.02), xlim = c(0, 0.02))
+plot(UK_delta_data[intermed_genes_UKUSNepal], US_delta_data[intermed_genes_UKUSNepal], ylim = c(0, 0.02), xlim = c(0, 0.02))
+plot(UK_delta_ranking[intermed_genes_UKUSNepal], US_delta_ranking[intermed_genes_UKUSNepal])
+```
+

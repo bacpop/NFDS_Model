@@ -1,0 +1,642 @@
+---
+title: "Navajo Data Processing"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+path_to_data <- "~/Documents/PhD_Project/Data/"
+```
+
+# read in meta data (esp. serotype, sequencing year)
+```{r}
+library(readxl)
+Navajo_meta_data <- read_excel(paste(path_to_data, "StrepPneumo_Navajo/metadata.xlsx", sep = ""))
+# replace year by winter categorization (second half of year gets assigned to the next year)
+#Navajo_time_points <- sort(unique(Navajo_meta_data$Year))
+# I am pretty sure that the four time points of BEAST that are assigned to 2002 are incorrect
+# also in the original publication (https://journals.plos.org/plospathogens/article?id=10.1371/journal.ppat.1006966) are no sequences from 2002
+# So I will correct this.
+Navajo_meta_data$BEASTdate[which(Navajo_meta_data$BEASTdate == 2002.0)] <- 2001.0 
+Navajo_meta_data$BEASTdate[which(Navajo_meta_data$BEASTdate == 2002.1)] <- 2001.1 
+Navajo_meta_data$BEASTdate[which(Navajo_meta_data$BEASTdate == 2002.2)] <- 2001.2 
+Navajo_meta_data$BEASTdate[which(Navajo_meta_data$BEASTdate == 2002.3)] <- 2001.3 
+Navajo_time_points <- sort(unique(round(Navajo_meta_data$BEASTdate)))
+
+#split_beastYear <- function(beastYear){
+#  month_vec <- rep("0", length(beastYear))
+#  for (i in 1:length(beastYear)) {
+#    month_vec[i] <- strsplit(as.character(beastYear[i]), split = ".", fixed = TRUE)[[1]][2]
+#    month_vec[i] <- if(is.na(month_vec[i])){"0"} else{month_vec[i]}
+#  }
+#  month_vec
+#}
+
+#Navajo_winters <- Navajo_meta_data$Year
+
+#Navajo_SeqYear_dict <- Navajo_meta_data$Year
+Navajo_SeqYear_dict <- round(Navajo_meta_data$BEASTdate)
+names(Navajo_SeqYear_dict) <- Navajo_meta_data$Accession
+
+Navajo_meta_IDtoInd <- 1:nrow(Navajo_meta_data)
+names(Navajo_meta_IDtoInd) <- Navajo_meta_data$Accession
+```
+
+
+```{r}
+Navajo_time_seq <- Navajo_time_points[1]:Navajo_time_points[length(Navajo_time_points)]
+seq_no_per_year <- rep(0, length(Navajo_time_seq))
+names(seq_no_per_year) <- Navajo_time_seq
+for (i in 1:length(Navajo_time_seq)) {
+  #seq_no_per_year[i] <- length(which(Navajo_meta_data$Year==Navajo_time_seq[i]))
+  seq_no_per_year[i] <- length(which(round(Navajo_meta_data$BEASTdate)==Navajo_time_seq[i]))
+}
+barplot(seq_no_per_year, xlab = "Sequencing Years", ylab = "Sequence Counts", col = rainbow(15), ylim = c(0, 315))
+# PCV7 was introduced in 2000 (but Azarian et al argue that it did not have an effect in 2000 and 2001) - I think I would say introduction 2001
+# PCV13 was introduced in 2010
+# according to Azarian et al. (2018) https://doi.org/10.1371/journal.ppat.1006966
+# 
+Navajo_time_points_selected <- Navajo_time_seq
+Navajo_time_points_preVac1 <- Navajo_time_seq[1:4]
+Navajo_time_points_preVac2 <- Navajo_time_seq[1:13]
+```
+
+
+# read in PopPUNK results
+```{r}
+#PP_all <- read.csv(paste(path_to_data, "StrepPneumo_NavajoNew/PopPUNK/poppunk_clusters_clusters.csv",sep = ""))
+PP_all <- read.csv(paste(path_to_data, "StrepPneumo_NavajoNew/poppunk_clusters_GPSCs_v9/poppunk_clusters_external_clusters.csv",sep = ""))
+colnames(PP_all) <- c("Taxon", "Cluster")
+
+PP_taxon_ind_dict <- 1:nrow(PP_all)
+names(PP_taxon_ind_dict) <- PP_all$Taxon
+
+PP_is_Navajo_dict <- rep(FALSE,nrow(PP_all))
+names(PP_is_Navajo_dict) <- PP_all$Taxon
+
+for (i in 1:length(Navajo_meta_data$Accession)) {
+  PP_is_Navajo_dict[Navajo_meta_data$Accession[i]] <- TRUE
+}
+Navajo_PP <- PP_all[PP_is_Navajo_dict,]
+Navajo_PP <- Navajo_PP[which(!(is.na(Navajo_PP$Cluster))),]
+no_Navajo_PP <- length(unique(Navajo_PP$Cluster)) 
+# 68 GPSCs
+# 73 clusters (old)
+
+Navajo_seq_clusters_dict <- Navajo_PP$Cluster
+names(Navajo_seq_clusters_dict) <- Navajo_PP$Taxon
+```
+
+# filter meta data by PopPUNK sequences (PopPUNK qc removed some of the sequences)
+```{r}
+Navajo_meta_dataPP <- as.data.frame(Navajo_meta_data[sort(Navajo_meta_IDtoInd[Navajo_PP$Taxon]),c("Accession", "BEASTdate", "Sero")])
+
+Navajo_meta_dataPP$BEASTdate <- round(Navajo_meta_dataPP$BEASTdate)
+colnames(Navajo_meta_dataPP) <- c("Accession", "Year", "Sero")
+rownames(Navajo_meta_dataPP) <- 1:nrow(Navajo_meta_dataPP)
+
+Navajo_meta_IDtoIndPP <- 1:nrow(Navajo_meta_dataPP)
+names(Navajo_meta_IDtoIndPP) <- Navajo_meta_dataPP$Lane_id
+```
+
+```{r}
+saveRDS(Navajo_meta_dataPP, "Navajo_meta_data.rds")
+Navajo_meta_data <- readRDS("Navajo_meta_data.rds")
+```
+
+```{r}
+# Add Serotype Information
+Navajo_Serotype_dict <- Navajo_meta_data$Sero
+names(Navajo_Serotype_dict) <- Navajo_meta_data$Accession
+
+Navajo_PP$Serotype <- Navajo_Serotype_dict[Navajo_PP$Taxon]
+
+# Add VT information
+PCV7_VTs_1 <- rep("NVT",length(unique(Navajo_meta_data$Sero)))
+names(PCV7_VTs_1) <- unique(Navajo_meta_data$Sero)
+PCV7_VTs_1[c("4", "6A","6B", "9V", "14", "18C", "19F", "23F")] <- "VT"
+
+#Navajo_VT_PCV7_dict <- Navajo_meta_data$PCV7.actual
+#names(Navajo_VT_PCV7_dict) <- Navajo_meta_data$Accession
+
+#Navajo_PP$VT <- Navajo_VT_PCV7_dict[Navajo_PP$Taxon]
+Navajo_PP$VT <- PCV7_VTs_1[Navajo_Serotype_dict[Navajo_PP$Taxon]]
+
+# Add PCV13 info
+PCV13_VTs_1 <- rep("NVT",length(unique(Navajo_meta_data$Sero)))
+names(PCV13_VTs_1) <- unique(Navajo_meta_data$Sero)
+PCV13_VTs_1[c("1", "3", "4","5","6A","6B", "7F", "9V", "14", "18C", "19A", "19F", "23F")] <- "VT"
+
+Navajo_PP$VT_PCV13 <- PCV13_VTs_1[Navajo_Serotype_dict[Navajo_PP$Taxon]]
+
+# Add sequencing year info
+Navajo_Year_dict <- Navajo_meta_data$Year
+names(Navajo_Year_dict) <- Navajo_meta_data$Accession
+
+Navajo_PP$SeqYear <- Navajo_Year_dict[Navajo_PP$Taxon]
+
+saveRDS(Navajo_PP,"Navajo_PP.rds")
+```
+
+
+# read in ggCaller results
+```{r}
+Navajo_ggCaller <- read.csv(paste(path_to_data, "StrepPneumo_NavajoNew/ggCaller_output/gene_presence_absence.csv", sep = ""), header=FALSE)
+```
+
+```{r}
+# converting the gene presence absence matrix into a boolean df (0 = gene not present, 1 = gene present)
+convert_to_bool <- function(x){
+  if (x=="") 0 else 1
+}
+
+Navajo_ggCaller_bool <- Navajo_ggCaller[,c(-2,-3)]
+Navajo_ggCaller_bool[-1,-1] <- apply(Navajo_ggCaller_bool[-1,-1],c(1,2), convert_to_bool)
+#Navajo_ggCaller_bool[1,-1] <- unlist(strsplit(Navajo_ggCaller_bool[1,-1],".contigs_velvet"))
+
+Navajo_ggCaller_bool[1,-1] <- sapply(Navajo_ggCaller_bool[1,-1], strsplit, split = ".contigs_velvet") # remove contigs appendix
+colnames(Navajo_ggCaller_bool) <- Navajo_ggCaller_bool[1,]
+
+PP_taxon_in_ggC <- rep(FALSE, length(Navajo_PP$Taxon))
+names(PP_taxon_in_ggC) <- Navajo_PP$Taxon
+
+#> length(PP_taxon_in_ggC)
+#[1] 937
+
+for (i in 2:ncol(Navajo_ggCaller_bool)) {
+  PP_taxon_in_ggC[colnames(Navajo_ggCaller_bool)[i]] <- TRUE
+}
+
+#> length(PP_taxon_in_ggC)
+#[1] 951
+
+# why??
+
+# hm, maybe filter by accession numbers that I actually had?
+# running PP in that --include_database mode really seems to risk that I include stuff that wasn't actually in Navajo...
+
+ggC_has_meta <- rep(FALSE, (ncol(Navajo_ggCaller_bool)-1))
+names(ggC_has_meta) <- colnames(Navajo_ggCaller_bool)[-1]
+for (i in 1:nrow(Navajo_meta_data)) {
+  ggC_has_meta[Navajo_meta_data$Accession[i]] <- TRUE
+}
+
+# there are 14 sequences in ggCaller for which I do not have any meta data. why?? 
+# Well, okay, I only have metadate for 937 sequences. So I am only going to consider those.
+
+meta_has_ggC <- rep(FALSE, nrow(Navajo_meta_data))
+names(meta_has_ggC) <- Navajo_meta_data$Accession
+for (i in 2:ncol(Navajo_ggCaller_bool)) {
+  meta_has_ggC[colnames(Navajo_ggCaller_bool)[i]] <- TRUE
+}
+
+which(!meta_has_ggC) # no more left. All sequences that have meta data are in ggC
+
+which(!ggC_has_meta) # there are still some sequences for which I don't have meta data. but well.
+# filter ggCaller results by the ones 
+Navajo_ggCallerPP_bool <- data.frame(matrix(0, nrow = nrow(Navajo_ggCaller_bool), ncol = length(Navajo_PP$Taxon)+1))
+Navajo_ggCallerPP_bool[-1,-1] <- Navajo_ggCaller_bool[-1,(which(ggC_has_meta))]
+colnames(Navajo_ggCallerPP_bool) <- c("Gene",Navajo_PP$Taxon)
+Navajo_ggCallerPP_bool[1,] <- c("Gene",Navajo_PP$Taxon)
+Navajo_ggCallerPP_bool[,1] <- Navajo_ggCaller_bool[,1]
+```
+
+```{r}
+saveRDS(Navajo_ggCallerPP_bool, "Navajo_ggCaller_bool.rds")
+```
+
+# split ggCaller gene presence absence matrix into different time points
+```{r}
+Navajo_ggCaller_byYear <- vector(mode = "list", length = length(Navajo_time_points_selected))
+
+for (i in 1:length(Navajo_time_points_selected)) {
+  Navajo_ggCaller_year <- data.frame(matrix(0, nrow = nrow(Navajo_ggCallerPP_bool), ncol = length(which(Navajo_meta_data$Year==Navajo_time_points_selected[i]))+1)) # initialize data frame
+  Navajo_ggCaller_year[1,-1] <- Navajo_ggCallerPP_bool[1,c(FALSE,Navajo_SeqYear_dict[unlist(Navajo_ggCallerPP_bool[1,-1])]==Navajo_time_points_selected[i])] # fill in first row (seq names)
+  Navajo_ggCaller_year[-1,1] <- Navajo_ggCallerPP_bool[-1,1] # fill in first column (gene cluster names)
+  Navajo_ggCaller_year[-1,-1] <- Navajo_ggCallerPP_bool[-1,c(FALSE,Navajo_SeqYear_dict[unlist(Navajo_ggCallerPP_bool[1,-1])]==Navajo_time_points_selected[i])] # fill in presence absence information
+  Navajo_ggCaller_byYear[[i]] <- Navajo_ggCaller_year
+}
+```
+
+# find intermediate frequency genes
+# I will combine all pre-vaccine data points for this
+```{r}
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+Navajo_gene_freq_preVac <- rep(0, nrow(Navajo_ggCaller_byYear[[1]])-1)
+preVac_datapoints <- 0
+for (i in 1:length(Navajo_time_points_preVac1)) {
+  Navajo_gene_freq_preVac <- Navajo_gene_freq_preVac + apply(Navajo_ggCaller_byYear[[i]][-1,-1],1, sum_as_int)
+  preVac_datapoints <- preVac_datapoints + length(Navajo_ggCaller_byYear[[i]][1,-1])
+}
+Navajo_gene_freq_preVac <- Navajo_gene_freq_preVac / preVac_datapoints
+
+Navajo_gene_filter <- as.integer(Navajo_gene_freq_preVac<=0.95 & Navajo_gene_freq_preVac>=0.05)
+# 1831
+# 1689 intermediate-frequency genes (of 5713)
+```
+
+# create intermediate frequency dataframes
+```{r}
+Navajo_ggCaller_byYear_intermed <- vector(mode = "list", length = length(Navajo_time_points_selected))
+
+for (i in 1:length(Navajo_time_points_selected)) {
+  Navajo_ggCaller_year <- data.frame(matrix(0, nrow = sum(Navajo_gene_filter)+1,ncol = length(which(Navajo_meta_data$Year==Navajo_time_points_selected[i]))+1))
+  if(ncol(Navajo_ggCaller_byYear[[i]])>1){
+    Navajo_ggCaller_year <-  Navajo_ggCaller_byYear[[i]][c(1,which(Navajo_gene_filter==1)+1),]
+  }
+  else{
+    Navajo_ggCaller_year <-  data.frame(matrix(Navajo_ggCaller_byYear[[6]][c(1,which(Navajo_gene_filter==1)+1),1], nrow = sum(Navajo_gene_filter)+1,ncol = 1))
+  }
+  Navajo_ggCaller_byYear_intermed[[i]] <- Navajo_ggCaller_year 
+}
+
+Navajo_ggCaller_intermed <- data.frame(matrix(0, nrow = sum(Navajo_gene_filter)+1,ncol = ncol(Navajo_ggCallerPP_bool)))
+Navajo_ggCaller_intermed <-  Navajo_ggCallerPP_bool[c(1,which(Navajo_gene_filter==1)+1),]
+
+# create pre_Vac intermed frequency data frame
+Navajo_ggCaller_intermed_preVac <- data.frame(matrix(0, nrow = sum(Navajo_gene_filter)+1,ncol = (sum(unlist(lapply(Navajo_ggCaller_byYear_intermed,ncol))[1:length(Navajo_time_points_preVac1)]) - length(Navajo_time_points_preVac1) + 1)))
+col_count <- 2
+for (i in 1:length(Navajo_time_points_preVac1)) {
+  if(ncol(Navajo_ggCaller_byYear_intermed[[i]])>1){
+    Navajo_ggCaller_intermed_preVac[,(col_count:(col_count + ncol(Navajo_ggCaller_byYear_intermed[[i]])-1))] <- Navajo_ggCaller_byYear_intermed[[i]][,-1]
+    col_count <- col_count + ncol(Navajo_ggCaller_byYear_intermed[[i]])
+  }
+}
+Navajo_ggCaller_intermed_preVac[,1] <-  Navajo_ggCaller_byYear_intermed[[1]][,1]
+
+saveRDS(Navajo_ggCaller_intermed, "Navajo_ggCaller_intermed.rds")
+```
+
+# create consensus gene presence absence matrices for the clusters
+```{r}
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+# overall
+Navajo_ggCaller_intermed_consensus <- data.frame(matrix(0, nrow = sum(Navajo_gene_filter)+1, ncol = no_Navajo_PP+1))
+Navajo_ggCaller_intermed_consensus[1,-1] <- paste("SeqCl_",unique(Navajo_PP$Cluster),sep = "")
+
+for (i in unique(Navajo_PP$Cluster)) {
+  Navajo_ggCaller_intermed_consensus[-1,(which(unique(Navajo_PP$Cluster) == i))+1] <- apply(as.matrix(Navajo_ggCaller_intermed[-1,c(FALSE,Navajo_seq_clusters_dict[unlist(Navajo_ggCaller_intermed[1,-1])]==i)]), 1, cons_genomes)
+
+}
+Navajo_ggCaller_intermed_consensus[,1] <- Navajo_ggCaller_intermed[,1]
+
+#by year
+Navajo_ggCaller_byYear_intermed_consensus <- vector(mode = "list", length = length(Navajo_time_points_selected))
+
+for (i in 1:length(Navajo_time_points_selected)) {
+  Navajo_ggCaller_year <- data.frame(matrix(0, nrow = sum(Navajo_gene_filter)+1,ncol = no_Navajo_PP+1))
+  Navajo_ggCaller_year[1,-1] <- paste("SeqCl_",unique(Navajo_PP$Cluster),sep = "")
+  for (j in unique(Navajo_PP$Cluster)) {
+    Navajo_ggCaller_year[-1,(which(unique(Navajo_PP$Cluster) == j))+1] <- apply(as.matrix(Navajo_ggCaller_byYear_intermed[[i]][-1,c(FALSE,Navajo_seq_clusters_dict[unlist(Navajo_ggCaller_byYear_intermed[[i]][1,-1])]==j)]), 1, cons_genomes)
+  }
+  Navajo_ggCaller_year[,1] <- Navajo_ggCaller_byYear_intermed[[i]][,1]
+  Navajo_ggCaller_byYear_intermed_consensus[[i]] <- Navajo_ggCaller_year
+}
+
+saveRDS(Navajo_ggCaller_intermed_consensus,"Navajo_ggCaller_intermed_consensus.rds")
+
+# intermed gene name list for mapping ggCaller
+Navajo_ggC_intermed_gene_names <- Navajo_ggCaller_intermed_consensus[-1,1]
+saveRDS(Navajo_ggC_intermed_gene_names, file = "Navajo_ggC_intermed_gene_names.rds")
+```
+
+# Calculate VT/NVT for clusters
+```{r}
+# create dictionary for VTs of the PCV10
+# 1, 4, 5, 6b, 7f, 9V, 14, 18c, 19f and 23f serotypes (source: NCBI)
+# PCV13: (1, 3, 4, 5, 6A and 6B, 7F, 9V, 14, 19A, and 19F, 18C, and 23F) (source: https://www.ncbi.nlm.nih.gov/books/NBK507794/)
+#PCV7: 4, 6B, 9V, 14, 18C, 19F and 23F. (source: https://journals.plos.org/plospathogens/article?id=10.1371/journal.ppat.1006966#sec018)
+PCV13_VTs <- rep(0,length(unique(Navajo_meta_data$Sero)))
+names(PCV13_VTs) <- unique(Navajo_meta_data$Sero)
+PCV13_VTs[c("1", "3", "4","5","6A","6B", "7F", "9V", "14", "18C", "19A", "19F", "23F")] <- 1
+
+#PCV7_VTs <- rep(0,length(unique(Navajo_meta_data$Sero)))
+#names(PCV7_VTs) <- unique(Navajo_meta_data$Sero)
+#PCV7_VTs[c("4","6B", "9V", "14", "18C", "19F", "23F")] <- 1
+
+# add 6A to PCV7 because there is strong cross-immunity btw PVC7 and 6A (4.Croucher, N. J. et al. Population genomics of post-vaccine changes in pneumococcal epidemiology. Nat. Genet. 45, 656–663 (2013).)
+PCV7_VTs <- rep(0,length(unique(Navajo_meta_data$Sero)))
+names(PCV7_VTs) <- unique(Navajo_meta_data$Sero)
+PCV7_VTs[c("4", "6A","6B", "9V", "14", "18C", "19F", "23F")] <- 1
+
+Navajo_SeqToSero_dict <- Navajo_meta_data$Sero
+names(Navajo_SeqToSero_dict) <- Navajo_meta_data$Accession
+
+# calculate Vaccine Type consensus for clusters
+Navajo_VT <- rep(0, no_Navajo_PP)
+
+#for (i in unique(Navajo_PP$Cluster)){
+#  Navajo_VT[(which(unique(Navajo_PP$Cluster) == i))] <- ceiling(median(as.integer(PCV10_VTs[Navajo_SeqToSero_dict[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]]])))
+#}
+# I apparently did this for PCV10. That doesn't make much sense
+for (i in unique(Navajo_PP$Cluster)){
+  Navajo_VT[(which(unique(Navajo_PP$Cluster) == i))] <- ceiling(median(as.integer(PCV7_VTs[Navajo_SeqToSero_dict[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]]])))
+}
+
+Navajo_VT2 <- rep(0, no_Navajo_PP)
+for (i in unique(Navajo_PP$Cluster)){
+  Navajo_VT2[(which(unique(Navajo_PP$Cluster) == i))] <- ceiling(median(as.integer(PCV13_VTs[Navajo_SeqToSero_dict[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]]])))
+}
+# 1 means VT
+# 0 means NVT
+# if cluster is 50/50 it will count as VT
+```
+
+```{r}
+#save VTs
+saveRDS(Navajo_VT, file = "Navajo_VT.rds")
+saveRDS(Navajo_VT2, file = "Navajo_VT2.rds")
+```
+
+# calculate cluster frequencies for different years
+```{r}
+Navajo_cluster_freqs <- vector(mode = "list", length = length(Navajo_time_points_selected))
+
+for(j in 1:length(Navajo_time_points_selected)){
+  Navajo_cluster_freqs[[j]] <- rep(NA, no_Navajo_PP)
+  for (i in unique(Navajo_PP$Cluster)){
+    Navajo_cluster_freqs[[j]][which(unique(Navajo_PP$Cluster) == i)] <- length(which(Navajo_meta_data[Navajo_meta_IDtoInd[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]],]$Year==Navajo_time_points_selected[j]))
+  }
+}
+
+for(j in 1:length(Navajo_time_points_selected)){
+  if(sum(Navajo_cluster_freqs[[j]])==0){
+    Navajo_cluster_freqs[[j]] <- rep(NA, no_Navajo_PP)
+  }
+}
+
+#Navajo_cluster_freqs[[6]] <- rep(NA, no_Navajo_PP)
+# 901 data points in total
+Navajo_cluster_freqs_preVac <- rep(0, no_Navajo_PP)
+for (i in 1:length(Navajo_time_points_preVac1)) {
+  Navajo_cluster_freqs_preVac <- Navajo_cluster_freqs_preVac + replace(Navajo_cluster_freqs[[i]],which(is.na(Navajo_cluster_freqs[[i]])),0)
+}
+
+for (i in 1:length(Navajo_time_points_selected)) {
+  file_name <- paste("Navajo_cluster_freqs_", as.character(i),".rds", sep = "")
+  saveRDS(Navajo_cluster_freqs[[i]], file_name)
+}
+
+
+# repeat this but split VTs from NVTs per cluster
+Navajo_VT_cluster_freqs <- vector(mode = "list", length = length(Navajo_time_points_selected))
+Navajo_NVT_cluster_freqs <- vector(mode = "list", length = length(Navajo_time_points_selected))
+for(j in 1:length(Navajo_time_points_selected)){
+  Navajo_VT_cluster_freqs[[j]] <- rep(NA, no_Navajo_PP)
+  Navajo_NVT_cluster_freqs[[j]] <- rep(NA, no_Navajo_PP)
+  for (i in unique(Navajo_PP$Cluster)){
+    Navajo_VT_cluster_freqs[[j]][which(unique(Navajo_PP$Cluster) == i)] <- length(intersect(which(Navajo_meta_data[Navajo_meta_IDtoInd[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]],]$Year==Navajo_time_points_selected[j]),  which(PCV7_VTs[Navajo_meta_data[Navajo_meta_IDtoInd[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]],]$Sero]==1)))
+  Navajo_NVT_cluster_freqs[[j]][which(unique(Navajo_PP$Cluster) == i)] <- length(intersect(which(Navajo_meta_data[Navajo_meta_IDtoInd[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]],]$Year==Navajo_time_points_selected[j]),  which(PCV7_VTs[Navajo_meta_data[Navajo_meta_IDtoInd[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]],]$Sero]==0)))
+  }
+}
+
+for(j in 1:length(Navajo_time_points_selected)){
+  if(sum(Navajo_VT_cluster_freqs[[j]])==0){
+    Navajo_VT_cluster_freqs[[j]] <- rep(NA, no_Navajo_PP)
+  }
+}
+
+for(j in 1:length(Navajo_time_points_selected)){
+  if(sum(Navajo_NVT_cluster_freqs[[j]])==0){
+    Navajo_NVT_cluster_freqs[[j]] <- rep(NA, no_Navajo_PP)
+  }
+}
+
+for (i in 1:length(Navajo_time_points_selected)) {
+  file_name <- paste("Navajo_VT_cluster_freqs_", as.character(i),".rds", sep = "")
+  saveRDS(Navajo_VT_cluster_freqs[[i]], file_name)
+  
+  file_name <- paste("Navajo_NVT_cluster_freqs_", as.character(i),".rds", sep = "")
+  saveRDS(Navajo_NVT_cluster_freqs[[i]], file_name)
+}
+
+
+
+# do the same for Strain x Serotype model
+Navajo_cluster_freqs_sero <- vector(mode = "list", length = length(Navajo_time_points_selected))
+
+for(j in 1:length(Navajo_time_points_selected)){
+  Navajo_cluster_freqs_sero[[j]] <- matrix(NA, ncol =  length(unique(Navajo_PP$Serotype)), nrow = no_Navajo_PP)
+  for (i in unique(Navajo_PP$Cluster)){
+    for (k in unique(Navajo_PP$Serotype)) {
+      Navajo_cluster_freqs_sero[[j]][which(unique(Navajo_PP$Cluster) == i),which(unique(Navajo_PP$Serotype) == k)] <- length(which(Navajo_meta_data[Navajo_meta_IDtoInd[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]],][Navajo_meta_data[Navajo_meta_IDtoInd[Navajo_PP[Navajo_PP$Cluster == i,"Taxon"]],]$Sero==k,]$Year==Navajo_time_points_selected[j]))
+    }
+  }
+}
+for(j in 1:length(Navajo_time_points_selected)){
+  if(sum(Navajo_cluster_freqs_sero[[j]])==0){
+    Navajo_cluster_freqs_sero[[j]] <- matrix(NA, ncol =  length(unique(Navajo_PP$Serotype)), nrow = no_Navajo_PP)
+  }
+}
+
+for (i in 1:length(Navajo_time_points_selected)) {
+  file_name <- paste("Navajo_cluster_freqs_sero_", as.character(i),".rds", sep = "")
+  saveRDS(Navajo_cluster_freqs_sero[[i]], file_name)
+}
+
+
+```
+
+#create initial population
+```{r}
+### create initial population that is based on the first time point data set
+# sample from it with an Poisson process
+expand_factor <- 15000 / sum(Navajo_cluster_freqs_preVac)
+exp_noise <- 10
+Navajo_model_start_pop <- (sapply((Navajo_cluster_freqs_preVac + rexp(n = length(Navajo_cluster_freqs_preVac), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(Navajo_cluster_freqs_preVac/sum(Navajo_cluster_freqs_preVac))
+points(Navajo_model_start_pop/sum(Navajo_model_start_pop), col = "red")
+
+expand_factor <- 15000 / sum(Navajo_cluster_freqs[[1]])
+exp_noise <- 10
+Navajo_model_start_pop <- (sapply((Navajo_cluster_freqs[[1]] + rexp(n = length(Navajo_cluster_freqs[[1]]), rate = exp_noise)) * expand_factor, rpois, n=1))
+
+# visual check for the "sampling"
+plot(Navajo_cluster_freqs[[1]]/sum(Navajo_cluster_freqs[[1]]))
+points(Navajo_model_start_pop/sum(Navajo_model_start_pop), col = "red")
+
+# I will only use the first time point for initialising the population. But I need to go back and change that later?
+
+saveRDS(Navajo_model_start_pop, "Navajo_model_start_pop.rds")
+```
+
+
+# calculate delta ranking
+# I will do last data point - all pre_vac data points combined
+```{r}
+# For strong and weak selection in the model, I need to calculate the beta statistics.
+
+# calculate gene frequencies first, separate for three time points
+Navajo_gene_freq_preVac <- apply(Navajo_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
+Navajo_gene_freq_postVac <- apply(Navajo_ggCaller_byYear_intermed[[length(Navajo_ggCaller_byYear_intermed)]][-1,-1], 1, sum_as_int) + apply(Navajo_ggCaller_byYear_intermed[[length(Navajo_ggCaller_byYear_intermed)-1]][-1,-1], 1, sum_as_int) + apply(Navajo_ggCaller_byYear_intermed[[length(Navajo_ggCaller_byYear_intermed)-2]][-1,-1], 1, sum_as_int)
+
+
+# first, calculate pre/peri and post vacc frequencies of genes:
+Navajo_gene_freq_preVac_rel <- Navajo_gene_freq_preVac/sum(Navajo_gene_freq_preVac)
+Navajo_gene_freq_postVac_rel <- Navajo_gene_freq_postVac/sum(Navajo_gene_freq_postVac)
+
+# calculate delta statistic (refer to Corander et al. for more info)
+Navajo_delta_data <- (Navajo_gene_freq_postVac_rel - Navajo_gene_freq_preVac_rel) ^ 2 / (1 - Navajo_gene_freq_preVac_rel * (1 - Navajo_gene_freq_preVac_rel))
+Navajo_delta_ranking <- rank(Navajo_delta_data)
+
+saveRDS(Navajo_delta_ranking,"Navajo_delta_ranking.rds")
+```
+
+### Data processing for PPxSero model
+```{r}
+PopPUNK_clusters <- readRDS("Navajo_PP.rds")
+Navajo_model_start_pop <- readRDS("Navajo_model_start_pop.rds")
+mass_clusters <- length(unique(PopPUNK_clusters$Cluster))
+Navajo_avg_cluster_freq <- rep(1/mass_clusters, mass_clusters)
+
+
+PPxSero_matrix <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+# sort(unique(PopPUNK_clusters$Serotype))
+# [1] "10A"   "11A"   "14"    "15A"   "15B/C" "15F"   "16F"   "17F"   "18C"   "19A"   "19F"   "21"    "22F"   "23A"
+#[15] "23B"   "23F"   "3"     "31"    "33F"   "34"    "35B"   "35F"   "37"    "38"    "6A"    "6B"    "6C"    "7C" 
+#[29] "7F"    "9N"    "9V"    "NT"
+
+SerotypeToIndex_dict <- 1:length(unique(PopPUNK_clusters$Serotype))
+names(SerotypeToIndex_dict) <- (unique(PopPUNK_clusters$Serotype))
+
+IndexToSerotype_dict <- (unique(PopPUNK_clusters$Serotype))
+names(IndexToSerotype_dict) <- 1:length(unique(PopPUNK_clusters$Serotype))
+
+PPclustToIndex_dict <- 1:length(unique(PopPUNK_clusters$Cluster))
+names(PPclustToIndex_dict) <- (unique(PopPUNK_clusters$Cluster))
+
+for (i in 1:nrow(PopPUNK_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(PopPUNK_clusters$Cluster[i])],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- 1
+}
+# matrix shows information whether PP and serotype co-occur in the dataset (1=TRUE)
+# this can be used as the migration matrix:
+#PPxSero_matrix_prob <- PPxSero_matrix / sum(PPxSero_matrix)
+#PPxSero_matrix_prob <- matrix(sapply(PPxSero_matrix_prob,as.double), nrow = nrow(PPxSero_matrix), ncol = ncol(PPxSero_matrix))
+#saveRDS(PPxSero_matrix_prob, "Navajo_PPsero_mig.rds")
+
+
+PPxSero_matrix_prob2 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:length(unique(PopPUNK_clusters$Cluster))) {
+  PPxSero_matrix_prob2[i,] <- ((PPxSero_matrix[i,] * Navajo_avg_cluster_freq[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPxSero_matrix_prob2, "Navajo_PPsero_mig.rds")
+# new migration matrix that is closer to original one
+
+for (i in 1:nrow(PopPUNK_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(PopPUNK_clusters$Cluster[i])],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- 1
+}
+# matrix shows information whether PP and serotype co-occur in the dataset (1=TRUE)
+# this can be used as the migration matrix:
+PPxSero_matrix_prob <- PPxSero_matrix / sum(PPxSero_matrix)
+PPxSero_matrix_prob <- matrix(sapply(PPxSero_matrix_prob,as.double), nrow = nrow(PPxSero_matrix), ncol = ncol(PPxSero_matrix))
+saveRDS(PPxSero_matrix_prob, "Navajo_PPsero_mig.rds")
+
+# start population:
+PPsero_startpop <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+
+for (i in which(PopPUNK_clusters$SeqYear=="1998")) {
+  PPsero_startpop[PPclustToIndex_dict[PopPUNK_clusters$Cluster[i]],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- PPsero_startpop[PPclustToIndex_dict[PopPUNK_clusters$Cluster[i]],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] + 1
+}
+#PPsero_startpop <- PPsero_startpop * 15000 / sum(PPsero_startpop)
+
+
+PP_expand_factor <- 15000 / sum(PPsero_startpop)
+exp_noise <- 10
+#PPsero_startpop_corr <- matrix(sapply((PPsero_startpop + matrix(rexp(n = ncol(PPsero_startpop) * nrow(PPsero_startpop), rate = exp_noise), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))) * PP_expand_factor, rpois, n=1), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#PPsero_startpop_corr <- matrix(sapply(PPsero_startpop_corr,as.double), nrow= nrow(PPsero_startpop), ncol = ncol(PPsero_startpop))
+#saveRDS(PPsero_startpop_corr, "PPsero_startpop.rds")
+
+# this lead to a start population that is way too evenly distributed across the different clusters
+# instead, I could maybe use the existing PP_model_start_pop and distribute it to the different serotypes?
+PPsero_startpop2 <-  matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:length(unique(PopPUNK_clusters$Cluster))) {
+  PPsero_startpop2[i,] <- round((PPxSero_matrix[i,] * Navajo_model_start_pop[i])/sum(PPxSero_matrix[i,]))
+}
+saveRDS(PPsero_startpop2, "Navajo_PPsero_startpop.rds")
+# this is very close to the original PP_model_start_pop
+# maybe I am giving out too much information because the serotype distribution is exactly the real one?
+plot(rowSums(Navajo_cluster_freqs_sero[[1]])/sum(rowSums(Navajo_cluster_freqs_sero[[1]])))
+points(rowSums(PPsero_startpop2)/sum(rowSums(PPsero_startpop2)), col = "red")
+
+plot(colSums(Navajo_cluster_freqs_sero[[1]])/sum(colSums(Navajo_cluster_freqs_sero[[1]])))
+points(colSums(PPsero_startpop2)/sum(colSums(PPsero_startpop2)), col = "red")
+# the serotype distribution is quite far off
+
+# same as PPsero_startpop6 for Mass
+PPsero_startpop3 <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_expand_factor <- 15000 / sum(Navajo_cluster_freqs_sero[[1]])
+exp_noise <- 1000
+for (i in 1:nrow(PPsero_startpop3)) {
+    PPsero_startpop3[i,] <- (sapply((Navajo_cluster_freqs_sero[[1]][i,] + rexp(n = length(Navajo_cluster_freqs_sero[[1]][i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[i,])
+  #PPsero_startpop5[i,] <- PP_mass_cluster_freq_1_sero[i,] + ceiling(PPxSero_matrix_prob[i,])
+}
+saveRDS(PPsero_startpop3, "Navajo_PPsero_startpop.rds")
+
+plot(rowSums(Navajo_cluster_freqs_sero[[1]])/sum(rowSums(Navajo_cluster_freqs_sero[[1]])))
+points(rowSums(PPsero_startpop3)/sum(rowSums(PPsero_startpop3)), col = "red")
+
+plot(colSums(Navajo_cluster_freqs_sero[[1]])/sum(colSums(Navajo_cluster_freqs_sero[[1]])))
+points(colSums(PPsero_startpop3)/sum(colSums(PPsero_startpop3)), col = "red")
+
+
+# serotype VT vector
+#SeroVT <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+#for (i in 1:nrow(PopPUNK_clusters)) {
+#  SeroVT[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
+#}
+#saveRDS(SeroVT, "Navajo_SeroVT.rds")
+
+# serotype VT vector
+SeroVT <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:nrow(PopPUNK_clusters)) {
+  SeroVT[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
+}
+saveRDS(SeroVT, "Navajo_SeroVT.rds")
+
+# serotype VT vector PCV13
+SeroVT_PCV13 <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:nrow(PopPUNK_clusters)) {
+  SeroVT_PCV13[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT_PCV13[i]=="VT")
+}
+saveRDS(SeroVT_PCV13, "Navajo_SeroVT_PCV13.rds")
+```
+
+```{r}
+# Create PP clusters, split by serotype
+#calculate the frequency of the gene clusters and year and serotype
+Navajo_mass_cluster_freq_1_sero <- matrix(0,nrow = mass_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+
+for (i in 1:mass_clusters){
+  for (k in unique(PopPUNK_clusters$Serotype)){
+  Navajo_mass_cluster_freq_1_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==sort(unique(PopPUNK_clusters$SeqYear))[1]))
+  }
+}
+
+#save sequence cluster frequencies
+saveRDS(Navajo_mass_cluster_freq_1_sero, file = "Navajo_mass_cluster_freq_1_sero.rds")
+
+PPxSero_matrix_prob2 <- readRDS("Navajo_PPsero_mig.rds")
+
+Navajo_PPsero_startpop3 <- matrix(0,nrow = mass_clusters, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_expand_factor <- 15000 / sum(Navajo_mass_cluster_freq_1_sero)
+exp_noise <- 1000
+for (i in 1:nrow(Navajo_PPsero_startpop3)) {
+    Navajo_PPsero_startpop3[i,] <- (sapply((Navajo_mass_cluster_freq_1_sero[i,] + rexp(n = length(Navajo_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[i,])
+}
+plot(colSums(Navajo_mass_cluster_freq_1_sero)/sum(colSums(Navajo_mass_cluster_freq_1_sero)))
+points(colSums(Navajo_PPsero_startpop3)/sum(colSums(Navajo_PPsero_startpop3)), col = "red")
+
+plot(rowSums(Navajo_mass_cluster_freq_1_sero)/sum((Navajo_mass_cluster_freq_1_sero)))
+points(rowSums(Navajo_PPsero_startpop3)/sum(rowSums(Navajo_PPsero_startpop3)), col = "red")
+
+saveRDS(Navajo_PPsero_startpop3, file = "Navajo_PPsero_startpop3.rds")
+```
