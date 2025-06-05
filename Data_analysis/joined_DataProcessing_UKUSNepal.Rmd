@@ -58,7 +58,45 @@ names(Nepal_SeqYear_dict) <- Nepal_meta_data_gps_joined$Lane_id
 
 Nepal_meta_IDtoInd <- 1:nrow(Nepal_meta_data_gps_joined)
 names(Nepal_meta_IDtoInd) <- Nepal_meta_data_gps_joined$Lane_id
+
+
+# find out which Nepal genomes are from carriage
+Nepal_carriage <- c(Nepal_meta_data_gps1$Lane_id[which(Nepal_meta_data_gps1$Clinical_manifestation == "CARRIAGE")], Nepal_meta_data_gps2$Lane_id[intersect(which(Nepal_meta_data_gps2$Study_name == "COMMUNITY CARRIAGE"), which(Nepal_meta_data_gps2$Lane_id != "No genome data available"))])
+write(Nepal_carriage, file = "../../Nepal_carriage.txt")
+write(Nepal_meta_data_gps1$Lane_id[which(Nepal_meta_data_gps1$Clinical_manifestation == "CARRIAGE")], file = "../../Nepal_carriage_gps1.txt")
+write(Nepal_meta_data_gps2$Lane_id[intersect(which(Nepal_meta_data_gps2$Study_name == "COMMUNITY CARRIAGE"), which(Nepal_meta_data_gps2$Lane_id != "No genome data available"))], file = "../../Nepal_carriage_gps2.txt")
 ```
+
+```{r}
+# carriage month-year plot
+Nepal_carriage_year_dict <- c(Nepal_meta_data_gps1$Year[which(Nepal_meta_data_gps1$Clinical_manifestation == "CARRIAGE")], Nepal_meta_data_gps2$Year[intersect(which(Nepal_meta_data_gps2$Study_name == "COMMUNITY CARRIAGE"), which(Nepal_meta_data_gps2$Lane_id != "No genome data available"))])
+names(Nepal_carriage_year_dict) <- c(Nepal_meta_data_gps1$Lane_id[which(Nepal_meta_data_gps1$Clinical_manifestation == "CARRIAGE")], Nepal_meta_data_gps2$Lane_id[intersect(which(Nepal_meta_data_gps2$Study_name == "COMMUNITY CARRIAGE"), which(Nepal_meta_data_gps2$Lane_id != "No genome data available"))])
+
+month_to_no <- 1:12
+names(month_to_no) <- c("JAN","FEB","MAR","APR", "MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC")
+
+Nepal_carriage_month_dict <- month_to_no[c(Nepal_meta_data_gps1$Month[which(Nepal_meta_data_gps1$Clinical_manifestation == "CARRIAGE")], Nepal_meta_data_gps2$Month[intersect(which(Nepal_meta_data_gps2$Study_name == "COMMUNITY CARRIAGE"), which(Nepal_meta_data_gps2$Lane_id != "No genome data available"))])]
+names(Nepal_carriage_month_dict) <- c(Nepal_meta_data_gps1$Lane_id[which(Nepal_meta_data_gps1$Clinical_manifestation == "CARRIAGE")], Nepal_meta_data_gps2$Lane_id[intersect(which(Nepal_meta_data_gps2$Study_name == "COMMUNITY CARRIAGE"), which(Nepal_meta_data_gps2$Lane_id != "No genome data available"))])
+
+Nepal_years <- unique(Nepal_meta_data_gps_joined$Year)
+Nepal_numbers_year_month <- data.frame(cbind(sort(rep(unique(Nepal_meta_data_gps_joined$Year),12)), rep(1:12,length(unique(Nepal_meta_data_gps_joined$Year))), rep(0,length(unique(Nepal_meta_data_gps_joined$Year)*12))))
+colnames(Nepal_numbers_year_month) <- c("Year","Month","Count")
+for (i in names(Nepal_carriage_year_dict)) {
+  Nepal_numbers_year_month[12 * (Nepal_carriage_year_dict[i]-2005) + Nepal_carriage_month_dict[i],3] <- Nepal_numbers_year_month[12 * (Nepal_carriage_year_dict[i]-2005) + Nepal_carriage_month_dict[i],3] +1
+}
+
+plot(Nepal_numbers_year_month[,1] + 0.1 * Nepal_numbers_year_month[,2], Nepal_numbers_year_month[,3])
+
+# make yearly plots for carriage only
+Nepal_numbers_year <- rep(0, length(2005:2021))
+names(Nepal_numbers_year) <- as.character(2005:2021)
+for (i in names(Nepal_carriage_year_dict)) {
+  Nepal_numbers_year[as.character(Nepal_carriage_year_dict[i])] <- Nepal_numbers_year[as.character(Nepal_carriage_year_dict[i])] +1
+}
+barplot(Nepal_numbers_year, xlab = "Sequencing Years", ylim = c(0, 1200), ylab = "Sequence Counts")
+# maybe better winter?
+```
+
 
 ```{r}
 Nepal_has_serotype <- rep(FALSE, nrow(Nepal_meta_data_gps_joined))
@@ -503,6 +541,15 @@ plot(rowSums(PP_mass_cluster_freq_1_sero)/sum((PP_mass_cluster_freq_1_sero)))
 points(rowSums(PPsero_startpop6)/sum(rowSums(PPsero_startpop6)), col = "red")
 #much better
 
+which(PPsero_startpop6[(PPclustToIndex_dict[4]),]>0)
+# 7 11 27 28 29 32
+# serotypes: 15C, 23B, 4, 1, 38, 34
+which(PPsero_startpop6[(PPclustToIndex_dict[7]),]>0)
+# 8 10 24 27
+# serotypes: 11A, 8, 35F, 4
+which(PPsero_startpop6[(PPclustToIndex_dict[9]),]>0)
+# 2 11 13 14 16 24 30
+# serotypes: 19F, 23B, 23A, 6A, 6C, 35F, 16F
 
 # serotype VT vector
 SeroVT <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
@@ -1066,7 +1113,7 @@ saveRDS(UK_model_start_pop, "UK_model_start_pop.rds")
 # calculate gene frequencies first, separate for three time points
 UK_gene_freq_preVac <- apply(UK_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
 UK_gene_freq_postVac <- apply(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)]][-1,-1], 1, sum_as_int) + apply(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-1]][-1,-1], 1, sum_as_int) + apply(UK_ggCaller_byYear_intermed[[length(UK_ggCaller_byYear_intermed)-2]][-1,-1], 1, sum_as_int)
-
+# why is this the sum of all post vacc values?
 
 # first, calculate pre/peri and post vacc frequencies of genes:
 #UK_gene_freq_preVac_rel <- UK_gene_freq_preVac/sum(UK_gene_freq_preVac) # no, I don't want to divide by the sum - I want to divide by the number of sequences
@@ -1080,6 +1127,29 @@ UK_delta_ranking <- rank(UK_delta_data)
 
 saveRDS(UK_delta_ranking,"UK_delta_ranking.rds")
 saveRDS(UK_delta_data,"UK_delta_data.rds")
+
+# test UK vacc1 vs vacc2 delta
+UK_gene_freq_midVac <- apply(UK_ggCaller_byYear_intermed[[4]][-1,-1], 1, sum_as_int)
+UK_gene_freq_postVac2 <- apply(UK_ggCaller_byYear_intermed[[7]][-1,-1], 1, sum_as_int)
+UK_gene_freq_midVac_rel <- UK_gene_freq_midVac/(ncol(UK_ggCaller_byYear_intermed[[4]]) -1)
+UK_gene_freq_postVac2_rel <- UK_gene_freq_postVac2/(ncol(UK_ggCaller_byYear_intermed[[7]]) -1)
+
+UK_delta_data_vacc1 <- (UK_gene_freq_midVac_rel - UK_gene_freq_preVac_rel) ^ 2 / (1 - UK_gene_freq_preVac_rel * (1 - UK_gene_freq_preVac_rel))
+UK_delta_ranking_vacc1 <- rank(UK_delta_data_vacc1)
+
+UK_delta_data_vacc2 <- (UK_gene_freq_postVac2_rel - UK_gene_freq_midVac) ^ 2 / (1 - UK_gene_freq_midVac * (1 - UK_gene_freq_midVac))
+UK_delta_ranking_vacc2 <- rank(UK_delta_data_vacc2)
+
+UK_delta_data_vacc02 <- (UK_gene_freq_postVac2_rel - UK_gene_freq_preVac_rel) ^ 2 / (1 - UK_gene_freq_preVac_rel * (1 - UK_gene_freq_preVac_rel))
+UK_delta_ranking_vacc02 <- rank(UK_delta_data_vacc02)
+
+plot(UK_delta_ranking_vacc1, UK_delta_ranking_vacc2)
+plot(UK_delta_ranking_vacc1, UK_delta_ranking_vacc02)
+
+
+
+plot(UK_delta_ranking, UK_delta_ranking_vacc02) # this is the difference btw taking all three post vacc timepoints vs just one...
+
 ```
 
 ### Data processing for PPxSero model
@@ -1422,6 +1492,34 @@ UK_gene_freq_postVac_rel <- UK_gene_freq_postVac/((ncol(UK_ggCaller_byYear_inter
 UK_delta_data_sharedUSUK <- (UK_gene_freq_postVac_rel[US_UK_intermed_genes] - UK_gene_freq_preVac_rel[US_UK_intermed_genes]) ^ 2 / (1 - UK_gene_freq_preVac_rel[US_UK_intermed_genes] * (1 - UK_gene_freq_preVac_rel[US_UK_intermed_genes]))
 UK_delta_ranking_sharedUSUK <- rank(UK_delta_data_sharedUSUK)
 
+# save this for US and UK (each) and test fitting
+# US for US (only those that are shared)
+ggC_delta_ranking2_sharedUSUK_forUS <- rep(max(ggC_delta_ranking2), length(ggC_delta_ranking2))
+names(ggC_delta_ranking2_sharedUSUK_forUS) <- names(ggC_delta_ranking2)
+ggC_delta_ranking2_sharedUSUK_forUS[US_UK_intermed_genes] <- ggC_delta_ranking2_sharedUSUK[US_UK_intermed_genes]
+
+# UK for US
+UK_delta_ranking_sharedUSUK_forUS <- rep(max(ggC_delta_ranking2), length(ggC_delta_ranking2))
+names(UK_delta_ranking_sharedUSUK_forUS) <- names(ggC_delta_ranking2)
+UK_delta_ranking_sharedUSUK_forUS[US_UK_intermed_genes] <- UK_delta_ranking_sharedUSUK[US_UK_intermed_genes]
+
+# US for UK
+ggC_delta_ranking2_sharedUSUK_forUK <- rep(max(UK_delta_ranking),length(UK_delta_ranking))
+names(ggC_delta_ranking2_sharedUSUK_forUK) <- names(UK_delta_ranking)
+ggC_delta_ranking2_sharedUSUK_forUK[US_UK_intermed_genes] <- ggC_delta_ranking2_sharedUSUK[US_UK_intermed_genes]
+
+# UK for UK (filter by shared intermed genes)
+UK_delta_ranking_sharedUSUK_forUK <- rep(max(UK_delta_ranking),length(UK_delta_ranking))
+names(UK_delta_ranking_sharedUSUK_forUK) <- names(UK_delta_ranking)
+UK_delta_ranking_sharedUSUK_forUK[US_UK_intermed_genes] <- UK_delta_ranking_sharedUSUK[US_UK_intermed_genes]
+
+#saveRDS(ggC_delta_ranking2_sharedUSUK, "ggC_delta_ranking_sharedUSUK.rds")
+#saveRDS(UK_delta_ranking_sharedUSUK, "UK_delta_ranking_sharedUSUK.rds")
+
+saveRDS(ggC_delta_ranking2_sharedUSUK_forUS, "ggC_delta_ranking2_sharedUSUK_forUS.rds")
+saveRDS(UK_delta_ranking_sharedUSUK_forUS, "UK_delta_ranking_sharedUSUK_forUS.rds")
+saveRDS(ggC_delta_ranking2_sharedUSUK_forUK, "ggC_delta_ranking2_sharedUSUK_forUK.rds")
+saveRDS(UK_delta_ranking_sharedUSUK_forUK, "UK_delta_ranking_sharedUSUK_forUK.rds")
 
 US_UK_delta_data <- (UK_gene_freq_preVac_rel[US_UK_intermed_genes] - ggC_pre_vacc_gene_freq[US_UK_intermed_genes]) ^ 2 / (1 - ggC_pre_vacc_gene_freq[US_UK_intermed_genes] * (1 - ggC_pre_vacc_gene_freq[US_UK_intermed_genes]))
 US_UK_delta_ranking <- rank(US_UK_delta_data)

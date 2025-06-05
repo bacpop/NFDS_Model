@@ -1,6 +1,8 @@
 ---
 title: "R Notebook"
 output: html_notebook
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r}
@@ -28,6 +30,9 @@ percentile95_up <- apply(Mass_4param_mcmc2_probs,2,quantile,.975)
 rm(Mass_4param_mcmc2)
 rm(Mass_4param_mcmc2_probs)
 
+param_mean_US <- param_mean
+percentile95_low_US <- percentile95_low
+percentile95_up_US <- percentile95_up
 ```
 
 ```{r}
@@ -48,4 +53,143 @@ percentile95_up <- apply(UK_4param_mcmc2_probs_burnin,2,quantile,.975)
 #     0.0000000   -538.2036833   -538.2036833     -3.3356316      0.3513341     -3.8118126      0.1195111 
 rm(UK_4param_mcmc2)
 
+param_mean_UK <- param_mean
+percentile95_low_UK <- percentile95_low
+percentile95_up_UK <- percentile95_up
 ```
+
+```{r}
+### Nepal
+
+# 4-parameter model GPSC version
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_18/Nepal_5k/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_4param_mcmc2$probabilities, Nepal_4param_mcmc2$pars))
+Nepal_4param_mcmc2_probs_burnin <- Nepal_4param_mcmc2_probs[c(1001:5000, 6001:10000, 11001:15000, 16001:20000),]
+Nepal_likelihood_4param <- median(Nepal_4param_mcmc2_probs_burnin[,"log_likelihood"])
+#mean(Nepal_4param_mcmc2_probs[,"log_likelihood"])
+param_mean <- apply(Nepal_4param_mcmc2_probs_burnin, 2, mean)
+percentile95_low <- apply(Nepal_4param_mcmc2_probs_burnin,2,quantile,.025)
+percentile95_up <- apply(Nepal_4param_mcmc2_probs_burnin,2,quantile,.975)
+#     log_prior log_likelihood  log_posterior        sigma_f         prop_f              m              v 
+#     0.000000e+00  -2.596143e+03  -2.596143e+03  -9.880124e-01   2.415340e-01  -2.392463e+00   6.751184e-02
+#     0.000000e+00  -2.599995e+03  -2.599995e+03  -1.174697e+00   2.069937e-01  -2.538166e+00   2.490808e-02
+#     0.0000000  -2593.6809855  -2593.6809855     -0.8154029      0.2491590     -2.2057006      0.1171725
+rm(Nepal_4param_mcmc2)
+
+param_mean_Nepal <- param_mean
+percentile95_low_Nepal <- percentile95_low
+percentile95_up_Nepal <- percentile95_up
+```
+
+
+
+```{r}
+library(ggplot2)
+# plot results
+joined_mcmc_param_fits <- data.frame(params = rep(c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), 3),
+                                     population = c(rep("US",4), rep("UK",4), rep("Nepal",4)),
+                                     mean = c(param_mean_US[4:7], param_mean_UK[4:7], param_mean_Nepal[4:7]),
+                                     lower = c(percentile95_low_US[4:7], percentile95_low_UK[4:7], percentile95_low_Nepal[4:7]),
+                                     upper = c(percentile95_up_US[4:7], percentile95_up_UK[4:7], percentile95_up_Nepal[4:7]))
+joined_mcmc_param_fits[c(1,3,5,7,9,11),c("mean", "lower", "upper")] <- exp(joined_mcmc_param_fits[c(1,3,5,7,9,11),c("mean", "lower", "upper")])
+
+ggplot(joined_mcmc_param_fits,aes(x=params,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2),position = position_dodge(width=0.75),, size = 1) +
+  geom_point(position = position_dodge(width=0.75),size = 3) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Parameter")
+
+ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), size = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~params, ncol = 2) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population")
+```
+
+```{r}
+# compare genes under NFDS
+# US: 0.34412010
+# UK: 0.2264006
+# Nepal: 0.241534
+
+Mass_delta_rank <- readRDS("ggC_delta_ranking.rds") # 2035 intermed-freq genes
+UK_delta_rank <- readRDS("UK_delta_ranking.rds") # 2048 intermed-freq genes
+Nepal_delta_rank <- readRDS("Nepal_delta_ranking.rds") # 2484 intermed-freq genes
+
+# absolute number of genes under NFDS:
+# US: 700
+# UK: 464
+# Nepal: 600
+
+gene_overlap_USUKNepal <- intersect(intersect(names(Mass_delta_rank), names(UK_delta_rank)), names(Nepal_delta_rank))
+# 1418 intermed-freq genes overlap btw all three
+
+Mass_underNFDS <- rep(0, length(Mass_delta_rank))
+names(Mass_underNFDS) <- names(Mass_delta_rank)
+Mass_underNFDS[which(Mass_delta_rank <= 0.34412010 * length(Mass_delta_rank))] <- 1
+UK_underNFDS <- rep(0, length(UK_delta_rank))
+names(UK_underNFDS) <- names(UK_delta_rank)
+UK_underNFDS[which(UK_delta_rank <= 0.2264006 * length(UK_delta_rank))] <- 1
+Nepal_underNFDS <- rep(0, length(Nepal_delta_rank))
+names(Nepal_underNFDS) <- names(Nepal_delta_rank)
+Nepal_underNFDS[which(Nepal_delta_rank <= 0.241534 * length(Nepal_delta_rank))] <- 1
+
+gene_overlap_USUKNepal_underNFDS <- rep(0, length(gene_overlap_USUKNepal))
+names(gene_overlap_USUKNepal_underNFDS) <- gene_overlap_USUKNepal
+gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + Mass_underNFDS[gene_overlap_USUKNepal]
+gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + UK_underNFDS[gene_overlap_USUKNepal]
+gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + Nepal_underNFDS[gene_overlap_USUKNepal]
+
+names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)])
+# 18
+# "1352" "1419" "1452" "1494" "1535" "1572" "2153" "2232" "2238" "2361" "2748" "2944" "3011" "3054" "3097" "3181" "3355" "3585"
+
+UK_ggCaller_intermed_preVac[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]),1]
+# "group_8480"  "group_8014"  "group_3107"  "group_2288"  "group_6380" 
+# [6] "group_5830"  "group_6356"  "group_7007"  "group_4610"  "group_7464" 
+# [11] "group_7124"  "group_2281"  "group_7330"  "group_3566"  "group_3124" 
+# [16] "group_2109"  "group_1655"  "group_11258"
+
+Mass_onlyNFDS <- which(Mass_underNFDS ==1)
+UK_onlyNFDS <- which(UK_underNFDS == 1)
+Nepal_onlyNFDS <- which(Nepal_underNFDS == 1)
+
+library(VennDiagram)
+library(RColorBrewer)
+myCol <- brewer.pal(3, "Pastel2")
+
+venn.diagram(
+  x = list(names(Mass_onlyNFDS), names(UK_onlyNFDS), names(Nepal_onlyNFDS)),
+  category.names = c("US", "UK", "Nepal"),
+  filename = '../venn_diagramm_NFDSgenes.png',
+  output=TRUE, 
+  
+  # Output features
+        imagetype="png" ,
+        height = 960 , 
+        width = 960 , 
+        resolution = 600,
+        compression = "lzw",
+        
+        # Circles
+        lwd = 2,
+        lty = 'blank',
+        fill = myCol,
+        
+        # Numbers
+        cex = .6,
+        fontface = "bold",
+        fontfamily = "sans",
+        
+        # Set names
+        cat.cex = 0.6,
+        cat.fontface = "bold",
+        cat.default.pos = "outer",
+        cat.dist = c(0.055, 0.055, 0.065),
+        cat.fontfamily = "sans"
+)
+```
+

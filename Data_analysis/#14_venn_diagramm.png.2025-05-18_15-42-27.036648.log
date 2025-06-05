@@ -1,0 +1,12 @@
+INFO [2025-05-18 15:42:27] $x
+INFO [2025-05-18 15:42:27] list(names(Mass_onlyNFDS), names(UK_onlyNFDS), names(Nepal_onlyNFDS))
+INFO [2025-05-18 15:42:27] 
+INFO [2025-05-18 15:42:27] $category.names
+INFO [2025-05-18 15:42:27] c("Set 1", "Set 2 ", "Set 3")
+INFO [2025-05-18 15:42:27] 
+INFO [2025-05-18 15:42:27] $filename
+INFO [2025-05-18 15:42:27] [1] "#14_venn_diagramm.png"
+INFO [2025-05-18 15:42:27] 
+INFO [2025-05-18 15:42:27] $output
+INFO [2025-05-18 15:42:27] [1] TRUE
+INFO [2025-05-18 15:42:27] 
