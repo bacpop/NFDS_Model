@@ -147,6 +147,27 @@ names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3
 # 18
 # "1352" "1419" "1452" "1494" "1535" "1572" "2153" "2232" "2238" "2361" "2748" "2944" "3011" "3054" "3097" "3181" "3355" "3585"
 
+# 1352 Ascorbate-specific PTS system EIIC component
+# 1419 hypothetical protein
+# 1452 hypothetical protein
+# 1494 Brp/Blh family beta-carotene 15,15'-monooxygenase
+# 1535 Phage protein
+# 1572 ABC transporter ATP-binding protein
+# 2153 Cholinephosphate cytidylyltransferase / Choline kinase
+# 2232 Phosphoribosylamine--glycine ligase
+# 2238 hypothetical protein
+# 2361 Gram-positive signal peptide protein, YSIRK family
+# 2748 hypothetical protein
+# 2944 hypothetical protein
+# 3011 HTH tetR-type domain-containing protein
+# 3054 hypothetical protein
+# 3097 Transcriptional regulator, AbiEi antitoxin, Type IV TA system
+# 3181 DnaD domain-containing protein
+# 3355 hypothetical protein
+# 3585 hypothetical protein
+
+# this is based on the new panaroo run though 
+
 UK_ggCaller_intermed_preVac[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]),1]
 # "group_8480"  "group_8014"  "group_3107"  "group_2288"  "group_6380" 
 # [6] "group_5830"  "group_6356"  "group_7007"  "group_4610"  "group_7464" 

@@ -131,6 +131,13 @@ barplot(seq_no_per_year, xlab = "Winters", ylim = c(0, 250), ylab = "Sequence Co
 # introduction of PCV7 in 2006 and PCV13 in 2010
 # number of sequences is pretty constant
 barplot(seq_no_per_year, xlab = "Winters", ylim = c(0, 250), ylab = "Sequence Counts")
+
+seq_no_per_year <- rep(0, length(UK_time_points))
+names(seq_no_per_year) <- UK_time_points
+for (i in 1:length(UK_time_points)) {
+  seq_no_per_year[i] <- length(which(UK_metadata$Year==UK_time_points[i]))
+}
+barplot(seq_no_per_year, xlab = "Winters", ylim = c(0, 250), ylab = "Sequence Counts")
 ```
 
 # read in ggCaller results

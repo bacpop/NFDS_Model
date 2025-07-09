@@ -1,0 +1,66 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+# read in pre-post Nepal
+Nepal_cluster_sero_freqs_pre_post_df_plot <- readRDS("Nepal_cluster_sero_freqs_pre_post_df.rds")
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_subsample <- Nepal_cluster_sero_freqs_pre_post_df_plot[c(1:825, 10890 + 1:825),]
+
+Nepal_serotype_counts_plot <- readRDS("Nepal_serotype_counts.rds")
+Nepal_GPSC_counts_plot <- readRDS("Nepal_GPSC_counts.rds")
+# 1 percent as cutoff? That would be 18.92
+Nepal_serotype_counts_plot_selected <- Nepal_serotype_counts_plot[which(Nepal_serotype_counts_plot > 18)]
+Nepal_GPSC_counts_plot_selected <- Nepal_GPSC_counts_plot[which(Nepal_GPSC_counts_plot > 18)]
+# 28 serotypes, 27 GPSCs
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_selected <- readRDS("Nepal_cluster_sero_freqs_pre_post_df_selected.rds")
+
+Nepal_pre_GPSC <- Nepal_cluster_freqs[[5]]
+names(Nepal_pre_GPSC) <- unique(Nepal_PP$GPSC)
+Nepal_selected_pre_GPSC_counts <- Nepal_pre_GPSC[names(Nepal_GPSC_counts_plot_selected)]
+
+Nepal_post_GPSC <- Nepal_cluster_freqs[[15]]
+names(Nepal_post_GPSC) <- unique(Nepal_PP$GPSC)
+Nepal_selected_post_GPSC_counts <- Nepal_post_GPSC[names(Nepal_GPSC_counts_plot_selected)]
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum <- Nepal_cluster_sero_freqs_pre_post_df_plot_selected
+Nepal_GPSC_counts_plot_selected_df <- data.frame(matrix(NA, nrow=length(Nepal_GPSC_counts_plot_selected)*2, ncol = 4))
+GPSC_pre_post_sum_counts <- data.frame(matrix(NA, nrow = 2 * length(Nepal_GPSC_counts_plot_selected), ncol = 4))
+colnames(GPSC_pre_post_sum_counts) <- c("Serotype", "GPSC", "relCount", "Time")
+GPSC_pre_post_sum_counts[,1] <- rep("Sum", 2 * length(Nepal_GPSC_counts_plot_selected))
+GPSC_pre_post_sum_counts[,2] <- rep(names(Nepal_GPSC_counts_plot_selected),2) 
+GPSC_pre_post_sum_counts[,3] <- c(Nepal_selected_pre_GPSC_counts/length(which(Nepal_meta_dataPP$Year == "2009")), Nepal_selected_post_GPSC_counts/length(which(Nepal_meta_dataPP$Year == "2019")))
+GPSC_pre_post_sum_counts[,4] <- factor(c(rep("preVac", length(Nepal_GPSC_counts_plot_selected)), rep("postVac", length(Nepal_GPSC_counts_plot_selected))), levels = c("preVac", "postVac"))
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum <- rbind(Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum, GPSC_pre_post_sum_counts)
+
+```
+
+
+```{r}
+library(hrbrthemes)
+ggplot(Nepal_cluster_sero_freqs_pre_post_df_plot_selected, aes(fill=Time, y=relCount, x=Serotype)) + 
+    geom_bar(position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = T, option = "E") +
+    ggtitle("Pre-post vaccine GPSCs and serotypes") +
+    facet_wrap(~GPSC) +
+    theme(legend.position="right", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    xlab("") + theme_ipsum()
+
+
+ggplot(Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum, aes(fill=Time, y=relCount, x=Serotype)) + 
+    geom_bar(position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = T, option = "E") +
+    ggtitle("Pre-post vaccine GPSCs and serotypes") +
+    facet_wrap(~GPSC) +
+    theme_ipsum() +
+    theme(legend.position="right", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    xlab("")  #+ theme_ipsum()
+
+# also colour / mark VTs
+```
+

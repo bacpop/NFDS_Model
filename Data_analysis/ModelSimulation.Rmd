@@ -11,6 +11,8 @@ editor_options:
 # Also, fit model on some time steps and make predictions for the next steps.
 
 ```{r}
+library(ggplot2)
+library(viridis)
 WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
 ```
 
@@ -32,6 +34,8 @@ Pop_ini_test_mtx <- sapply(Pop_ini_test,as.double)
 # Mass
 PPsero_startpop6 <- readRDS("PPsero_startpop6.rds")
 plot(sort(rowSums(PPsero_startpop6))) # lots of rare genotypes, some with high freq
+# yes, but the replacement in not coming from those
+# the replacement is coming from genotypes that are not super rare in the beginning
 plot(sort(rowSums(Pop_ini_test))) # not the same. Just a few rare ones and then ~linear
 # same is true for serotypes
 # better than multinom would be gamma distribution then I think.
@@ -42,6 +46,13 @@ plot(sort(rowSums(Pop_ini_test))) # not the same. Just a few rare ones and then 
 # quite difficult to get the right distribution
 # maybe it's easier to sample from real values
 Pop_ini_test <- matrix(sample(PPsero_startpop6, 15*20), nrow = 20, ncol = 15)
+#Pop_ini_test <- matrix(sample(PPsero_startpop6[which(rowSums(PPsero_startpop6)>100),which(colSums(PPsero_startpop6)>100)], 15*20), nrow = 20, ncol = 15) # sample only those that are not very rare
+#Pop_ini_test[which(apply(Pop_ini_test, 1, max, 10) == 10),] <- Pop_ini_test[which(apply(Pop_ini_test, 1, max, 10) == 10),] +  rnorm(length(which(apply(Pop_ini_test, 1, max, 10) == 10)), 100, 10)
+for (i in 1:nrow(Pop_ini_test)) {
+  if(max(Pop_ini_test[i,])<10){
+    Pop_ini_test[i,which.max(Pop_ini_test[i,])] <- rnorm(1, 100, 10)
+  }
+}
 saveRDS(data.frame(Pop_ini_test), "Pop_ini_test.rds")
 Pop_ini_test <- readRDS("Pop_ini_test.rds")
 Pop_ini_test_mtx <- sapply(Pop_ini_test,as.double)
@@ -65,9 +76,47 @@ plot(cut(rowSums(ggCPP_intermed_gene_presence_absence_consensus_mtx)/52,breaks =
 plot(cut(rowSums(Genotypes_test)/20,breaks = (0:gene_no_test)/gene_no_test))
 # my simulation is more homogeneous but I will leave it for now
 
+# new approach
+# sample from genotypes matrix
+sample_genes_ids <- sample(1:nrow(ggCPP_intermed_gene_presence_absence_consensus_mtx),1000)
+sample_type_ids <- sample(1:ncol(ggCPP_intermed_gene_presence_absence_consensus_mtx),20)
+Genotypes_test <- data.frame(ggCPP_intermed_gene_presence_absence_consensus_mtx[sample_genes_ids, sample_type_ids])
+plot(cut(rowSums(Genotypes_test)/20,breaks = (0:gene_no_test)/gene_no_test))
+Genotypes_test_matrix <- sapply(Genotypes_test,as.double)
+saveRDS(Genotypes_test, "Genotypes_test.rds")
+# looks much more like the data
+# new pop_ini then
+sample_sero_ids <- sample(1:ncol(PPsero_startpop6),15)
+Pop_ini_test <- PPsero_startpop6[sample_type_ids, sample_sero_ids]
+# then I should also sample from real delta, I think
+# see below
+
+
+gene_freq_post_test <- gene_freq_test
+gene_freq_post_test[1:(0.3 * length(gene_freq_post_test))] <- gene_freq_test[1:(0.3 * length(gene_freq_post_test))] + sample(c(1,-1), size = 0.3 * length(gene_freq_post_test), replace = TRUE) * rexp(n = 0.3 * length(gene_freq_post_test), rate = 1e6)
+gene_freq_post_test[-(1:(0.3 * length(gene_freq_post_test)))] <- gene_freq_test[-(1:(0.3 * length(gene_freq_post_test)))] + sample(c(1,-1), size = 0.7 * length(gene_freq_post_test), replace = TRUE) * rexp(n = 0.7 * length(gene_freq_post_test), rate = 1e2)
+plot(gene_freq_test, gene_freq_post_test)
+points(gene_freq_test[1:(0.3 * length(gene_freq_post_test))], gene_freq_post_test[1:(0.3 * length(gene_freq_post_test))], col = "red")
+
+plot((abs(gene_freq_test[-(1:(0.3 * length(gene_freq_post_test)))] - gene_freq_post_test[-(1:(0.3 * length(gene_freq_post_test)))])))
+points((abs(gene_freq_test[(1:(0.3 * length(gene_freq_post_test)))] - gene_freq_post_test[(1:(0.3 * length(gene_freq_post_test)))])))
+
+gene_freq_change <- abs(gene_freq_test - gene_freq_post_test)
+gene_freq_change_group <- c(rep("NFDS", 0.3 * length(gene_freq_post_test)), rep("not NFDS", 0.7 * length(gene_freq_post_test)))
+boxplot(gene_freq_change ~ gene_freq_change_group)
+
+delta_data_test <- (gene_freq_post_test - gene_freq_test) ^ 2 / (1 - gene_freq_test * (1 - gene_freq_test))
+names(delta_data_test) <- 1:(length(gene_freq_test)-1)
+delta_test_ranking <- rank(delta_data_test)
 # generate delta ranking
-delta_test <- c(1,1:(length(gene_freq_test)-1))
-names(delta_test) <- rank(delta_test)
+#delta_test <- c(1,1:(length(gene_freq_test)-1))
+#names(delta_test) <- rank(delta_test)
+delta_test <- delta_test_ranking
+# sample delta from real delta
+delta_real_data <- readRDS("ggC_delta_data2.rds") 
+delta_data_test <- delta_ranking_real_data[sample_genes_ids]
+names(delta_data_test) <- 1:(length(delta_data_test))
+delta_test <- rank(delta_data_test)
 # generate migration vector
 non_zero_entry <- function(a){
   if(a>0){
@@ -93,7 +142,12 @@ saveRDS(data.frame(vaccTypes_test), "vaccTypes_test.rds")
 vaccTypes_test <- readRDS("vaccTypes_test.rds")
 vaccTypes_test_mtx <- c(sapply(vaccTypes_test, as.double))
 
-PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.28835, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.1), prop_f = 0.3, delta = as.double(1:1000), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 1, delta = (posthoc_delta_test_ranking), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0, delta = (posthoc_delta_test_ranking), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = 2 * gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = cbind(Genotypes_test_matrix, Genotypes_test_matrix), sigma_f = log(0.0345), prop_f = 0.5, delta = (posthoc_delta_test_ranking), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+
+PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
 WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
                          time = 0,
                          n_particles = 10L,
@@ -119,6 +173,11 @@ simulated_data_over_time_short_clust_df <- as.data.frame(simulated_data_over_tim
 
 simulated_data_long <- list()
 simulated_sum_data_long <- list()
+WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
+                         time = 0,
+                         n_particles = 10L,
+                         n_threads = 4L,
+                         seed = 1L)
 for (i in 0:240) {
   simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
   simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
@@ -134,6 +193,57 @@ simulated_data_over_time_filtered_df <- as.data.frame(rbind(1:20,simulated_data_
 
 simulated_data_sum_over_time_clust <- sapply(simulated_sum_data_long, rowSums)
 simulated_data_sum_over_time_filtered <- simulated_data_sum_over_time_clust[,((1:20)*12)+1]
+
+# plot simulated data
+simulated_data_GPSC_pre_post_df <- data.frame(matrix(NA, nrow = nrow(simulated_sum_data_long[[1]])*2, ncol = 3))
+simulated_data_GPSC_pre_post_df[,1] <- rep(1:nrow(simulated_sum_data_long[[1]]),2)
+colnames(simulated_data_GPSC_pre_post_df) <- c("GPSC", "Population", "Time")
+simulated_data_GPSC_pre_post_df[,2] <- c(rowSums(simulated_sum_data_long[[1]]), rowSums(simulated_sum_data_long[[241]]))
+simulated_data_GPSC_pre_post_df[,3] <- factor(c(rep("preVac", nrow(simulated_sum_data_long[[1]])), rep("postVac", nrow(simulated_sum_data_long[[1]]))), levels = c("preVac","postVac"))
+
+ggplot(data = simulated_data_GPSC_pre_post_df, aes(fill=Time, y=Population, x=GPSC)) +
+    geom_bar(position="dodge", stat="identity")
+
+simulated_data_pre_post_df <- data.frame(matrix(NA, nrow = 2*nrow(simulated_sum_data_long[[1]])*ncol(simulated_sum_data_long[[1]]), ncol = 4))
+simulated_data_pre_post_df[,1] <- rep(sort(rep(1:ncol(simulated_sum_data_long[[1]]),nrow(simulated_sum_data_long[[1]]))),2)
+simulated_data_pre_post_df[,2] <- rep(rep(1:nrow(simulated_sum_data_long[[1]]),ncol(simulated_sum_data_long[[1]])),2)
+colnames(simulated_data_pre_post_df) <- c("Serotype", "GPSC", "Population","Time")
+simulated_data_pre_post_df[,3] <- c(as.vector(simulated_sum_data_long[[1]]), as.vector(simulated_sum_data_long[[241]]))
+simulated_data_pre_post_df[,4] <- factor(c(rep("preVac", nrow(simulated_sum_data_long[[1]])*ncol(simulated_sum_data_long[[1]])), rep("postVac", nrow(simulated_sum_data_long[[1]])*ncol(simulated_sum_data_long[[1]]))), levels = c("preVac","postVac"))
+
+ggplot(simulated_data_pre_post_df, aes(fill=Time, y=Population, x=as.factor(Serotype))) + 
+    geom_bar(position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = T, option = "E") +
+    ggtitle("Pre-post vaccine GPSCs and serotypes") +
+    facet_wrap(~GPSC) +
+    theme(legend.position="right") +
+    xlab("") #theme_ipsum() +
+
+### new approach
+# simulate model once with prop_f = 1
+NFDS_genes_preVac <- (as.matrix(Genotypes_test)[1:1000,] %*% (rowSums(simulated_sum_data_long[[1]]))/sum(rowSums(simulated_sum_data_long[[1]])))
+NFDS_genes_postVac <- as.matrix(Genotypes_test)[1:1000,] %*% (rowSums(simulated_sum_data_long[[241]]))/sum(rowSums(simulated_sum_data_long[[241]]))
+plot(NFDS_genes_preVac, NFDS_genes_postVac)
+# simulate model once with prop_f = 0
+noNFDS_genes_preVac <- (as.matrix(Genotypes_test)[1:1000,] %*% (rowSums(simulated_sum_data_long[[1]]))/sum(rowSums(simulated_sum_data_long[[1]])))
+noNFDS_genes_postVac <- as.matrix(Genotypes_test)[1:1000,] %*% (rowSums(simulated_sum_data_long[[241]]))/sum(rowSums(simulated_sum_data_long[[241]]))
+plot(noNFDS_genes_preVac, noNFDS_genes_postVac)
+points(NFDS_genes_preVac, NFDS_genes_postVac, col = "red")
+# save these gene_freq changes, calculate delta from it.
+# use that delta for running model with prop_f = 0.3
+
+all_pre_freqs <- (as.matrix(Genotypes_test)[1:1000,] %*% (rowSums(simulated_sum_data_long[[1]]))/sum(rowSums(simulated_sum_data_long[[1]])))
+all_post_freqs <- as.matrix(Genotypes_test)[1:1000,] %*% (rowSums(simulated_sum_data_long[[241]]))/sum(rowSums(simulated_sum_data_long[[241]]))
+plot(all_pre_freqs[1:500], all_post_freqs[1:500], col = "red")
+points(all_pre_freqs[501:1000], all_post_freqs[501:1000])
+
+all_pre_freqs <- c(NFDS_genes_preVac,noNFDS_genes_preVac)
+all_post_freqs <- c(NFDS_genes_postVac,noNFDS_genes_postVac)
+posthoc_delta_data_test <-  (all_post_freqs - all_pre_freqs) ^ 2 / (1 - all_pre_freqs * (1 - all_pre_freqs))
+names(posthoc_delta_data_test) <- 1:(length(gene_freq_test))
+posthoc_delta_test_ranking <- rank(posthoc_delta_data_test)
+plot(posthoc_delta_test_ranking) # quite clear nfds/ no nfds split
+#saveRDS(posthoc_delta_test_ranking, "posthoc_delta_test_ranking.rds")
 ```
 
 ```{r}
@@ -165,7 +275,7 @@ for (i in 1:nrow(simulated_serotypes_over_time)) {
 ```{r}
 library(odin.dust)
 #install.packages("mcstate")
-library(mcstate)
+#library(mcstate)
 #install.packages("mcstate")
 library(mcstate)
 library(coda)
