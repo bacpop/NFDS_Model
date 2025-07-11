@@ -92,19 +92,6 @@ combined_compare <- function(state, observed, pars = NULL) {
     ll_obs <- dmultinom(x = (data_vals), prob = models_vals_err/model_size, log = TRUE)   
   }
   result <- ll_obs
-  #for (i in 1:(length(unlist(observed))-4)){ 
-  #  state_name <- paste("sum_clust", i, sep = "")
-  #  if (is.na(observed[[as.character(i)]])) {
-  #    #Creates vector of zeros in ll with same length, if no data
-  #    ll_obs <- numeric(length( state[state_name, , drop = TRUE]))
-  #  } else {
-  #lambda <-  state[state_name, , drop = TRUE]/model_size * data_size + rexp(n = length( state[state_name, , drop = TRUE]/model_size * data_size), rate = exp_noise)
-  #ll_obs <- dpois(x = observed[[as.character(i)]], lambda = lambda, log = TRUE)
-  #    ll_obs <- dmultinom(x = (data_vals), prob = model_vals/model_size, log = TRUE)
-  #  }
-  
-  #  result <- result + ll_obs
-  #}
   result
 }
 

@@ -326,14 +326,14 @@ names(UK_years) <- unique(UK_metadata$Year)
 UK_numbers_year_month <- data.frame(cbind(sort(rep(unique(UK_metadata$Year),12)), rep(1:12,length(unique(UK_metadata$Year))), rep(0,length(unique(UK_metadata$Year)*12))))
 colnames(UK_numbers_year_month) <- c("Year","Month","Count")
 for (i in 1:length(UK_metadata$id)) {
-  UK_numbers_year_month[12 * (UK_years[as.character(UK_SeqYear_dict[UK_metadata$Accession[i]])]-1) + UK_metadata$Month[i] ,3] <- UK_numbers_year_month[12 * (UK_years[as.character(UK_SeqYear_dict[UK_metadata$Accession[i]])]-1) + UK_metadata$Month[i] ,3] + 1
+  UK_numbers_year_month[12 * (UK_years[as.character(UK_metadata$Year[i])]-1) + UK_metadata$Month[i] ,3] <- UK_numbers_year_month[12 * (UK_years[as.character(UK_metadata$Year[i])]-1) + UK_metadata$Month[i] ,3] + 1
 }
 
 par(mfrow=c(2,1))
 plot(UK_numbers_year_month[,1] + 1/12 * (UK_numbers_year_month[,2]-1), UK_numbers_year_month[,3])
 abline(v=unique(UK_metadata$Year)-1/24, col="blue")
 plot(UK_numbers_year_month[,1] + 1/12 * (UK_numbers_year_month[,2]-1), UK_numbers_year_month[,3])
-abline(v=unique(UK_metadata$Year)-13/24, col="blue")
+abline(v=c(unique(UK_metadata$Year),2014)-13/24, col="blue")
 
 # yes, winter assignment seems to make sense for UK
 
@@ -1232,12 +1232,12 @@ for(j in 1:length(UK_time_points)){
 
 ### actually I'd want winters, not years (have not tested this, need to try fitting)
 # and double check: I think some of them are incorrectly assigned (yes, fixed that above)
-UK_cluster_freqs_winter <- vector(mode = "list", length = length(UK_winters))
+UK_cluster_freqs_winter <- vector(mode = "list", length = length(unique(UK_winters)))
 
-for(j in 1:length(UK_winters)){
+for(j in 1:length(unique(UK_winters))){ # "unique" was missing, creating hundreds of list entries
   UK_cluster_freqs_winter[[j]] <- rep(NA, no_UK_PP)
   for (i in unique(UK_PP$Cluster)){
-    UK_cluster_freqs_winter[[j]][which(unique(UK_PP$Cluster) == i)] <- length(which(UK_metadata[UK_meta_IDtoInd[UK_PP[UK_PP$Cluster == i,"Taxon"]],]$Winter==UK_winters[j]))
+    UK_cluster_freqs_winter[[j]][which(unique(UK_PP$Cluster) == i)] <- length(which(UK_metadata[UK_meta_IDtoInd[UK_PP[UK_PP$Cluster == i,"Taxon"]],]$Winter==unique(UK_winters)[j]))
   }
 }
 
@@ -1249,6 +1249,7 @@ for(j in 1:length(UK_time_points)){
 
 for (i in 1:length(UK_time_points)) {
   file_name <- paste("UK_cluster_freqs_", as.character(i),".rds", sep = "")
+  print(file_name)
   saveRDS(UK_cluster_freqs_winter[[i]], file_name)
 }
 
