@@ -147,6 +147,15 @@ if(length(args)>=5){
 stoch_run <- FALSE
 if(length(args)>=6 & args[6]=="stoch"){
   stoch_run <- TRUE
+  pre_fit_params <- rep(NA, params_total)
+  if(length(args) >= (6 + params_total)){
+    for (i in 1:params_total) {
+      pre_fit_params[i] <-  as.numeric(args[6+i])
+    }
+  }
+  else{
+    print("Please choose pre-fit parameter values for starting stochastic fit.")
+  }
 }
 
 # process data with particle filter:
@@ -187,7 +196,7 @@ vaccTypes <- mass_VT
 migVec <- data.frame(avg_cluster_freq)
 
 ##################################
-
+if(!stoch_run){
 if(params_total == 2){
 
   complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no, sigma_f = -1000, prop_f = 1)
@@ -692,21 +701,124 @@ if(params_total == 2){
 } else{
   print(paste("Number of parameters chosen not okay:", params_total))
 }
-
+}
 
 if(stoch_run == TRUE){
-  det_proposal_matrix <- cov(processed_chains$pars)
+  make_transform <- function(m) {
+    function(theta) {
+      as_double_mtx <- function(x){
+        sapply(x,as.double)
+      }
+      c(lapply(m, as_double_mtx), as.list(theta))
+    }
+  }
+  
+  combined_compare <- function(state, observed, pars = NULL) {
+    result <- 0
+    #data_size <- sum(unlist(observed))
+    data_size <- sum(unlist(observed[as.character(1:(length(unlist(observed))-4))]))
+    model_size = sum(unlist(state[-1, , drop = TRUE]))
+    exp_noise <- 1e6
+    data_vals <- unlist(observed[as.character(1:(length(unlist(observed))-4))])
+    #model_vals <- state[-1, , drop = TRUE]
+    #model_vals <- rep(0, length(unlist(observed))-4)
+    model_vals <- state
+    data_missing <- FALSE
+    #for (i in 1:(length(unlist(observed))-4)){ 
+    #  state_name <- paste("sum_clust", i, sep = "")
+    #  model_vals[i] <- mean(state[state_name, , drop = TRUE])
+      #browser()
+    #  if (is.na(observed[[as.character(i)]])) {
+        #Creates vector of zeros in ll with same length, if no data
+        #ll_obs <- numeric(length( state[state_name, , drop = TRUE]))
+    #    data_missing <- TRUE
+    #  } 
+    #}
+    #browser()
+    result <- rep(NA, ncol(model_vals))
+    if (is.na(observed[[as.character(1)]])) {
+      data_missing <- TRUE
+      result <- rep(0, ncol(model_vals))
+    }
+    else{
+      for (i in 1:ncol(model_vals)) {
+        models_vals_err <- model_vals[,i] + rexp(n = length(model_vals[,i]), rate = exp_noise)
+        ll_obs <- dmultinom(x = (data_vals), prob = models_vals_err/model_size, log = TRUE)
+        result[i] <- ll_obs
+      }
+    }
+    #models_vals_err <- model_vals + rexp(n = length(model_vals), rate = exp_noise)
+    #if(data_missing){
+    #  ll_obs <- 0
+    #}
+    #else{
+    #  ll_obs <- dmultinom(x = (data_vals), prob = models_vals_err/model_size, log = TRUE)   
+    #}
+    #result <- ll_obs
+    result
+  }
+  
+  
+  
+  #det_proposal_matrix <- cov(processed_chains$pars)
   #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", 0.15, min = 0.075, max = 0.22), mcstate::pmcmc_parameter("sigma_w", 0.05, min = 0.000001, max = 0.0749), mcstate::pmcmc_parameter("prop_f", 0.25, min = 0, max = 1), mcstate::pmcmc_parameter("m", 0.03, min = 0, max = 0.2), mcstate::pmcmc_parameter("v", 0.05, min = 0, max = 0.5)), det_proposal_matrix, make_transform(complex_params))
-  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  if(params_total == 4){
+    complex_params1 = list(species_no = species_no, Pop_ini = sapply(Pop_ini,as.double), Pop_eq = sapply(Pop_eq,as.double), Genotypes = intermed_gene_presence_absence_consensus_matrix, capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = sapply(migVec,as.double), sero_no = sero_no)
+    index <- function(info) {
+      list(run = c(sum_clust = info$index$Pop_tot),
+           state = c(Pop = info$index$Pop))
+      #browser()
+    }
+    #index <- function(info) {
+    #  list(run = c(sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot),
+    #       state = c(Pop = info$index$Pop,Pop = info$index$Pop,Pop = info$index$Pop,Pop = info$index$Pop,Pop = info$index$Pop,Pop = info$index$Pop))
+    #}
+    test_mod <- WF$new(pars = append(complex_params1, list(m = 0.01, v = 0.1, prop_f = 0.3, sigma_f = -4)), time = 0, n_particles = 6L)
+    index(test_mod$info())
+    proposal_matrix <- diag(c(exp(1), 0.1, exp(1), 0.1))
+    complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no)
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", pre_fit_params[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[4], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  }
+  else if(params_total == 5){
+    WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_5param.R")
+    complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, migVec = (migVec), sero_no = sero_no)
+    index <- function(info) {
+      list(run = c(sum_clust = info$index$Pop_tot),
+           state = c(Pop = info$index$Pop))
+    }
+    proposal_matrix <- diag(c(exp(1), 0.1, exp(1), exp(1), 0.1))
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", pre_fit_params[3], min = -1000, max = -3.5), mcstate::pmcmc_parameter("m", pre_fit_params[4], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[5], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  }
+  else if(params_total == 2){
+    complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no, sigma_f = -1000, prop_f = 1)
+    index <- function(info) {
+      list(run = c(sum_clust = info$index$Pop_tot),
+           state = c(Pop = info$index$Pop))
+    }
+    proposal_matrix <- diag(c(exp(1), 0.1))
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[2], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  }
+  else if(params_total == 3){
+    complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no, prop_f = 1)
+    index <- function(info) {
+      list(run = c(sum_clust = info$index$Pop_tot),
+           state = c(Pop = info$index$Pop))
+    }
+    proposal_matrix <- diag(c(exp(1), exp(1), 0.1))
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("m", pre_fit_params[2], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[3], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  }
   
-  
+  # somehow, "index" breaks when n_particles > 1, don't know why
   filter <- mcstate::particle_filter$new(data = fitting_mass_data,
                                          model = WF,
-                                         n_particles = 6,
-                                         index = index,
+                                         n_particles = 6L,
                                          compare = combined_compare,
-                                         n_threads = 8)
+                                         index = index,
+                                         n_threads = 1,
+                                         seed = 1L)
   
+  #res <- filter$run(save_history = TRUE, pars = append(complex_params1, list(m = -4.20, v = 0.08667395, prop_f = 0.35142922, sigma_f = -3.55)))
   n_steps <- 2
   n_burnin <- 0
   
@@ -714,6 +826,7 @@ if(stoch_run == TRUE){
                                     save_trajectories = TRUE,
                                     progress = TRUE,
                                     n_threads_total = 1)
+  
   pmcmc_run <- mcstate::pmcmc(det_mcmc_pars, filter, control = control)
   
   filter <- mcstate::particle_filter$new(data = fitting_mass_data,
@@ -738,7 +851,7 @@ if(stoch_run == TRUE){
   stoch_mcmc2 <- coda::as.mcmc(cbind(stoch_pmcmc_run2$probabilities, stoch_pmcmc_run2$pars))
   
   
-  pdf(file = paste(output_filename,"stoch_mcmc2.pdf",sep = "_"),   # The directory you want to save the file in
+  pdf(file = paste(output_filename,as.character(params_total),"stoch_mcmc2.pdf",sep = "_"),   # The directory you want to save the file in
       width = 6, # The width of the plot in inches
       height = 12)
   plot(stoch_mcmc2)
@@ -752,7 +865,7 @@ if(stoch_run == TRUE){
   print("stoch_mcmc_2 mean log likelihood")
   print(mean(processed_chains$probabilities[,2]))
   
-  saveRDS(stoch_pmcmc_run2, paste(output_filename, "_stoch_pmcmc_run2.rds", sep = ""))
+  saveRDS(stoch_pmcmc_run2, paste(output_filename,as.character(params_total), "_stoch_pmcmc_run2.rds", sep = ""))
 }
 
 
