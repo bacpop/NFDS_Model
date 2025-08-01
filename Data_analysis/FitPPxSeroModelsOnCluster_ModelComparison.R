@@ -40,6 +40,7 @@ combined_compare <- function(state, observed, pars = NULL) {
   #model_vals <- state[-1, , drop = TRUE]
   model_vals <- rep(0, length(unlist(observed))-4)
   data_missing <- FALSE
+  # if(data_size == 0) # I don't actually need this because dmultinom of c(0,0,...,0) is anyway 1
   for (i in 1:(length(unlist(observed))-4)){ 
     state_name <- paste("sum_clust", i, sep = "")
     model_vals[i] <- state[state_name, , drop = TRUE]
@@ -47,7 +48,7 @@ combined_compare <- function(state, observed, pars = NULL) {
       #Creates vector of zeros in ll with same length, if no data
       #ll_obs <- numeric(length( state[state_name, , drop = TRUE]))
       data_missing <- TRUE
-    } 
+    }
   }
   models_vals_err <- model_vals + rexp(n = length(model_vals), rate = exp_noise)
   if(data_missing){
@@ -217,8 +218,9 @@ if(params_total == 2){
   }
   
   proposal_matrix <- diag(c(exp(1), 0.1))
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
-  
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+
   mcmc_pars$initial()
   
   det_filter <- particle_deterministic$new(data = fitting_mass_data,
@@ -269,7 +271,7 @@ if(params_total == 2){
   mean(processed_chains$probabilities[,2])
   det_proposal_matrix <- cov(processed_chains$pars)
   
-  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[2], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a)), det_proposal_matrix, make_transform(complex_params))
   
   det_filter <- particle_deterministic$new(data = fitting_mass_data,
                                            model = WF,
@@ -338,7 +340,8 @@ if(params_total == 2){
   }
   
   proposal_matrix <- diag(c(exp(1), exp(1), 0.1))
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
   
   mcmc_pars$initial()
 
@@ -391,7 +394,8 @@ if(params_total == 2){
   mean(processed_chains$probabilities[,2])
   det_proposal_matrix <- cov(processed_chains$pars)
   
-  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("m", parameter_mean_hpd[2], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[3], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("m", parameter_mean_hpd[2], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[3], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("m", parameter_mean_hpd[2], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", parameter_mean_hpd[3], min = 0, max = 1, prior = function(a) a)), det_proposal_matrix, make_transform(complex_params))
   
   det_filter <- particle_deterministic$new(data = fitting_mass_data,
                                            model = WF,
@@ -461,9 +465,11 @@ if(params_total == 2){
          state = c(Pop = info$index$Pop))
   }
   
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", -0.597837, min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", 0.125, min = 0, max = 1), mcstate::pmcmc_parameter("m", -4, min = -1000, max = 0), mcstate::pmcmc_parameter("v", 0.05, min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", -0.597837, min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", 0.125, min = 0, max = 1), mcstate::pmcmc_parameter("m", -4, min = -1000, max = 0), mcstate::pmcmc_parameter("v", 0.05, min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
   proposal_matrix <- diag(c(exp(1), 0.1, exp(1), 0.1))
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  
   
   mcmc_pars$initial()
 
@@ -512,12 +518,14 @@ if(params_total == 2){
   plot(det_mcmc1)
   dev.off()
   print("det_mcmc_1 final log likelihood")
-  processed_chains$probabilities[nrow(processed_chains$probabilities),2]
+  print(processed_chains$probabilities[nrow(processed_chains$probabilities),2])
   print("det_mcmc_1 mean log likelihood")
-  mean(processed_chains$probabilities[,2])
+  print(mean(processed_chains$probabilities[,2]))
   det_proposal_matrix <- cov(processed_chains$pars)
   
-  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1, prior = function(a) a)), det_proposal_matrix, make_transform(complex_params))
+  
   
   det_filter <- particle_deterministic$new(data = fitting_mass_data,
                                            model = WF,
@@ -563,9 +571,9 @@ if(params_total == 2){
   plot(det_mcmc2)
   dev.off()
   print("det_mcmc_2 final log likelihood")
-  processed_chains$probabilities[nrow(processed_chains$probabilities),2]
+  print(processed_chains$probabilities[nrow(processed_chains$probabilities),2])
   print("det_mcmc_2 mean log likelihood")
-  mean(processed_chains$probabilities[,2])
+  print(mean(processed_chains$probabilities[,2]))
   
   saveRDS(det_pmcmc_run2, paste(output_filename, "_4param_det_pmcmc_run2.rds", sep = ""))
   
@@ -593,7 +601,8 @@ if(params_total == 2){
   
   proposal_matrix <- diag(c(exp(1), 0.1, exp(1), exp(1), 0.1))
   #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-3.4, max=0), min = -3.5, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", runif(n=1, min=-1000, max=-3.6), min = -1000, max = -3.5), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", runif(n=1, min=-1000, max=0), min = -1000, max = -3.5), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", runif(n=1, min=-1000, max=0), min = -1000, max = -3.5), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("sigma_w", runif(n=1, min=-1000, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
   
   mcmc_pars$initial()
   #mcmc_pars$model(mcmc_pars$initial())
@@ -648,7 +657,9 @@ if(params_total == 2){
   mean(processed_chains$probabilities[,2])
   print(det_proposal_matrix <- cov(processed_chains$pars))
   
-  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", parameter_mean_hpd[3], min = -1000, max = 0),mcstate::pmcmc_parameter("m", parameter_mean_hpd[4], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[5], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", parameter_mean_hpd[3], min = -1000, max = 0),mcstate::pmcmc_parameter("m", parameter_mean_hpd[4], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[5], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("sigma_w", parameter_mean_hpd[3], min = -1000, max = 0, prior = function(a) 1/a),mcstate::pmcmc_parameter("m", parameter_mean_hpd[4], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", parameter_mean_hpd[5], min = 0, max = 1, prior = function(a) a)), det_proposal_matrix, make_transform(complex_params))
+  
   
   det_filter <- particle_deterministic$new(data = fitting_mass_data,
                                            model = WF,
@@ -776,9 +787,13 @@ if(stoch_run == TRUE){
     #}
     test_mod <- WF$new(pars = append(complex_params1, list(m = 0.01, v = 0.1, prop_f = 0.3, sigma_f = -4)), time = 0, n_particles = 6L)
     index(test_mod$info())
-    proposal_matrix <- diag(c(exp(1), 0.1, exp(1), 0.1))
+    us_det_fit <- readRDS("../US/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+    processed_chains_det <- mcstate::pmcmc_thin(us_det_fit, burnin = 2000, thin = 1)
+    proposal_matrix <- cov(processed_chains_det$pars) # take proposal matrix from det fit
     complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no)
-    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", pre_fit_params[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[4], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", pre_fit_params[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[4], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1, prior = function(a) a),mcstate::pmcmc_parameter("m", pre_fit_params[3], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", pre_fit_params[4], min = 0, max = 1, prior = function(a) 1/a)), proposal_matrix, make_transform(complex_params))
+    
   }
   else if(params_total == 5){
     WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_5param.R")
@@ -787,8 +802,13 @@ if(stoch_run == TRUE){
       list(run = c(sum_clust = info$index$Pop_tot),
            state = c(Pop = info$index$Pop))
     }
-    proposal_matrix <- diag(c(exp(1), 0.1, exp(1), exp(1), 0.1))
-    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", pre_fit_params[3], min = -1000, max = -3.5), mcstate::pmcmc_parameter("m", pre_fit_params[4], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[5], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    us_det_fit <- readRDS("../US/PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
+    processed_chains_det <- mcstate::pmcmc_thin(us_det_fit, burnin = 2000, thin = 1)
+    proposal_matrix <- cov(processed_chains_det$pars) # take proposal matrix from det fit
+    #proposal_matrix <- diag(c(exp(1), 0.1, exp(1), exp(1), 0.1))
+    #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1), mcstate::pmcmc_parameter("sigma_w", pre_fit_params[3], min = -1000, max = -3.5), mcstate::pmcmc_parameter("m", pre_fit_params[4], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[5], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", pre_fit_params[2], min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("sigma_w", pre_fit_params[3], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("m", pre_fit_params[4], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", pre_fit_params[5], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+    
   }
   else if(params_total == 2){
     complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no, sigma_f = -1000, prop_f = 1)
@@ -796,8 +816,13 @@ if(stoch_run == TRUE){
       list(run = c(sum_clust = info$index$Pop_tot),
            state = c(Pop = info$index$Pop))
     }
-    proposal_matrix <- diag(c(exp(1), 0.1))
-    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[2], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    us_det_fit <- readRDS("../US/PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
+    processed_chains_det <- mcstate::pmcmc_thin(us_det_fit, burnin = 2000, thin = 1)
+    proposal_matrix <- cov(processed_chains_det$pars) # take proposal matrix from det fit
+    #proposal_matrix <- diag(c(exp(1), 0.1))
+    #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[2], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", pre_fit_params[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", pre_fit_params[2], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+    
   }
   else if(params_total == 3){
     complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no, prop_f = 1)
@@ -805,8 +830,13 @@ if(stoch_run == TRUE){
       list(run = c(sum_clust = info$index$Pop_tot),
            state = c(Pop = info$index$Pop))
     }
-    proposal_matrix <- diag(c(exp(1), exp(1), 0.1))
-    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("m", pre_fit_params[2], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[3], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    us_det_fit <- readRDS("../US/PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
+    processed_chains_det <- mcstate::pmcmc_thin(us_det_fit, burnin = 2000, thin = 1)
+    proposal_matrix <- cov(processed_chains_det$pars) # take proposal matrix from det fit
+    #proposal_matrix <- diag(c(exp(1), exp(1), 0.1))
+    #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0), mcstate::pmcmc_parameter("m", pre_fit_params[2], min = -1000, max = 0), mcstate::pmcmc_parameter("v", pre_fit_params[3], min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+    det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", pre_fit_params[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("m", pre_fit_params[2], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", pre_fit_params[3], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+    
   }
   
   # somehow, "index" breaks when n_particles > 1, don't know why
@@ -831,7 +861,7 @@ if(stoch_run == TRUE){
   
   filter <- mcstate::particle_filter$new(data = fitting_mass_data,
                                          model = WF,
-                                         n_particles = 96,
+                                         n_particles = 384,
                                          index = index,
                                          compare = combined_compare,
                                          n_threads = 8)

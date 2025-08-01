@@ -73,3 +73,98 @@ sort.list(likelihoods_FindGenes_df$ggCPP)[1:10]
 rowSums(find_genes_df[,sort.list(likelihoods_FindGenes_df$ggCPP)[1:10]])
 sum(rowSums(find_genes_df[,sort.list(likelihoods_FindGenes_df$ggCPP)[1:10]])==1) # 568
 sum(rowSums(find_genes_df[,sort.list(likelihoods_FindGenes_df$ggCPP)[1:10]])==2) # 71
+
+
+# 23.07.2025
+ga_ppxsero <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_23/GeneticAlg/gann.rds")
+ga_ppxsero <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_28/GeneticAlg/gann.rds")
+plot(ga_ppxsero)
+plot(ga_ppxsero, ylim = c(-310, -200))
+abline(h = -214, col = "red", lty = "dashed")
+abline(h = -215, col = "red", lty = "dashed")
+abline(h = -261, col = "red", lty = "dashed")
+abline(h = -271, col = "red", lty = "dashed")
+
+delta_ranking <- readRDS(file = "ggC_delta_ranking.rds")
+ga_ppxsero_NFDS_vec <- as.vector(t(apply(ga_ppxsero@solution, 1, decode2)))
+names(ga_ppxsero_NFDS_vec) <- names(delta_ranking)
+sum(ga_ppxsero_NFDS_vec)/1934 # 0.4172699
+
+ga_ppxsero_NFDS_vec_delta_sorted <- ga_ppxsero_NFDS_vec[names(sort(delta_ranking))]
+plot(ga_ppxsero_NFDS_vec_delta_sorted)
+mean(ga_ppxsero_NFDS_vec_delta_sorted[1:floor(1934 * 0.35142922)])
+mean(ga_ppxsero_NFDS_vec_delta_sorted[-(1:floor(1934 * 0.35142922))])
+plot(cumsum(ga_ppxsero_NFDS_vec_delta_sorted))
+abline(a=0,b=mean(ga_ppxsero_NFDS_vec))
+abline(v = floor(1934 * 0.35142922), col = "red", lty = "dashed")
+
+plot(cumsum(ga_ppxsero_NFDS_vec_delta_sorted) - mean(ga_ppxsero_NFDS_vec) * (1:1934))
+abline(v = floor(1934 * 0.35142922), col = "red", lty = "dashed")
+
+# check function of those genes
+ggCaller_us_rowname_genename_dict <- readRDS("ggCaller_us_rowname_genename_dict.rds")
+bakta_annotation_panaroo <- read.delim("~/Documents/PhD_Project/Data/StrepPneumo_UKUSNepal/bakta_annotation/create_tsv_annotation/bakta_annotation_and_before.tsv")
+bakta_annotation_panaroo_dict <- bakta_annotation_panaroo[,1]
+names(bakta_annotation_panaroo_dict) <- bakta_annotation_panaroo[,2]
+# functions of genes, under NFDS according to genetic algorithm:
+bakta_annotation_panaroo_dict[ggCaller_us_rowname_genename_dict[names(which(ga_ppxsero_NFDS_vec ==1))]]
+unname(bakta_annotation_panaroo_dict[ggCaller_us_rowname_genename_dict[names(which(ga_ppxsero_NFDS_vec ==1))]])
+
+# and under NFDS according to prop_f
+bakta_annotation_panaroo_dict[ggCaller_us_rowname_genename_dict[names(which(delta_ranking <= 0.35142922 * length(delta_ranking)))]]
+unname(bakta_annotation_panaroo_dict[ggCaller_us_rowname_genename_dict[names(which(delta_ranking <= 0.35142922 * length(delta_ranking)))]])
+
+delta_underNFDS <- rep(0, length(delta_ranking))
+names(delta_underNFDS) <- names(delta_ranking)
+delta_underNFDS[names(which(delta_ranking <= 0.35142922 * length(delta_ranking)))] <- 1
+
+
+# overlap delta and genetic algorithm
+# expected number of genes: 0.4172699 * 0.35142922 * 1934 = 283
+overlap_delta_genAlg <- intersect(names(which(delta_underNFDS ==1)), names(which(ga_ppxsero_NFDS_vec==1)))
+length(overlap_delta_genAlg)
+
+library(VennDiagram)
+library(RColorBrewer)
+myCol <- brewer.pal(3, "Pastel2")
+
+venn.diagram(
+  x = list(names(which(delta_underNFDS ==1)), names(which(ga_ppxsero_NFDS_vec==1))),
+  category.names = c("delta", "genAlg"),
+  filename = '../venn_diagramm_NFDSgenes_delta_genAlg.png',
+  output=TRUE, 
+  
+  # Output features
+  imagetype="png" ,
+  height = 960 , 
+  width = 960 , 
+  resolution = 600,
+  compression = "lzw",
+  
+  # Circles
+  lwd = 2,
+  lty = 'blank',
+  fill = c("#B3E2CD", "#FDCDAC"),
+  
+  # Numbers
+  cex = .6,
+  fontface = "bold",
+  fontfamily = "sans",
+  
+  # Set names
+  cat.cex = 0.6,
+  cat.fontface = "bold",
+  cat.default.pos = "outer",
+  cat.dist = c(0.055, 0.055),
+  cat.fontfamily = "sans"
+)
+
+# 30.07.2025
+ga_ppxsero_Nepal <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_Nepal_gann.rds")
+ga_ppxsero_UK <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_UK_gann.rds")
+plot(ga_ppxsero_Nepal)
+abline(h = -1130.253, col = "red", lty = "dashed") # 4-param
+
+plot(ga_ppxsero_UK, ylim = c(-700, -450))
+abline(h =  -463.2552469, col = "red", lty = "dashed") # 4-param
+
