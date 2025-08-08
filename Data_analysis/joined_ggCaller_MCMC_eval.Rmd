@@ -11,6 +11,7 @@ library(bayestestR)
 
 # 4-parameter model with GPSCs
 Mass_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_08/Mass_PPxSero2/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Mass_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/US_newPrior/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Mass_4param_mcmc2_probs <- coda::as.mcmc(cbind(Mass_4param_mcmc2$probabilities, Mass_4param_mcmc2$pars))
 #coda::effectiveSize(Mass_4param_mcmc2_probs)
 #summary(coda::as.mcmc(Mass_4param_mcmc2_probs))
@@ -27,6 +28,16 @@ percentile95_up <- apply(Mass_4param_mcmc2_probs,2,quantile,.975)
 #    0.00000000  -216.93700171  -216.93700171    -3.46685002     0.34412010    -4.20067157     0.09226522 
 #    0.00000000  -221.10809628  -221.10809628    -3.96755164     0.26854095    -4.70350782     0.07083447
 #    0.0000000   -214.7636318   -214.7636318     -2.9528191      0.4381072     -3.6808380      0.1190635
+
+# check correlations between parameters
+par(mfrow=c(4,4))
+for (i in 1:4) {
+  for (j in 1:4) {
+    plot(Mass_4param_mcmc2$pars[,i],Mass_4param_mcmc2$pars[,j])
+  }
+}
+cor(Mass_4param_mcmc2$pars[,"prop_f"],Mass_4param_mcmc2$pars[,"sigma_f"])
+
 rm(Mass_4param_mcmc2)
 rm(Mass_4param_mcmc2_probs)
 
@@ -55,6 +66,7 @@ var(Mass_4param_mcmc2_probs[,"log_likelihood"]) # 4.466667 --> should be roughly
 # 4-parameter model GPSC version
 UK_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_08/UK_PPxSero/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 UK_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_14/UK/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+UK_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/UK_newPrior/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 UK_4param_mcmc2_probs <- coda::as.mcmc(cbind(UK_4param_mcmc2$probabilities, UK_4param_mcmc2$pars))
 UK_4param_mcmc2_probs_burnin <- UK_4param_mcmc2_probs[c(1001:20000, 21001:40000, 41001:60000, 61001:80000),]
 UK_likelihood_4param <- median(UK_4param_mcmc2_probs_burnin[,"log_likelihood"])
@@ -66,6 +78,17 @@ percentile95_up <- apply(UK_4param_mcmc2_probs_burnin,2,quantile,.975)
 #     0.0000000   -540.3097118   -540.3097118     -3.8361059      0.2264006     -4.1091828      0.1032453
 #     0.00000000  -544.09425023  -544.09425023    -4.38824513     0.13255969    -4.42922249     0.08848182
 #     0.0000000   -538.2036833   -538.2036833     -3.3356316      0.3513341     -3.8118126      0.1195111 
+
+# check correlations between parameters
+par(mfrow=c(4,4))
+for (i in 1:4) {
+  for (j in 1:4) {
+    plot(UK_4param_mcmc2$pars[,i],UK_4param_mcmc2$pars[,j])
+  }
+}
+cor(UK_4param_mcmc2$pars[,"prop_f"],UK_4param_mcmc2$pars[,"sigma_f"])
+
+
 rm(UK_4param_mcmc2)
 
 param_mean_UK <- param_mean
@@ -79,6 +102,7 @@ percentile95_up_UK <- percentile95_up
 # 4-parameter model GPSC version
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_18/Nepal_5k/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_09/Nepal/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_4param_mcmc2$probabilities, Nepal_4param_mcmc2$pars))
 Nepal_4param_mcmc2_probs_burnin <- Nepal_4param_mcmc2_probs[c(1001:5000, 6001:10000, 11001:15000, 16001:20000),]
 Nepal_likelihood_4param <- median(Nepal_4param_mcmc2_probs_burnin[,"log_likelihood"])
@@ -90,6 +114,17 @@ percentile95_up <- apply(Nepal_4param_mcmc2_probs_burnin,2,quantile,.975)
 #     0.000000e+00  -2.596143e+03  -2.596143e+03  -9.880124e-01   2.415340e-01  -2.392463e+00   6.751184e-02
 #     0.000000e+00  -2.599995e+03  -2.599995e+03  -1.174697e+00   2.069937e-01  -2.538166e+00   2.490808e-02
 #     0.0000000  -2593.6809855  -2593.6809855     -0.8154029      0.2491590     -2.2057006      0.1171725
+
+# check correlations between parameters
+par(mfrow=c(4,4))
+for (i in 1:4) {
+  for (j in 1:4) {
+    plot(Nepal_4param_mcmc2$pars[,i],Nepal_4param_mcmc2$pars[,j])
+  }
+}
+
+cor(Nepal_4param_mcmc2$pars[,"prop_f"],Nepal_4param_mcmc2$pars[,"sigma_f"])
+
 rm(Nepal_4param_mcmc2)
 
 param_mean_Nepal <- param_mean

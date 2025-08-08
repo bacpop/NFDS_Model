@@ -46,7 +46,7 @@ pi_f_genotypes[] <- sum(pi_f_freq[1:gene_no,i])
 
 # Genotype specific probability to produce offspring
 # those are the individuals' probabilities multiplied by the number of individual that have this genotype
-probs[,] <- (1 + (prop_f))^pi_f_genotypes[i] * Pop[i,j] * (1- (as.integer(time >= vacc_time) * vaccTypes[j] * v))
+probs[,] <- (1 + sigma_f/(prop_f * gene_no))^pi_f_genotypes[i] * Pop[i,j] * (1- (as.integer(time >= vacc_time) * vaccTypes[j] * v))
 
 # generate the next generation based on the current one
 y[,] <- if ((probs[i,j]/sum(probs[1:species_no,1:sero_no])) < 1) 
@@ -82,7 +82,7 @@ gene_no <- user() # number of genes in the data set
 Pop_ini[,] <- user() # initial frequency of Genotypes
 Pop_eq[] <- user()
 capacity <- user()
-#sigma_f <- user()
+sigma_f <- user()
 #sigma_w <- user()
 prop_f <- user()
 delta[] <- user()

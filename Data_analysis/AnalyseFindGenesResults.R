@@ -168,3 +168,94 @@ abline(h = -1130.253, col = "red", lty = "dashed") # 4-param
 plot(ga_ppxsero_UK, ylim = c(-700, -450))
 abline(h =  -463.2552469, col = "red", lty = "dashed") # 4-param
 
+# need country-specific delta ranking
+
+ga_ppxsero_Nepal_vec <- as.vector(t(apply(ga_ppxsero_Nepal@solution, 1, decode2)))
+names(ga_ppxsero_Nepal_vec) <- names(Nepal_delta_ranking)
+sum(ga_ppxsero_Nepal_vec)/length(ga_ppxsero_Nepal_vec) # 0.4607672
+
+ga_ppxsero_UK_vec <- as.vector(t(apply(ga_ppxsero_UK@solution, 1, decode2)))
+names(ga_ppxsero_UK_vec) <- names(UK_delta_ranking)
+sum(ga_ppxsero_UK_vec)/length(ga_ppxsero_UK_vec) # 0.5443756
+
+gene_name_overlap <- intersect(intersect(names(delta_ranking), names(Nepal_delta_ranking)), names(UK_delta_ranking)) # 1360 genes in intersection
+
+plot(1:length(gene_name_overlap), ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap])
+length(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 3))
+length(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 2))
+length(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 1))
+length(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 0))
+
+# expected no of genes under NFDS all three:
+# 1360 * 0.4172699 * 0.4607672 * 0.5443756 = 142.343 (actual 138, so slightly less)
+# US-Nepal: 1360 * 0.4172699 * 0.4607672 = 261.4794 (actual 243)
+# US-UK: 1360 * 0.4172699 * 0.5443756 = 308.9261 (actual 317)
+# UK-Nepal: 1360 * 0.4607672 * 0.5443756 = 341.1294 (actual 332)
+
+length(intersect(names(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 3)), names(which(delta_underNFDS==1))))
+# 58
+
+plot(gene_name_overlap, ((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap])))
+points(gene_name_overlap,  (delta_underNFDS[gene_name_overlap]), col = "red")
+
+plot(cumsum((as.integer((ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))] + ga_ppxsero_Nepal_vec[names(sort(delta_ranking[gene_name_overlap]))] + ga_ppxsero_UK_vec[names(sort(delta_ranking[gene_name_overlap]))])))))
+abline(a=0,b=mean((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap])))
+
+
+plot(cumsum(ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))]))
+points(cumsum(ga_ppxsero_Nepal_vec[names(sort(delta_ranking[gene_name_overlap]))]))
+points(cumsum(ga_ppxsero_UK_vec[names(sort(delta_ranking[gene_name_overlap]))]))
+
+plot(cumsum(ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))[1:300]]))
+points(cumsum(ga_ppxsero_Nepal_vec[names(sort(delta_ranking[gene_name_overlap]))[1:300]]))
+points(cumsum(ga_ppxsero_UK_vec[names(sort(delta_ranking[gene_name_overlap]))[1:300]]))
+
+length(intersect(intersect(names(which(ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))[1:300]]==1)),names(which(ga_ppxsero_Nepal_vec[names(sort(delta_ranking[gene_name_overlap]))[1:300]]==1))),names(which(ga_ppxsero_UK_vec[names(sort(delta_ranking[gene_name_overlap]))[1:300]]==1))))
+# 34
+
+plot(cumsum(ga_ppxsero_NFDS_vec[gene_name_overlap]))
+points(cumsum(ga_ppxsero_Nepal_vec[gene_name_overlap]))
+points(cumsum(ga_ppxsero_UK_vec[gene_name_overlap]))
+
+mean(c(0.4172699 , 0.4607672, 0.5443756)) = 0.4741376
+
+mean(ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))[1:(length(gene_name_overlap)*0.4741376)]]) # 0.5170807
+mean(ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))[-(1:(length(gene_name_overlap)*0.4741376))]]) # 0.3128492
+mean(ga_ppxsero_Nepal_vec[names(sort(delta_ranking[gene_name_overlap]))[1:(length(gene_name_overlap)*0.4741376)]]) # 0.4704969
+mean(ga_ppxsero_Nepal_vec[names(sort(delta_ranking[gene_name_overlap]))[-(1:(length(gene_name_overlap)*0.4741376))]]) # 0.424581
+mean(ga_ppxsero_UK_vec[names(sort(delta_ranking[gene_name_overlap]))[1:(length(gene_name_overlap)*0.4741376)]]) # 0.5698758
+mean(ga_ppxsero_UK_vec[names(sort(delta_ranking[gene_name_overlap]))[-(1:(length(gene_name_overlap)*0.4741376))]]) # 0.5460894
+
+
+unname(bakta_annotation_panaroo_dict[ggCaller_us_rowname_genename_dict[names(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) ==3))]])
+
+venn.diagram(
+  x = list(names(which(ga_ppxsero_NFDS_vec[gene_name_overlap] ==1)), names(which(ga_ppxsero_Nepal_vec[gene_name_overlap]==1)), names(which(ga_ppxsero_UK_vec[gene_name_overlap]==1))),
+  category.names = c("US", "Nepal", "UK"),
+  filename = '../venn_diagramm_NFDSgenes_delta_genAlg.png',
+  output=TRUE, 
+  
+  # Output features
+  imagetype="png" ,
+  height = 960 , 
+  width = 960 , 
+  resolution = 600,
+  compression = "lzw",
+  
+  # Circles
+  lwd = 2,
+  lty = 'blank',
+  fill = myCol,
+  
+  # Numbers
+  cex = .6,
+  fontface = "bold",
+  fontfamily = "sans",
+  
+  # Set names
+  cat.cex = 0.6,
+  cat.fontface = "bold",
+  cat.default.pos = "outer",
+  cat.dist = c(0.055, 0.055, 0.055),
+  cat.fontfamily = "sans"
+)

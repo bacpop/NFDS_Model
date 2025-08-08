@@ -657,6 +657,8 @@ mobile_genes_joined_ggCaller[names(which(bakta_annotation_mobile == TRUE))] <- T
 joined_ggCaller_bool_non_mobile <- joined_ggCaller_bool[c(1, 1 + (which(mobile_genes_joined_ggCaller == FALSE))),]
 
 joined_ggCaller_bool <- joined_ggCaller_bool_non_mobile
+
+saveRDS(joined_ggCaller_bool, "joined_ggCaller_bool.rds")
 ```
 
 
@@ -702,6 +704,7 @@ saveRDS(joined_ggCaller_list, "joined_ggCaller_list.rds")
 # split ggCaller gene presence absence matrix into different time points
 ```{r}
 ### continue working here
+Nepal_time_points_selected <- min(Nepal_time_points):max(Nepal_time_points)
 Nepal_ggCaller_byYear <- vector(mode = "list", length = length(Nepal_time_points_selected))
 
 for (i in 1:length(Nepal_time_points_selected)) {
@@ -804,7 +807,7 @@ for(j in 1:length(Nepal_time_points_selected)){
   }
 }
 
-Nepal_cluster_freqs[[6]] <- rep(NA, no_Nepal_PP)
+#Nepal_cluster_freqs[[6]] <- rep(NA, no_Nepal_PP)
 
 # I will use 2009 as start population I think # no, I should use a combination of 2009, 2012 and 2014 (see next code bit)
 Nepal_time_points_preVac <- c(5,8,10)
@@ -906,27 +909,89 @@ saveRDS(Nepal_cluster_sero_freqs_pre_post_df_selected, "Nepal_cluster_sero_freqs
 ```{r}
 # investigating whether I am missing a lot when just using 2009 as the start population
 par(mfrow = c(3,1))
-barplot(Nepal_cluster_freqs[[5]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 0)]/sum(Nepal_cluster_freqs[[5]]), ylim = c(0, 0.1))
-barplot(Nepal_cluster_freqs[[8]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 0)]/sum(Nepal_cluster_freqs[[8]]), col = "red")
-barplot(Nepal_cluster_freqs[[10]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 0)]/sum(Nepal_cluster_freqs[[10]]), col = "blue")
+barplot(Nepal_cluster_freqs[[1]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 0)]/sum(Nepal_cluster_freqs[[1]]), ylim = c(0, 0.1))
+barplot(Nepal_cluster_freqs[[4]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 0)]/sum(Nepal_cluster_freqs[[4]]), col = "red")
+barplot(Nepal_cluster_freqs[[6]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 0)]/sum(Nepal_cluster_freqs[[6]]), col = "blue")
 
-Nepal_pre_vac_df <- data.frame(rbind(Nepal_cluster_freqs[[5]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[5]]), Nepal_cluster_freqs[[8]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[8]]), Nepal_cluster_freqs[[10]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[10]])))
-colnames(Nepal_pre_vac_df) <- unique(Nepal_PP$GPSC)[which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]
+Nepal_pre_vac_df <- data.frame(rbind(Nepal_cluster_freqs[[1]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[1]]), Nepal_cluster_freqs[[4]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[4]]), Nepal_cluster_freqs[[6]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[6]])))
+colnames(Nepal_pre_vac_df) <- unique(Nepal_PP$GPSC)[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]
 rownames(Nepal_pre_vac_df) <- c("2009", "2012", "2014")
 
+par(mfrow = c(1,1))
 barplot(as.matrix(Nepal_pre_vac_df), beside = TRUE, col = c("black","red","blue"),legend = rownames(as.matrix(Nepal_pre_vac_df)))
 
 # yes, I am clearly missing some GPSCs! 
 # Especially bad is 9
 
-# just for fun, add last time point (2021) to plot
-Nepal_pre_and_post_vac_df <- data.frame(rbind(Nepal_cluster_freqs[[5]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[5]]), Nepal_cluster_freqs[[8]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[8]]), Nepal_cluster_freqs[[10]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[10]]), Nepal_cluster_freqs[[13]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[13]]), Nepal_cluster_freqs[[14]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[14]]), Nepal_cluster_freqs[[15]][which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]/sum(Nepal_cluster_freqs[[15]])))
-colnames(Nepal_pre_and_post_vac_df) <- unique(Nepal_PP$GPSC)[which(Nepal_cluster_freqs[[5]] + Nepal_cluster_freqs[[8]] + Nepal_cluster_freqs[[10]] > 1)]
+Nepal_pre_and_post_vac_df <- data.frame(rbind(Nepal_cluster_freqs[[1]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[1]]), Nepal_cluster_freqs[[4]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[4]]), Nepal_cluster_freqs[[6]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[6]]), Nepal_cluster_freqs[[9]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[9]]), Nepal_cluster_freqs[[10]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[10]]), Nepal_cluster_freqs[[11]][which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]/sum(Nepal_cluster_freqs[[11]])))
+colnames(Nepal_pre_and_post_vac_df) <- unique(Nepal_PP$GPSC)[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]
 rownames(Nepal_pre_and_post_vac_df) <- c("2009", "2012", "2014", "2017", "2018", "2019")
 
 barplot(as.matrix(Nepal_pre_and_post_vac_df), beside = TRUE, col = c(rep("red",3),rep("blue",3)),legend = rownames(as.matrix(Nepal_pre_and_post_vac_df)), ylim = c(0, 0.15))
 
-# make stacked barplot - with serotypes
+# make stacked barplot - with serotypes - or maybe VTs?
+Nepal_PP_with_time1 <- Nepal_PP
+Nepal_PP_with_time1$Time <- Nepal_SeqYear_dict[Nepal_PP$sample]
+
+Nepal_VT_dict <- rep(0, length(Nepal_PP$sample))
+Nepal_VT_dict[which(Nepal_PP$VT == "VT")] <- 1
+names(Nepal_VT_dict) <- Nepal_PP$sample
+
+Nepal_GPSC_dict <- Nepal_PP$GPSC
+names(Nepal_GPSC_dict) <- Nepal_PP$sample
+
+Nepal_GPSC_ind <- 1:length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1))
+names(Nepal_GPSC_ind) <- unique(Nepal_PP$GPSC)[(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1))]
+
+Nepal_GPSC_ind_all <- 1:length(unique(Nepal_PP$GPSC))
+names(Nepal_GPSC_ind_all) <- unique(Nepal_PP$GPSC)
+
+Nepal_SeqYear_ind <- 1:6
+names(Nepal_SeqYear_ind) <- unique(Nepal_SeqYear_dict)
+
+Nepal_PP_with_time <- data.frame(matrix(NA, nrow = length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)) * 2 * length(unique(Nepal_SeqYear_dict)), ncol = 4))
+Nepal_PP_with_time[,1] <- rep(unique(Nepal_PP$GPSC)[(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1))], 2 * length(unique(Nepal_SeqYear_dict)))
+Nepal_PP_with_time[,2] <- rep(c(rep("NVT", length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1))), rep("VT", length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)))), length(unique(Nepal_SeqYear_dict)))
+Nepal_PP_with_time[,3] <- sort(rep(unique(Nepal_SeqYear_dict), length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)) * 2))
+Nepal_PP_with_time[,4] <- rep(0, length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)) * 2 * length(unique(Nepal_SeqYear_dict)))
+
+for (i in Nepal_PP$sample) {
+  #print(i)
+  if(is.element(Nepal_GPSC_ind_all[Nepal_GPSC_dict[i]], which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1))){
+   pos <- ((Nepal_SeqYear_ind[as.character(Nepal_SeqYear_dict[i])]) -1) * length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)) * 2 + (Nepal_VT_dict[i]) * length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)) + ((Nepal_GPSC_ind[as.character(Nepal_GPSC_dict[i])]) -1)
+  Nepal_PP_with_time[pos, 4] <- Nepal_PP_with_time[pos, 4] + 1 
+  }
+}
+colnames(Nepal_PP_with_time) <- c("GPSC","VT","Time","value")
+
+ggplot(Nepal_PP_with_time, aes(x=Time, y=value, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(.~GPSC) + theme_bw()
+
+# this should really be frequency, not absolute counts
+Nepal_PP_with_time_rel <- Nepal_PP_with_time
+for (i in unique(Nepal_PP_with_time_rel$Time)) {
+  ind <- which(Nepal_PP_with_time_rel$Time == i)
+  sum <- sum(Nepal_PP_with_time_rel$value[which(Nepal_PP_with_time_rel$Time == i)])
+  Nepal_PP_with_time_rel$value[which(Nepal_PP_with_time_rel$Time == i)] <- Nepal_PP_with_time_rel$value[which(Nepal_PP_with_time_rel$Time == i)] / sum
+}
+ggplot(Nepal_PP_with_time_rel, aes(x=Time, y=value, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(.~GPSC) + theme_bw()
+
+# now pick a couple of interesting GPSCs
+Nepal_PP_with_time_rel_selected <- data.frame(matrix(NA, nrow = 5 * 2 * 6, ncol = 4))
+colnames(Nepal_PP_with_time_rel_selected) <- colnames(Nepal_PP_with_time_rel)
+selected_GPSCs <- (unique(Nepal_PP$GPSC)[(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1))])[c(12, 4, 5, 11, 6)]
+for (i in 1:length(selected_GPSCs)) {
+  Nepal_PP_with_time_rel_selected[((i-1)*2*6+1):((i)*2*6),] <- Nepal_PP_with_time_rel[which(Nepal_PP_with_time_rel$GPSC == selected_GPSCs[i]),]
+}
+
+Nepal_PP_with_time_rel_selected$GPSC_order = factor(Nepal_PP_with_time_rel_selected$GPSC, levels=c('101','45','26','12','11'))
+
+group.colors <- c(VT = "#800000", NVT = "#000080")
+
+ggplot(Nepal_PP_with_time_rel_selected, aes(x=Time, y=value, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(.~GPSC_order) + theme_bw() +
+  scale_fill_manual(values=group.colors)
 ```
 
 

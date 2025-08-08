@@ -34,22 +34,31 @@ if(args[1] == "US"){
   vaccTypes_test_mtx1 <- readRDS(file = "SeroVT.rds")
   vaccTypes_test_mtx <- vaccTypes_test_mtx1[freq_sero]
   dt_test <- 1/12
+  #dt_test <- 1
 }
 
 if(length(args)>2){
+  #simulated_data <- readRDS("simulated_data_over_time_filtered.rds")
   simulated_data <- readRDS(args[2])
   sampling_freq <- as.numeric(args[3])
-  print(paste("Setting the sampling frequency to ", args[3]))
+  print(paste("Setting the sampling frequency to ", sampling_freq))
   years_avail <- 1:20
+  #years_avail <- 2:21
   years_for_sampling <- floor(max(years_avail)/sampling_freq)
   years_real <- years_avail[(1:years_for_sampling) * sampling_freq]
+  #years_real <- years_avail[(1:years_for_sampling-1) * sampling_freq]
   
   fitting_test_data <- data.frame("year" = years_real, t(simulated_data[,years_real]))
+  #fitting_test_data <- data.frame("year" = years_real, t(simulated_data[,years_real-1]))
   names(fitting_test_data) <- c("year", as.character(1:length(freq_clust)))
   fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,
                                                      time = "year",
                                                      rate = 1 / dt_test,
                                                      initial_time = 0)
+  #fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,
+  #                                                     time = "year",
+  #                                                     rate = 1 / dt_test,
+  #                                                     initial_time = 1)
   output_filename <- paste("US_based_simulation_with_freq_", as.character(sampling_freq),sep = "")
   
 } else{
@@ -84,25 +93,13 @@ combined_compare <- function(state, observed, pars = NULL) {
     ll_obs <- dmultinom(x = (data_vals), prob = models_vals_err/model_size, log = TRUE)   
   }
   result <- ll_obs
-  #for (i in 1:(length(unlist(observed))-4)){ 
-  #  state_name <- paste("sum_clust", i, sep = "")
-  #  if (is.na(observed[[as.character(i)]])) {
-  #    #Creates vector of zeros in ll with same length, if no data
-  #    ll_obs <- numeric(length( state[state_name, , drop = TRUE]))
-  #  } else {
-  #lambda <-  state[state_name, , drop = TRUE]/model_size * data_size + rexp(n = length( state[state_name, , drop = TRUE]/model_size * data_size), rate = exp_noise)
-  #ll_obs <- dpois(x = observed[[as.character(i)]], lambda = lambda, log = TRUE)
-  #    ll_obs <- dmultinom(x = (data_vals), prob = model_vals/model_size, log = TRUE)
-  #  }
-  
-  #  result <- result + ll_obs
-  #}
   result
 }
 
 Fit_model_to_sim_data <- function(fitting_data, fitting_params){
-  #WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
-  WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigma.R")
+  WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+  #WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigma.R")
+  #WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigmaTotalNFDS.R")
   
   #print(fitting_mass_data)
   det_filter <- particle_deterministic$new(data = fitting_data,
@@ -123,7 +120,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params){
   }
   
   
-  proposal_matrix <- diag(0.1,4) # the proposal matrix defines the covariance-variance matrix for a mult normal dist
+  #proposal_matrix <- diag(0.1,4) # the proposal matrix defines the covariance-variance matrix for a mult normal dist
   #mcmc_pars$names()
   #mcmc_pars$model(mcmc_pars$initial())
   # read this: https://mrc-ide.github.io/mcstate/reference/pmcmc_parameters.html
@@ -136,8 +133,19 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params){
   }
   #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", -0.597837, min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", 0.125, min = 0, max = 1), mcstate::pmcmc_parameter("m", -4, min = -1000, max = 0), mcstate::pmcmc_parameter("v", 0.05, min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
   proposal_matrix <- diag(c(exp(1), 0.1, exp(1), 0.1))
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, , prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #proposal_matrix <- as.matrix(c(0.1))
+  #proposal_matrix <- diag(c(exp(1), 0.1))
+  #proposal_matrix <- diag(c(0.1, exp(1), 0.1))
+  
+  
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=0, max=1000), min = 0, max = gene_no_test, prior = function(a) a), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, , prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  
   
   #proposal_matrix <- diag(0.1,1)
   #mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1)), proposal_matrix, make_transform(complex_params))
@@ -165,7 +173,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params){
   det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
   
   n_steps <- 1000
-  #n_steps <- 200
+  #n_steps <- 500
   n_burnin <- 0
   
   
@@ -182,7 +190,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params){
   #n_threads_total = 8
   
   det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
-  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run, burnin = 200, thin = 1)
+  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run, burnin = 100, thin = 1)
   parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
   print(parameter_mean_hpd)
   
@@ -198,8 +206,16 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params){
   mean(processed_chains$probabilities[,2])
   det_proposal_matrix <- cov(processed_chains$pars)
   
-  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f",  parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f",  parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m",  parameter_mean_hpd[3], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v",  parameter_mean_hpd[4], min = 0, max = 1, , prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", parameter_mean_hpd[1], min = -1000, max = 0), mcstate::pmcmc_parameter("prop_f", parameter_mean_hpd[2], min = 0, max = 1),mcstate::pmcmc_parameter("m", parameter_mean_hpd[3], min = -1000, max = 0), mcstate::pmcmc_parameter("v", parameter_mean_hpd[4], min = 0, max = 1)), det_proposal_matrix, make_transform(complex_params))
+  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f",  parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f",  parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m",  parameter_mean_hpd[3], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v",  parameter_mean_hpd[4], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f",  parameter_mean_hpd[1], min = 0, max = gene_no_test, prior = function(a) a), mcstate::pmcmc_parameter("prop_f",  parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m",  parameter_mean_hpd[3], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v",  parameter_mean_hpd[4], min = 0, max = 1, , prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("v",  parameter_mean_hpd[1], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(  mcstate::pmcmc_parameter("m",  parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), 
+#mcstate::pmcmc_parameter("v",  parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  #det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(  mcstate::pmcmc_parameter("prop_f",  parameter_mean_hpd[1], min = 0, max = 1, prior = function(a) a),
+  #                                                      mcstate::pmcmc_parameter("m",  parameter_mean_hpd[2], min = -1000, max = 0, prior = function(a) 1/a), 
+  #                                                      mcstate::pmcmc_parameter("v",  parameter_mean_hpd[3], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
   
   det_filter <- particle_deterministic$new(data = fitting_data,
                                            model = WF,
@@ -258,6 +274,9 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params){
 }
 
 fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test)
+#fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test, sigma_f = log(0.0345), prop_f = 0.3, m = log(0.0133))
+#fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test, sigma_f = log(0.0345), prop_f = 0.3)
+#fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test, sigma_f = log(0.0345))
 
 #fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test, sigma_f = log(0.0345), prop_f = 0.3, m = log(0.0133))
 
@@ -265,6 +284,37 @@ MCMC_chain_sample1year_run <- Fit_model_to_sim_data(fitting_data = fitting_test_
 
 processed_chains_1year <- mcstate::pmcmc_thin(MCMC_chain_sample1year_run, burnin = 1000, thin = 2)
 MCMC_chain_sample1year <- coda::as.mcmc(cbind(processed_chains_1year$probabilities, processed_chains_1year$pars))
+
+
+#par(mfrow = c(6, 2), mar = c(4, 4, 1, 1), mgp = c(3, 0.5, 0), bty = "n")
+#plot(MCMC_chain_sample1year_run$probabilities[, "log_prior"], type = "l", xlab = "Iteration",
+#     ylab = expression(log_prior))
+#hist(MCMC_chain_sample1year_run$probabilities[, "log_prior"], main = "", xlab = expression(log_prior),
+#     freq = FALSE)
+#plot(MCMC_chain_sample1year_run$probabilities[, "log_posterior"], type = "l", xlab = "Iteration",
+#     ylab = expression(log_posterior))
+#hist(MCMC_chain_sample1year_run$probabilities[, "log_posterior"], main = "", xlab = expression(log_posterior),
+#     freq = FALSE)
+#plot(MCMC_chain_sample1year_run$pars[, "v"], type = "l", xlab = "Iteration",
+#     ylab = expression(v))
+#hist(MCMC_chain_sample1year_run$pars[, "v"], main = "", xlab = expression(v),
+#     freq = FALSE)
+#abline(v = 0.0814, col = "red")
+#plot(MCMC_chain_sample1year_run$pars[, "m"], type = "l", xlab = "Iteration",
+#     ylab = expression(m))
+#hist(MCMC_chain_sample1year_run$pars[, "m"], main = "", xlab = expression(m),
+#     freq = FALSE)
+#abline(v = log(0.0133), col = "red")
+#plot(MCMC_chain_sample1year_run$pars[, "prop_f"], type = "l", xlab = "Iteration",
+#     ylab = expression(prop_f))
+#hist(MCMC_chain_sample1year_run$pars[, "prop_f"], main = "", xlab = expression(prop_f),
+#     freq = FALSE)
+#abline(v = 0.3, col = "red")
+#plot(MCMC_chain_sample1year_run$pars[, "sigma_f"], type = "l", xlab = "Iteration",
+#     ylab = expression(sigma_f))
+#hist(MCMC_chain_sample1year_run$pars[, "sigma_f"], main = "", xlab = expression(sigma_f),
+#     freq = FALSE)
+#abline(v = log(0.0345), col = "red")
 
 mean_sample1year <- apply(MCMC_chain_sample1year,2,mean)
 percentile95_low_sample1year <- apply(MCMC_chain_sample1year,2,quantile,.025)

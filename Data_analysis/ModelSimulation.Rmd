@@ -14,6 +14,9 @@ editor_options:
 library(ggplot2)
 library(viridis)
 WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+#WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigma.R")
+#WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigmaTotalNFDS.R")
+
 ```
 
 ```{r}
@@ -40,7 +43,9 @@ Pop_ini_test_mtx <- sapply(Pop_ini_test,as.double)
 ### check how well Pop_ini matches reality:
 # Mass
 PPsero_startpop6 <- readRDS("PPsero_startpop6.rds")
-plot(sort(rowSums(PPsero_startpop6))) # lots of rare genotypes, some with high freq
+plot(sort(rowSums(PPsero_startpop6), decreasing = TRUE)) # lots of rare genotypes, some with high freq
+plot(sort(rowSums(PPsero_startpop6), decreasing = TRUE)/max(rowSums(PPsero_startpop6))) # lots of rare genotypes, some with high freq
+lines((1:length(rowSums(PPsero_startpop6)))^(-1)) # scaling law :D
 # yes, but the replacement in not coming from those
 # the replacement is coming from genotypes that are not super rare in the beginning
 
@@ -75,7 +80,8 @@ plot(sort(rowSums(Pop_ini_test)))
 #saveRDS(data.frame(Pop_ini_test), "Pop_ini_test.rds")
 #Pop_ini_test <- readRDS("Pop_ini_test.rds")
 Pop_ini_test_mtx <- sapply(Pop_ini_test,as.double)
-Pop_ini_test_mtx <- Pop_ini_test_mtx * 1000
+#Pop_ini_test_mtx <- Pop_ini_test_mtx * 1000
+Pop_ini_test_mtx <- Pop_ini_test_mtx
 # generate genotypes
 #gene_freq_test <- (sample((5:95), gene_no_test, replace = TRUE))/100 # random gene frequencies
 #sample_genomes <- function(gene_freq){
@@ -115,32 +121,37 @@ Pop_ini_test <- PPsero_startpop6
 #Pop_ini_test_mtx <- Pop_ini_test <- matrix(PPsero_startpop6, nrow = 52, ncol = 32)
 Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero))
 Pop_ini_test_mtx <- Pop_ini_test_mtx * 1000
+Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero))
+#gene_freq_post_test <- gene_freq_test
+#gene_freq_post_test[1:(0.3 * length(gene_freq_post_test))] <- gene_freq_test[1:(0.3 * length(gene_freq_post_test))] + sample(c(1,-1), size = 0.3 * length(gene_freq_post_test), replace = TRUE) * rexp(n = 0.3 * length(gene_freq_post_test), rate = 1e6)
+#gene_freq_post_test[-(1:(0.3 * length(gene_freq_post_test)))] <- gene_freq_test[-(1:(0.3 * length(gene_freq_post_test)))] + sample(c(1,-1), size = 0.7 * length(gene_freq_post_test), replace = TRUE) * rexp(n = 0.7 * length(gene_freq_post_test), rate = 1e2)
+#plot(gene_freq_test, gene_freq_post_test)
+#points(gene_freq_test[1:(0.3 * length(gene_freq_post_test))], gene_freq_post_test[1:(0.3 * length(gene_freq_post_test))], col = "red")
 
-gene_freq_post_test <- gene_freq_test
-gene_freq_post_test[1:(0.3 * length(gene_freq_post_test))] <- gene_freq_test[1:(0.3 * length(gene_freq_post_test))] + sample(c(1,-1), size = 0.3 * length(gene_freq_post_test), replace = TRUE) * rexp(n = 0.3 * length(gene_freq_post_test), rate = 1e6)
-gene_freq_post_test[-(1:(0.3 * length(gene_freq_post_test)))] <- gene_freq_test[-(1:(0.3 * length(gene_freq_post_test)))] + sample(c(1,-1), size = 0.7 * length(gene_freq_post_test), replace = TRUE) * rexp(n = 0.7 * length(gene_freq_post_test), rate = 1e2)
-plot(gene_freq_test, gene_freq_post_test)
-points(gene_freq_test[1:(0.3 * length(gene_freq_post_test))], gene_freq_post_test[1:(0.3 * length(gene_freq_post_test))], col = "red")
+#plot((abs(gene_freq_test[-(1:(0.3 * length(gene_freq_post_test)))] - gene_freq_post_test[-(1:(0.3 * length(gene_freq_post_test)))])))
+#points((abs(gene_freq_test[(1:(0.3 * length(gene_freq_post_test)))] - gene_freq_post_test[(1:(0.3 * length(gene_freq_post_test)))])))
 
-plot((abs(gene_freq_test[-(1:(0.3 * length(gene_freq_post_test)))] - gene_freq_post_test[-(1:(0.3 * length(gene_freq_post_test)))])))
-points((abs(gene_freq_test[(1:(0.3 * length(gene_freq_post_test)))] - gene_freq_post_test[(1:(0.3 * length(gene_freq_post_test)))])))
+#gene_freq_change <- abs(gene_freq_test - gene_freq_post_test)
+#gene_freq_change_group <- c(rep("NFDS", 0.3 * length(gene_freq_post_test)), rep("not NFDS", 0.7 * length(gene_freq_post_test)))
+#boxplot(gene_freq_change ~ gene_freq_change_group)
 
-gene_freq_change <- abs(gene_freq_test - gene_freq_post_test)
-gene_freq_change_group <- c(rep("NFDS", 0.3 * length(gene_freq_post_test)), rep("not NFDS", 0.7 * length(gene_freq_post_test)))
-boxplot(gene_freq_change ~ gene_freq_change_group)
-
-delta_data_test <- (gene_freq_post_test - gene_freq_test) ^ 2 / (1 - gene_freq_test * (1 - gene_freq_test))
-names(delta_data_test) <- 1:(length(gene_freq_test)-1)
-delta_test_ranking <- rank(delta_data_test)
+#delta_data_test <- (gene_freq_post_test - gene_freq_test) ^ 2 / (1 - gene_freq_test * (1 - gene_freq_test))
+#names(delta_data_test) <- 1:(length(gene_freq_test)-1)
+#delta_test_ranking <- rank(delta_data_test)
 # generate delta ranking
 #delta_test <- c(1,1:(length(gene_freq_test)-1))
 #names(delta_test) <- rank(delta_test)
-delta_test <- delta_test_ranking
+#delta_test <- delta_test_ranking
 # sample delta from real delta
 delta_real_data <- readRDS("ggC_delta_data2.rds") 
-delta_data_test <- delta_ranking_real_data[sample_genes_ids]
+#delta_data_test <- delta_ranking_real_data[sample_genes_ids]
+delta_data_test <- delta_real_data[sample_genes_ids]
 names(delta_data_test) <- 1:(length(delta_data_test))
 delta_test <- rank(delta_data_test)
+
+
+plot(sort(delta_real_data, decreasing = TRUE))
+lines(max(delta_real_data) * (1:length(delta_real_data))^(-0.5)) # scaling law :D # does not work very well at all
 # generate migration vector
 non_zero_entry <- function(a){
   if(a>0){
@@ -191,11 +202,15 @@ PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no =
 PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
 #PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.06, vacc_time = 4)
 #PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.16, vacc_time = 4)
+#PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345) -log(0.3) , prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+#PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345) + log(0.3) , prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+#PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345) + log(0.3) , prop_f = 0.3/5, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+#PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = (0.0345) * gene_no_test * 0.3 , prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
 WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
                          time = 0,
                          n_particles = 10L,
                          n_threads = 4L,
-                         seed = 1L)
+                         seed = 1L, deterministic = TRUE)
 #WFmodel_ppxSero$run(1)
 
 simMean_clust <- rowMeans(WFmodel_ppxSero$run(0)[2:(species_no_test+1),])
@@ -221,7 +236,7 @@ WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
                          time = 0,
                          n_particles = 10L,
                          n_threads = 4L,
-                         seed = 1L)
+                         seed = 1L, deterministic = TRUE)
 for (i in 0:240) {
   simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
   simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
@@ -239,6 +254,7 @@ for (i in 0:240) {
 }
 simulated_data_over_time_clust <- sapply(simulated_data_long, rowSums)
 simulated_data_over_time_clust_df <- as.data.frame(simulated_data_over_time_clust)
+saveRDS(simulated_data_over_time_clust_df[,-1], "simulated_data_over_time_clust_df.rds")
 simulated_data_over_time_filtered <- simulated_data_over_time_clust[,((1:20)*12)+1]
 simulated_data_over_time_filtered_df <- as.data.frame(rbind(1:20,simulated_data_over_time_filtered))
 saveRDS(simulated_data_over_time_filtered, "simulated_data_over_time_filtered.rds")
@@ -256,7 +272,7 @@ points(rowMeans(list_of_particle_list[[241]]), col = "red", pch = 4, cex = 3)
 colour_vec <- rep("black", species_no_test)
 colour_vec[which(vaccTypes_test_mtx[apply(Pop_ini_test_mtx, 1, which.max)] == 1)] <- "red" # take the predominant serotype per cluster (to define vacc type or not)
 
-plot(simulated_data_over_time_filtered[1,], type = "l", ylim = c(0,2500), col = colour_vec[1])
+plot(simulated_data_over_time_filtered[1,], type = "l", ylim = c(0,max(simulated_data_over_time_filtered[1,])), col = colour_vec[1])
 for (i in 2:species_no_test) {
   lines(simulated_data_over_time_filtered[i,], col = colour_vec[i])
 }
@@ -264,27 +280,40 @@ for (i in 2:species_no_test) {
 #plot(unlist(list_of_particle_list)[sort(rep((0:240) * 230, 23)) + rep(1:23,length((0:240) * 230))], type = "l", ylim = c(0,2500), col = colour_vec[1])
 rnd_colours <- c("#a7622a", "#e54828", "#864291", "#5d977b", "#20e1b1", "#f64b13", "#43237b","#9a2753","#327a78","#913b94","#380b82","#a9ab59","#858202","#177e4d","#1e6b7a","#a57771","#955e9b","#54a291","#574116","#1786a7","black","red","yellow")
 
-plot(unlist(list_of_particle_list)[(0:240) * 230 + 1], type = "l", ylim = c(0,2500),col = rnd_colours[1])
+par(mfrow=c(1,1))
+plot(unlist(list_of_particle_list)[(0:240) * 230 + 1], type = "l", ylim = c(0,max(unlist(list_of_particle_list))),col = rnd_colours[1])
 for (j in 1:23) {
-  for (i in 1:19) {
-  lines(unlist(list_of_particle_list)[(0:240) * 230 + (j + i * 23)], ,col = rnd_colours[j])
+  for (i in 1:10) {
+  lines(unlist(list_of_particle_list)[(0:240) * 230 + ((j) + (i-1) * 23)], ,col = rnd_colours[j])
 }
 }
 
 # VTs
-plot(unlist(list_of_particle_list)[(0:240) * 230 + 1], type = "l", ylim = c(0,2500),col = rnd_colours[1])
+plot(unlist(list_of_particle_list)[(0:240) * 230 + 1], type = "l", ylim = c(0,max(unlist(list_of_particle_list))),col = rnd_colours[1])
 for (j in which(colour_vec=="red")) {
-  for (i in 1:19) {
-  lines(unlist(list_of_particle_list)[(0:240) * 230 + (j + i * 23)], ,col = rnd_colours[j])
+  for (i in 1:10) {
+  lines(unlist(list_of_particle_list)[(0:240) * 230 + (j + (i-1) * 23)], ,col = rnd_colours[j])
 }
 }
 # non-VTs
-plot(unlist(list_of_particle_list)[(0:240) * 230 + 2], type = "l", ylim = c(0,2500),col = rnd_colours[1])
+plot(unlist(list_of_particle_list)[(0:240) * 230 + 2], type = "l", ylim = c(0,max(unlist(list_of_particle_list))),col = rnd_colours[1])
 for (j in which(colour_vec=="black")) {
-  for (i in 1:19) {
-  lines(unlist(list_of_particle_list)[(0:240) * 230 + (j + i * 23)], ,col = rnd_colours[j])
+  for (i in 1:10) {
+  lines(unlist(list_of_particle_list)[(0:240) * 230 + (j + (i-1) * 23)], ,col = rnd_colours[j])
 }
 }
+
+# plot real mass data
+PP_mass_cluster_freq_1 <- readRDS(file = "PP_mass_cluster_freq_1.rds")
+PP_mass_cluster_freq_2 <- readRDS(file = "PP_mass_cluster_freq_2.rds")
+PP_mass_cluster_freq_3 <- readRDS(file = "PP_mass_cluster_freq_3.rds")
+
+PP_mass_cluster_freqs <- cbind(PP_mass_cluster_freq_1, PP_mass_cluster_freq_2, PP_mass_cluster_freq_3)
+plot(PP_mass_cluster_freqs[1,], ylim = c(0, 50))
+for (i in 1:nrow(PP_mass_cluster_freqs)) {
+  lines(PP_mass_cluster_freqs[i,])
+}
+
 
 # plot simulated data
 simulated_data_GPSC_pre_post_df <- data.frame(matrix(NA, nrow = nrow(simulated_sum_data_long[[1]])*2, ncol = 3))
@@ -585,6 +614,45 @@ fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,
                                                    rate = 1 / dt_test,
                                                    initial_time = 0)
 
+WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+
+index <- function(info) {
+    list(run = c(sum_clust = info$index$Pop_tot),
+         state = c(Pop = info$index$Pop))
+  }
+  #print(fitting_mass_data)
+det_filter <- particle_deterministic$new(data = fitting_test_data_2,
+                                         model = WF,
+                                         compare = combined_compare, index = index)
+
+wf_model <- WF$new(pars = PPxSero_testparams, time = 0, n_particles = 1L)
+WF$new(pars = PPxSero_testparams, time = 0, n_particles = 1L)$info()
+det_filter$run(save_history = TRUE, pars = PPxSero_testparams)
+
+plot(unlist(det_filter$history()[1,,]), ylim = c(0, 3000))
+points(fitting_test_data[,2], col = "red")
+for (i in 2:23) {
+  lines(unlist(det_filter$history()[i,,]))
+  i_char <- as.character(i)
+  lines(fitting_test_data[,i+1], col ="red")
+}
+
+simulated_data_1 <- rep(0, 21)
+simulated_data_2 <- rep(0, 21)
+simulated_data_3 <- rep(0, 21)
+for (i in 1:(21)) {
+  simMean_all <- wf_model$run(i*12+1)
+  simulated_data_1[i] <- simMean_all[2,1]
+  simulated_data_2[i] <- simMean_all[3,1]
+  simulated_data_3[i] <- simMean_all[4,1]
+}
+
+plot(simulated_data_1)
+points(fitting_test_data_2$`1`)
+plot(simulated_data_2)
+plot(simulated_data_3)
+
+
 # test vacc-vals
 
 test_vacc_vals <- function(vacc_val){
@@ -661,7 +729,8 @@ fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,
 fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test)
 
 ### run filter
-WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+#WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigma.R")
 det_filter <- particle_deterministic$new(data = fitting_test_data_2,
                                          model = WF,
                                          index = index,
@@ -675,7 +744,7 @@ filter_pars <-  append(filter_test_params, list(sigma_f = log(0.0345), prop_f = 
 det_filter$run(save_history = TRUE, pars = filter_pars)
 
 test_vacc_param <- c(0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1)
-#test_vacc_param <- c(0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5)
+test_vacc_param <- c(0.05, 0.1, 0.2, 0.3, 0.4, 0.5)
 test_vacc_likelihood <- rep(NA, length(test_vacc_param))
 for (i in 1:length(test_vacc_param)) {
   filter_pars <-  append(filter_test_params, list(sigma_f = log(0.0345), prop_f = 0.3, m = log(0.0133), v = test_vacc_param[i]))
@@ -914,9 +983,17 @@ mcmc_biennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/W
 mcmc_triennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_29/ModelSimulation_newPrior/v1_US_based/US_based_simulation_with_freq_3_4param_det_pmcmc_run2_simulation.rds")
 mcmc_quadrennial <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_29/ModelSimulation_newPrior/v1_US_based/US_based_simulation_with_freq_4_4param_det_pmcmc_run2_simulation.rds")
 
+mcmc_annual <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_06/ModelSimulation_newPriorNewRun/US_based_simulation_with_freq_1_4param_det_pmcmc_run2_simulation.rds")
+mcmc_biennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_06/ModelSimulation_newPriorNewRun/US_based_simulation_with_freq_2_4param_det_pmcmc_run2_simulation.rds")
+mcmc_triennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_06/ModelSimulation_newPriorNewRun/US_based_simulation_with_freq_3_4param_det_pmcmc_run2_simulation.rds")
+mcmc_quadrennial <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_06/ModelSimulation_newPriorNewRun/US_based_simulation_with_freq_4_4param_det_pmcmc_run2_simulation.rds")
+
+#mcmc_annual <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/ModelSimulation_newSigma/US_based_simulation_with_freq_1_4param_det_pmcmc_run2_simulation.rds")
+plot(coda::as.mcmc(cbind(mcmc_annual$probabilities, mcmc_annual$pars)))
+
 #mcmc_annual <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_22/ModelSimulation_v2/US_based_simulation_with_freq_3_4param_det_pmcmc_run2_simulation.rds")
 calculate_param_vals <- function(fit_rds){
-  mcmc_annual_probs <- coda::as.mcmc(cbind(mcmc_annual$probabilities, mcmc_annual$pars))
+  mcmc_annual_probs <- coda::as.mcmc(cbind(fit_rds$probabilities, fit_rds$pars))
   #coda::effectiveSize(Mass_4param_mcmc2_probs)
   #summary(coda::as.mcmc(Mass_4param_mcmc2_probs))
   mcmc_annual_probs_quadrennial <- median(mcmc_annual_probs[,"log_likelihood"])
@@ -938,7 +1015,7 @@ mcmc_quadrennial_fit_params <- calculate_param_vals(mcmc_quadrennial)
 
 
 real_params <- list(c(log(0.0345), 0.3, log(0.0133), 0.0814))
-
+#real_params <- list(c(log(0.0345)-log(0.3), 0.3, log(0.0133), 0.0814))
 
 # plot these
 
@@ -965,6 +1042,21 @@ ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, grou
   theme(panel.background = element_rect(fill = "white"),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
   labs(y= "Parameter estimate", x = "Population")
+
+par(mfrow=c(4,1))
+hist(mcmc_annual$pars[, "sigma_f"], main = "", xlab = expression(sigma_f),
+     freq = FALSE, xlim = c(-2, -3.5), breaks = ((min(mcmc_annual$pars[, "sigma_f"])*1010:(max(mcmc_annual$pars[, "sigma_f"])*990)))/1000)
+abline(v =log(0.0345), col = "red")
+abline(v =log(0.0345)-log(0.3), col = "red")
+hist(mcmc_annual$pars[, "prop_f"], main = "", xlab = expression(prop_f),
+     freq = FALSE, breaks = (min(mcmc_annual$pars[, "prop_f"])*990):(max(mcmc_annual$pars[, "prop_f"])*1010)/1000, xlim = c(0.15, 0.35))
+abline(v =0.3, col = "red")
+hist(mcmc_annual$pars[, "m"], main = "", xlab = expression(m),
+     freq = FALSE, breaks = (min(mcmc_annual$pars[, "m"])*1001):(max(mcmc_annual$pars[, "m"])*999)/1000, xlim = c(-4.4, -4.25))
+abline(v =log(0.0133), col = "red")
+hist(mcmc_annual$pars[, "v"], main = "", xlab = expression(v),
+     freq = FALSE, breaks = (min(mcmc_annual$pars[, "v"])*9900):(max(mcmc_annual$pars[, "v"])*10100)/10000, xlim = c(0.08, 0.082))
+abline(v =0.0814, col = "red")
 
 
 par(mfrow=c())
@@ -996,5 +1088,16 @@ ggplot(local_mcmc_param_fits,aes(x=population,y=mean, colour = population, group
   theme(panel.background = element_rect(fill = "white"),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
   labs(y= "Parameter estimate", x = "Population")
+
+
+# check correlations between parameters
+par(mfrow=c(4,4))
+for (i in 1:4) {
+  for (j in 1:4) {
+    plot(mcmc_annual$pars[,i],mcmc_annual$pars[,j])
+  }
+}
+cor(mcmc_annual$pars[,"prop_f"],mcmc_annual$pars[,"sigma_f"])
+
 ```
 
