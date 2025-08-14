@@ -987,11 +987,19 @@ for (i in 1:length(selected_GPSCs)) {
 
 Nepal_PP_with_time_rel_selected$GPSC_order = factor(Nepal_PP_with_time_rel_selected$GPSC, levels=c('101','45','26','12','11'))
 
-group.colors <- c(VT = "#800000", NVT = "#000080")
+#group.colors <- c(VT = "#800000", NVT = "#000080")
+group.colors <- c(VT = "#e69f00", NVT = "#009e73")
 
 ggplot(Nepal_PP_with_time_rel_selected, aes(x=Time, y=value, fill = VT)) + 
   geom_bar(stat = "identity") + facet_grid(.~GPSC_order) + theme_bw() +
   scale_fill_manual(values=group.colors)
+
+Nepal_PP_with_time_rel_selected$Time = factor(Nepal_PP_with_time_rel_selected$Time)
+
+ggplot(Nepal_PP_with_time_rel_selected, aes(x=Time, y=value, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(.~GPSC_order) + theme_bw() + theme(text = element_text(size = 20)) +
+  scale_fill_manual(values=group.colors)
+
 ```
 
 

@@ -194,12 +194,9 @@ vaccTypes_test_mtx <- vaccTypes_test_mtx1[freq_sero]
 #vaccTypes_test <- readRDS("vaccTypes_test.rds")
 #vaccTypes_test_mtx <- c(sapply(vaccTypes_test, as.double))
 
-PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.1), prop_f = 0.3, delta = delta_test, m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
-PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 1, delta = (posthoc_delta_test_ranking), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
-PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0, delta = (posthoc_delta_test_ranking), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
-PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = 2 * gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = cbind(Genotypes_test_matrix, Genotypes_test_matrix), sigma_f = log(0.0345), prop_f = 0.5, delta = (posthoc_delta_test_ranking), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
 
 PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+
 #PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.06, vacc_time = 4)
 #PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.16, vacc_time = 4)
 #PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345) -log(0.3) , prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
@@ -257,7 +254,146 @@ simulated_data_over_time_clust_df <- as.data.frame(simulated_data_over_time_clus
 saveRDS(simulated_data_over_time_clust_df[,-1], "simulated_data_over_time_clust_df.rds")
 simulated_data_over_time_filtered <- simulated_data_over_time_clust[,((1:20)*12)+1]
 simulated_data_over_time_filtered_df <- as.data.frame(rbind(1:20,simulated_data_over_time_filtered))
-saveRDS(simulated_data_over_time_filtered, "simulated_data_over_time_filtered.rds")
+#saveRDS(simulated_data_over_time_filtered, "simulated_data_over_time_filtered.rds")
+
+
+# create sampled datasets
+sample_dataset <- function(data_all, sample_size){
+  new_data <- data.frame(matrix(NA, nrow = nrow(data_all), ncol = ncol(data_all)))
+  for (j in 1:ncol(data_all)) {
+    new_data[,j] <- tabulate(sample(length(data_all[,j]), size=sample_size * sum(data_all[,j]), replace=TRUE, prob = as.vector(data_all[,j])), length(data_all[,j]))
+  }
+  new_data
+}
+
+
+simulated_data_over_time_filtered_025percent <- sample_dataset(simulated_data_over_time_filtered, 0.0025)
+simulated_data_over_time_filtered_033percent <- sample_dataset(simulated_data_over_time_filtered, 1/300)
+simulated_data_over_time_filtered_05percent <- sample_dataset(simulated_data_over_time_filtered, 0.005)
+simulated_data_over_time_filtered_1percent <- sample_dataset(simulated_data_over_time_filtered, 0.01)
+
+simulated_data_over_time_filtered_2_5percent <- sample_dataset(simulated_data_over_time_filtered, 0.025)
+simulated_data_over_time_filtered_3_3percent <- sample_dataset(simulated_data_over_time_filtered, 1/30)
+simulated_data_over_time_filtered_5percent <- sample_dataset(simulated_data_over_time_filtered, 0.05)
+simulated_data_over_time_filtered_10percent <- sample_dataset(simulated_data_over_time_filtered, 0.1)
+#simulated_data_over_time_filtered_12_5percent <- sample_dataset(simulated_data_over_time_filtered, 0.125)
+simulated_data_over_time_filtered_25percent <- sample_dataset(simulated_data_over_time_filtered, 0.25)
+simulated_data_over_time_filtered_33percent <- sample_dataset(simulated_data_over_time_filtered, 1/3)
+simulated_data_over_time_filtered_50percent <- sample_dataset(simulated_data_over_time_filtered, 0.50)
+simulated_data_over_time_filtered_100percent <- sample_dataset(simulated_data_over_time_filtered, 1)
+
+#simulated_data_over_time_filtered_1000percent <- sample_dataset(simulated_data_over_time_filtered, 10)
+#simulated_data_over_time_filtered_10000percent <- sample_dataset(simulated_data_over_time_filtered, 100)
+
+# was a good idea but was not really working -- need to change the sample size before simulating I think
+# no, it worked, but oversampling does not
+
+saveRDS(simulated_data_over_time_filtered_1percent, "simulated_data_over_time_filtered_1percent.rds")
+saveRDS(simulated_data_over_time_filtered_10percent, "simulated_data_over_time_filtered_10percent.rds")
+saveRDS(simulated_data_over_time_filtered_100percent, "simulated_data_over_time_filtered_100percent.rds")
+
+saveRDS(simulated_data_over_time_filtered_025percent, "simulated_data_over_time_filtered_025percent.rds")
+saveRDS(simulated_data_over_time_filtered_033percent, "simulated_data_over_time_filtered_033percent.rds")
+saveRDS(simulated_data_over_time_filtered_05percent, "simulated_data_over_time_filtered_05percent.rds")
+
+saveRDS(simulated_data_over_time_filtered_2_5percent, "simulated_data_over_time_filtered_2_5percent.rds")
+saveRDS(simulated_data_over_time_filtered_3_3percent, "simulated_data_over_time_filtered_3_3percent.rds")
+saveRDS(simulated_data_over_time_filtered_5percent, "simulated_data_over_time_filtered_5percent.rds")
+
+saveRDS(simulated_data_over_time_filtered_25percent, "simulated_data_over_time_filtered_25percent.rds")
+saveRDS(simulated_data_over_time_filtered_33percent, "simulated_data_over_time_filtered_33percent.rds")
+saveRDS(simulated_data_over_time_filtered_50percent, "simulated_data_over_time_filtered_50percent.rds")
+
+#saveRDS(simulated_data_over_time_filtered_1000percent, "simulated_data_over_time_filtered_1000percent.rds")
+#saveRDS(simulated_data_over_time_filtered_10000percent, "simulated_data_over_time_filtered_10000percent.rds")
+
+simulated_data_over_time_filtered_percent_list <- list(simulated_data_over_time_filtered_1percent, simulated_data_over_time_filtered_10percent, simulated_data_over_time_filtered_100percent, simulated_data_over_time_filtered_1000percent, simulated_data_over_time_filtered_10000percent)
+
+reds <- brewer.pal(9, "Reds")[4:8]
+
+plot(simulated_data_over_time_filtered[,1], pch = 19)
+points(simulated_data_over_time_filtered_1percent[,1] * 100, col = reds[1], pch = 19)
+points(simulated_data_over_time_filtered_10percent[,1] * 10, col = reds[2], pch = 19)
+points(simulated_data_over_time_filtered_100percent[,1] * 1, col = reds[3], pch = 19)
+points(simulated_data_over_time_filtered_1000percent[,1] * 0.1, col = reds[4], pch = 19)
+points(simulated_data_over_time_filtered_10000percent[,1] * 0.01, col = reds[5], pch = 19)
+
+
+simulate_model <- function(local_test_params){
+  simulated_data_long <- list()
+  simulated_sum_data_long <- list()
+  list_of_particle_list <- list()
+  WFmodel_ppxSero <- WF_PPxSero$new(pars = local_test_params,
+                           time = 0,
+                           n_particles = 10L,
+                           n_threads = 4L,
+                           seed = 1L, deterministic = TRUE)
+  for (i in 0:240) {
+    simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+    simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+    simulated_data_long[[i+1]] <- simMean_matrix
+  }
+  simulated_data_over_time_clust <- sapply(simulated_data_long, rowSums)
+  simulated_data_over_time_filtered <- simulated_data_over_time_clust[,((1:20)*12)+1]
+  simulated_data_over_time_filtered
+}
+
+# create varying sample sizes
+Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero))
+Pop_ini_test_mtx_1p <- as.matrix(sample_dataset(Pop_ini_test_mtx, 0.01) + apply(migMatr_test_mtx, c(1,2), ceiling), nrow = length(freq_clust), ncol = length(freq_sero))
+Pop_ini_test_mtx_10p <- sample_dataset(Pop_ini_test_mtx, 0.1) + apply(migMatr_test_mtx, c(1,2), ceiling)
+Pop_ini_test_mtx_100p <- sample_dataset(Pop_ini_test_mtx, 1) + apply(migMatr_test_mtx, c(1,2), ceiling)
+
+# same with new sorting 
+orig_data <- readRDS(file = "PP_mass_cluster_freq_1_seroMod.rds")
+orig_data_25p <- sample_dataset(orig_data[freq_clust, freq_sero] + migMatr_test_mtx, 0.25)
+orig_data_50p <- sample_dataset(orig_data[freq_clust, freq_sero] + migMatr_test_mtx, 0.50)
+orig_data_100p <- sample_dataset(orig_data[freq_clust, freq_sero] + migMatr_test_mtx, 1)
+orig_data_200p <- sample_dataset(orig_data[freq_clust, freq_sero] + migMatr_test_mtx, 2)
+orig_data_400p <- sample_dataset(orig_data[freq_clust, freq_sero] + migMatr_test_mtx, 4)
+
+create_startpop <- function(real_data, migration_mtx){
+  startpop_test <- matrix(0, nrow = length(freq_clust), ncol = length(freq_sero))
+  PP_expand_factor <- 15000 / sum(real_data)
+  exp_noise <- 1000
+  for (i in 1:nrow(startpop_test)) {
+    startpop_test[i,] <- (sapply((real_data[i,] + rexp(n = length(real_data[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(migration_mtx[i,])
+  }
+  startpop_test
+}
+
+Pop_ini_test_mtx_25p <- create_startpop(orig_data_25p, migMatr_test_mtx)
+Pop_ini_test_mtx_50p <- create_startpop(orig_data_50p, migMatr_test_mtx)
+Pop_ini_test_mtx_100p <- create_startpop(orig_data_100p, migMatr_test_mtx)
+Pop_ini_test_mtx_200p <- create_startpop(orig_data_200p, migMatr_test_mtx)
+Pop_ini_test_mtx_400p <- create_startpop(orig_data_400p, migMatr_test_mtx)
+
+
+PPxSero_testparams_sampleSize25p <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx_25p, Pop_eq = rowSums(Pop_ini_test_mtx_25p), capacity = sum(Pop_ini_test_mtx_25p), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams_sampleSize50p <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx_50p, Pop_eq = rowSums(Pop_ini_test_mtx_50p), capacity = sum(Pop_ini_test_mtx_50p), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams_sampleSize100p <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx_100p, Pop_eq = rowSums(Pop_ini_test_mtx_100p), capacity = sum(Pop_ini_test_mtx_100p), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams_sampleSize200p <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx_200p, Pop_eq = rowSums(Pop_ini_test_mtx_200p), capacity = sum(Pop_ini_test_mtx_200p), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams_sampleSize400p <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx_400p, Pop_eq = rowSums(Pop_ini_test_mtx_400p), capacity = sum(Pop_ini_test_mtx_400p), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+
+simulated_data_over_time_25p <- simulate_model(PPxSero_testparams_sampleSize25p)
+simulated_data_over_time_50p <- simulate_model(PPxSero_testparams_sampleSize50p)
+simulated_data_over_time_100p <- simulate_model(PPxSero_testparams_sampleSize100p)
+simulated_data_over_time_200p <- simulate_model(PPxSero_testparams_sampleSize200p)
+simulated_data_over_time_400p <- simulate_model(PPxSero_testparams_sampleSize400p)
+
+saveRDS(simulated_data_over_time_25p, "simulated_data_over_time_25p.rds")
+saveRDS(simulated_data_over_time_50p, "simulated_data_over_time_50p.rds")
+saveRDS(simulated_data_over_time_100p, "simulated_data_over_time_100p.rds")
+saveRDS(simulated_data_over_time_200p, "simulated_data_over_time_200p.rds")
+saveRDS(simulated_data_over_time_400p, "simulated_data_over_time_400p.rds")
+
+plot(simulated_data_over_time_filtered[,1], pch = 19, ylim = c(0, 3000))
+points(simulated_data_over_time_25p[,1], col = reds[1], pch = 19)
+points(simulated_data_over_time_50p[,1], col = reds[2], pch = 19)
+points(simulated_data_over_time_100p[,1], col = reds[3], pch = 19)
+points(simulated_data_over_time_200p[,1], col = reds[4], pch = 19)
+points(simulated_data_over_time_400p[,1], col = reds[5], pch = 19)
+legend(x = 15, y = 3000, legend = c("original", "25%","50%","100%","200%","400%") ,col = c("black",reds), pch = 19)
 
 simulated_data_sum_over_time_clust <- sapply(simulated_sum_data_long, rowSums)
 simulated_data_sum_over_time_filtered <- simulated_data_sum_over_time_clust[,((1:20)*12)+1]
@@ -988,6 +1124,11 @@ mcmc_biennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/W
 mcmc_triennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_06/ModelSimulation_newPriorNewRun/US_based_simulation_with_freq_3_4param_det_pmcmc_run2_simulation.rds")
 mcmc_quadrennial <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_06/ModelSimulation_newPriorNewRun/US_based_simulation_with_freq_4_4param_det_pmcmc_run2_simulation.rds")
 
+mcmc_annual <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorNewTry/US_based_simulation_with_freq_1_4param_det_pmcmc_run2_simulation.rds")
+mcmc_biennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorNewTry/US_based_simulation_with_freq_2_4param_det_pmcmc_run2_simulation.rds")
+mcmc_triennal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorNewTry/US_based_simulation_with_freq_3_4param_det_pmcmc_run2_simulation.rds")
+mcmc_quadrennial <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorNewTry/US_based_simulation_with_freq_4_4param_det_pmcmc_run2_simulation.rds")
+
 #mcmc_annual <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/ModelSimulation_newSigma/US_based_simulation_with_freq_1_4param_det_pmcmc_run2_simulation.rds")
 plot(coda::as.mcmc(cbind(mcmc_annual$probabilities, mcmc_annual$pars)))
 
@@ -996,7 +1137,7 @@ calculate_param_vals <- function(fit_rds){
   mcmc_annual_probs <- coda::as.mcmc(cbind(fit_rds$probabilities, fit_rds$pars))
   #coda::effectiveSize(Mass_4param_mcmc2_probs)
   #summary(coda::as.mcmc(Mass_4param_mcmc2_probs))
-  mcmc_annual_probs_quadrennial <- median(mcmc_annual_probs[,"log_likelihood"])
+  #mcmc_annual_probs_quadrennial <- median(mcmc_annual_probs[,"log_likelihood"])
   #mean(Mass_4param_mcmc2_probs[,"log_likelihood"])
 
   param_mean <- apply(mcmc_annual_probs, 2, mean)
@@ -1008,10 +1149,10 @@ calculate_param_vals <- function(fit_rds){
   list(param_mean, percentile95_low, percentile95_up)
 }
 
-mcmc_annual_fit_params <- calculate_param_vals(mcmc_annual)
-mcmc_biennal_fit_params <- calculate_param_vals(mcmc_biennal)
-mcmc_triennal_fit_params <- calculate_param_vals(mcmc_triennal)
-mcmc_quadrennial_fit_params <- calculate_param_vals(mcmc_quadrennial)
+mcmc_annual_fit_params <- calculate_param_vals(mcstate::pmcmc_thin(mcmc_annual, burnin = 5000, thin = 1))
+mcmc_biennal_fit_params <- calculate_param_vals(mcstate::pmcmc_thin(mcmc_biennal, burnin = 5000, thin = 1))
+mcmc_triennal_fit_params <- calculate_param_vals(mcstate::pmcmc_thin(mcmc_triennal, burnin = 5000, thin = 1))
+mcmc_quadrennial_fit_params <- calculate_param_vals(mcstate::pmcmc_thin(mcmc_quadrennial, burnin = 5000, thin = 1))
 
 
 real_params <- list(c(log(0.0345), 0.3, log(0.0133), 0.0814))
@@ -1042,6 +1183,32 @@ ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, grou
   theme(panel.background = element_rect(fill = "white"),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
   labs(y= "Parameter estimate", x = "Population")
+
+joined_mcmc_param_fits2 <- data.frame(params = rep(c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), 4),
+                                     population = as.integer(c(rep(1,4), rep(2,4), rep(3,4),rep(4,4))),
+                                     mean = c(mcmc_annual_fit_params[[1]][4:7], mcmc_biennal_fit_params[[1]][4:7], mcmc_triennal_fit_params[[1]][4:7], mcmc_quadrennial_fit_params[[1]][4:7]),
+                                     lower = c(mcmc_annual_fit_params[[2]][4:7], mcmc_biennal_fit_params[[2]][4:7], mcmc_triennal_fit_params[[2]][4:7], mcmc_quadrennial_fit_params[[2]][4:7]),
+                                     upper = c(mcmc_annual_fit_params[[3]][4:7], mcmc_biennal_fit_params[[3]][4:7], mcmc_triennal_fit_params[[3]][4:7], mcmc_quadrennial_fit_params[[3]][4:7]))
+joined_mcmc_param_fits2[c(1,3,5,7,9,11, 13, 15),c("mean", "lower", "upper")] <- exp(joined_mcmc_param_fits2[c(1,3,5,7,9,11, 13, 15),c("mean", "lower", "upper")])
+joined_mcmc_param_fits2$population <- factor(joined_mcmc_param_fits2$population)
+
+real_vals_df <- data.frame(params = c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), vals = c((0.0345), 0.3, (0.0133), 0.0814))
+
+library(RColorBrewer)
+blues <- brewer.pal(9, "Blues")[5:8]
+
+ggplot(joined_mcmc_param_fits2,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), size = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = rev(blues), name = "Group") +
+  facet_wrap(~params, ncol = 2, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df, aes(yintercept = vals), colour = rep("red",4), linetype = "dashed")
+
+
+
 
 par(mfrow=c(4,1))
 hist(mcmc_annual$pars[, "sigma_f"], main = "", xlab = expression(sigma_f),
@@ -1081,6 +1248,7 @@ local_mcmc_param_fits <- data.frame(params = rep(c("NFDS strength", "genes under
                                      lower = c(real_params[[1]],local_fit_params[[2]][4:7]),
                                      upper = c(real_params[[1]],local_fit_params[[3]][4:7]))
 local_mcmc_param_fits[c(1,3,5,7),c("mean", "lower", "upper")] <- exp(local_mcmc_param_fits[c(1,3,5,7),c("mean", "lower", "upper")])
+
 ggplot(local_mcmc_param_fits,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), size = 1) +
   geom_point(size = 3) +
@@ -1099,5 +1267,230 @@ for (i in 1:4) {
 }
 cor(mcmc_annual$pars[,"prop_f"],mcmc_annual$pars[,"sigma_f"])
 
+# different sample sizes
+
+mcmc_1p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorSampleSize/US_based_simulation_with_freq_1_1percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_10p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorSampleSize/US_based_simulation_with_freq_1_10percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_100p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorSampleSize/US_based_simulation_with_freq_1_100percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_1000p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorSampleSize/US_based_simulation_with_freq_1_1000percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_10000p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_11/ModelSimulation_newPriorSampleSize/US_based_simulation_with_freq_1_10000percent_4param_det_pmcmc_run2_simulation.rds")
+
+mcmc_1p_fit_params <- calculate_param_vals(mcmc_1p)
+mcmc_10p_fit_params <- calculate_param_vals(mcmc_10p)
+mcmc_100p_fit_params <- calculate_param_vals(mcmc_100p)
+mcmc_1000p_fit_params <- calculate_param_vals(mcmc_1000p)
+mcmc_10000p_fit_params <- calculate_param_vals(mcmc_10000p)
+
+joined_mcmc_param_fits_sampleSize <- data.frame(params = rep(c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), 5),
+                                     population = as.integer(c(rep(1,4), rep(10,4), rep(100,4),rep(1000,4), rep(10000,4))),
+                                     mean = c(mcmc_1p_fit_params[[1]][4:7], mcmc_10p_fit_params[[1]][4:7], mcmc_100p_fit_params[[1]][4:7], mcmc_1000p_fit_params[[1]][4:7], mcmc_10000p_fit_params[[1]][4:7]),
+                                     lower = c(mcmc_1p_fit_params[[2]][4:7], mcmc_10p_fit_params[[2]][4:7], mcmc_100p_fit_params[[2]][4:7], mcmc_1000p_fit_params[[2]][4:7], mcmc_10000p_fit_params[[2]][4:7]),
+                                     upper = c(mcmc_1p_fit_params[[3]][4:7], mcmc_10p_fit_params[[3]][4:7], mcmc_100p_fit_params[[3]][4:7], mcmc_1000p_fit_params[[3]][4:7], mcmc_10000p_fit_params[[3]][4:7]))
+joined_mcmc_param_fits_sampleSize[c(1,3,5,7,9,11, 13, 15, 17, 19),c("mean", "lower", "upper")] <- exp(joined_mcmc_param_fits_sampleSize[c(1,3,5,7,9,11, 13, 15, 17, 19),c("mean", "lower", "upper")])
+joined_mcmc_param_fits_sampleSize$population <- factor(joined_mcmc_param_fits_sampleSize$population)
+
+real_vals_df <- data.frame(params = c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), vals = c((0.0345), 0.3, (0.0133), 0.0814))
+
+library(RColorBrewer)
+greens <- brewer.pal(9, "Greens")[4:8]
+
+ggplot(joined_mcmc_param_fits_sampleSize,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = rev(blues), name = "Group") +
+  facet_wrap(~params, ncol = 2, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df, aes(yintercept = vals), colour = rep("red",4), linetype = "dashed") + 
+  scale_x_discrete(labels=c("1" = "0.01", "10" = "0.1", "100" = "1", "1000" = "10", "10000" = "100"))
+
+# different sample sizes, try 2
+
+mcmc_25p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_12/ModelSimulation_newPriorSampleSizeBeforeSim/US_based_simulation_with_freq_1_25percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_50p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_12/ModelSimulation_newPriorSampleSizeBeforeSim/US_based_simulation_with_freq_1_50percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_100p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_12/ModelSimulation_newPriorSampleSizeBeforeSim/US_based_simulation_with_freq_1_100percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_200p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_12/ModelSimulation_newPriorSampleSizeBeforeSim/US_based_simulation_with_freq_1_200percent_4param_det_pmcmc_run2_simulation.rds")
+mcmc_400p <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_12/ModelSimulation_newPriorSampleSizeBeforeSim/US_based_simulation_with_freq_1_400percent_4param_det_pmcmc_run2_simulation.rds")
+
+mcmc_25p_fit_params <- calculate_param_vals(mcmc_25p)
+mcmc_50p_fit_params <- calculate_param_vals(mcmc_50p)
+mcmc_100p_fit_params <- calculate_param_vals(mcmc_100p)
+mcmc_200p_fit_params <- calculate_param_vals(mcmc_200p)
+mcmc_400p_fit_params <- calculate_param_vals(mcmc_400p)
+
+joined_mcmc_param_fits_sampleSize2 <- data.frame(params = rep(c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), 5),
+                                     population = as.integer(c(rep(1,4), rep(10,4), rep(100,4),rep(1000,4), rep(10000,4))),
+                                     mean = c(mcmc_25p_fit_params[[1]][4:7], mcmc_50p_fit_params[[1]][4:7], mcmc_100p_fit_params[[1]][4:7],
+                                              mcmc_200p_fit_params[[1]][4:7], mcmc_400p_fit_params[[1]][4:7]),
+                                     lower = c(mcmc_25p_fit_params[[2]][4:7], mcmc_50p_fit_params[[2]][4:7], mcmc_100p_fit_params[[2]][4:7],
+                                               mcmc_200p_fit_params[[2]][4:7], mcmc_400p_fit_params[[2]][4:7]),
+                                     upper = c(mcmc_25p_fit_params[[3]][4:7], mcmc_50p_fit_params[[3]][4:7], mcmc_100p_fit_params[[3]][4:7],
+                                               mcmc_200p_fit_params[[3]][4:7], mcmc_400p_fit_params[[3]][4:7]))
+joined_mcmc_param_fits_sampleSize2[c(1,3,5,7,9,11, 13, 15, 17, 19),c("mean", "lower", "upper")] <- exp(joined_mcmc_param_fits_sampleSize2[c(1,3,5,7,9,11, 13, 15, 17, 19),c("mean", "lower", "upper")])
+joined_mcmc_param_fits_sampleSize2$population <- factor(joined_mcmc_param_fits_sampleSize2$population)
+
+real_vals_df <- data.frame(params = c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), vals = c((0.0345), 0.3, (0.0133), 0.0814))
+
+library(RColorBrewer)
+greens <- brewer.pal(9, "Greens")[4:8]
+
+ggplot(joined_mcmc_param_fits_sampleSize2,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = rev(greens), name = "Group") +
+  facet_wrap(~params, ncol = 2, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df, aes(yintercept = vals), colour = rep("red",4), linetype = "dashed") + 
+  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+
+# sample size and sampling years
+sample_years <- c("1","2","3","4")
+sample_sizes <- c("025","033","05","1","2_5","3_3","5","10","25","33","50","100")
+
+#list1 <- vector(mode = "list", length = length(sample_years))
+list2 <- vector(mode = "list", length = length(sample_sizes))
+
+params_sampleSizesAndYears <- list(list2, list2, list2, list2)
+
+for (i in 1:length(sample_years)) {
+  for (j in 1:length(sample_sizes)) {
+    name_part <- paste(sample_years[i],sample_sizes[j],sep = "_")
+    full_name <- paste("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_13/ModelSimulation_newPriorSampleYearsAndSize/US_based_simulation_with_freq_",name_part, "percent_4param_det_pmcmc_run2_simulation.rds", sep = "")
+    print(full_name)
+    mcmc_data <- readRDS(full_name)
+    processed_chains <- mcstate::pmcmc_thin(mcmc_data, burnin = 5000, thin = 1)
+    params_sampleSizesAndYears[[i]][[j]] <- calculate_param_vals(processed_chains)
+    rm(mcmc_data)
+    rm(processed_chains)
+  }
+}
+
+# 25% for 4-year has to be filtered differently
+full_name_425 <- "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_13/ModelSimulation_newPriorSampleYearsAndSize/US_based_simulation_with_freq_4_25percent_4param_det_pmcmc_run2_simulation.rds"
+mcmc_data_425 <- readRDS(full_name_425)
+processed_chains_425 <- mcstate::pmcmc_thin(mcmc_data_425, burnin = 5000, thin = 1)
+mcmc_annual_probs_425 <- coda::as.mcmc(cbind(processed_chains_425$probabilities, processed_chains_425$pars))
+mcmc_annual_probs_425_filt <- mcmc_annual_probs_425[-(1:5000),]
+param_mean_425 <- apply(mcmc_annual_probs_425_filt, 2, mean)
+percentile95_low_425 <- apply(mcmc_annual_probs_425_filt,2,quantile,.025)
+percentile95_up_425 <- apply(mcmc_annual_probs_425_filt,2,quantile,.975)
+params_sampleSizesAndYears[[4]][[9]] <- list(param_mean_425, percentile95_low_425, percentile95_up_425)
+
+saveRDS(params_sampleSizesAndYears, "params_sampleSizesAndYears.rds")
+
+mean_v <- rep(NA, 48)
+low_v <- rep(NA, 48)
+up_v <- rep(NA, 48)
+for (i in 1:length(sample_years)) {
+  for (j in 1:length(sample_sizes)) {
+    mean_v[(i-1)*length(sample_sizes) + j] <- params_sampleSizesAndYears[[i]][[j]][[1]][7]
+    low_v[(i-1)*length(sample_sizes) + j] <- params_sampleSizesAndYears[[i]][[j]][[2]][7]
+    up_v[(i-1)*length(sample_sizes) + j] <- params_sampleSizesAndYears[[i]][[j]][[3]][7]
+  }
+}
+
+joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100), 4),
+                                     population = as.integer(c(rep(1,length(sample_sizes)), rep(2,length(sample_sizes)), rep(3,length(sample_sizes)),rep(4,length(sample_sizes)))),
+                                     mean = mean_v,
+                                     lower = low_v,
+                                     upper = up_v)
+joined_mcmc_param_fits_sampleSize3$population <- factor(joined_mcmc_param_fits_sampleSize3$population)
+joined_mcmc_param_fits_sampleSize3$params <- factor(joined_mcmc_param_fits_sampleSize3$params)
+
+#greens <- brewer.pal(9, "Greens")[4:8]
+real_vals_df_v <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0814, length(sample_sizes)))
+
+ggplot(joined_mcmc_param_fits_sampleSize3,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_v, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
+  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+  
+
+# make function for this plot
+plot_param_comp_sampleSizeYear <- function(index){
+  mean_v <- rep(NA, 48)
+low_v <- rep(NA, 48)
+up_v <- rep(NA, 48)
+for (i in 1:length(sample_years)) {
+  for (j in 1:length(sample_sizes)) {
+    mean_v[(i-1)*length(sample_sizes) + j] <- params_sampleSizesAndYears[[i]][[j]][[1]][index]
+    low_v[(i-1)*length(sample_sizes) + j] <- params_sampleSizesAndYears[[i]][[j]][[2]][index]
+    up_v[(i-1)*length(sample_sizes) + j] <- params_sampleSizesAndYears[[i]][[j]][[3]][index]
+  }
+}
+
+joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100), 4),
+                                     population = as.integer(c(rep(1,length(sample_sizes)), rep(2,length(sample_sizes)), rep(3,length(sample_sizes)),rep(4,length(sample_sizes)))),
+                                     mean = mean_v,
+                                     lower = low_v,
+                                     upper = up_v)
+joined_mcmc_param_fits_sampleSize3$population <- factor(joined_mcmc_param_fits_sampleSize3$population)
+joined_mcmc_param_fits_sampleSize3$params <- factor(joined_mcmc_param_fits_sampleSize3$params)
+return(joined_mcmc_param_fits_sampleSize3)
+}
+
+real_vals_df_v <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0814, length(sample_sizes)))
+
+
+joined_mcmc_param_fits_sampleSize3_sigmaf <- plot_param_comp_sampleSizeYear(4)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp <- joined_mcmc_param_fits_sampleSize3_sigmaf
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf$mean)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf$lower)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf$upper)
+
+joined_mcmc_param_fits_sampleSize3_propf <- plot_param_comp_sampleSizeYear(5)
+
+joined_mcmc_param_fits_sampleSize3_m <- plot_param_comp_sampleSizeYear(6)
+joined_mcmc_param_fits_sampleSize3_m_exp <- joined_mcmc_param_fits_sampleSize3_m
+joined_mcmc_param_fits_sampleSize3_m_exp$mean <- exp(joined_mcmc_param_fits_sampleSize3_m$mean)
+joined_mcmc_param_fits_sampleSize3_m_exp$lower <- exp(joined_mcmc_param_fits_sampleSize3_m$lower)
+joined_mcmc_param_fits_sampleSize3_m_exp$upper <- exp(joined_mcmc_param_fits_sampleSize3_m$upper)
+
+# vals = c((0.0345), 0.3, (0.0133), 0.0814)
+real_vals_df_sf <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0345, length(sample_sizes)))
+
+ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_sf, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
+  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+
+
+real_vals_df_pf <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.3, length(sample_sizes)))
+
+ggplot(joined_mcmc_param_fits_sampleSize3_propf,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_pf, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
+  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+  
+  
+real_vals_df_m <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0133, length(sample_sizes)))
+
+ggplot(joined_mcmc_param_fits_sampleSize3_m_exp,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_m, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
+  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
 ```
 

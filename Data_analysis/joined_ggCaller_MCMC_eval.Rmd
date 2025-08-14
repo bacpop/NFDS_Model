@@ -103,6 +103,10 @@ percentile95_up_UK <- percentile95_up
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_18/Nepal_5k/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_09/Nepal/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
+Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
+Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
+
 Nepal_4param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_4param_mcmc2$probabilities, Nepal_4param_mcmc2$pars))
 Nepal_4param_mcmc2_probs_burnin <- Nepal_4param_mcmc2_probs[c(1001:5000, 6001:10000, 11001:15000, 16001:20000),]
 Nepal_likelihood_4param <- median(Nepal_4param_mcmc2_probs_burnin[,"log_likelihood"])
@@ -165,6 +169,8 @@ ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, grou
   theme(panel.background = element_rect(fill = "white"),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
   labs(y= "Parameter estimate", x = "Population")
+
+# newer version of this in ModelComparisonAnalysis
 ```
 
 ```{r}

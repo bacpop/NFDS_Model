@@ -80,10 +80,10 @@ ga_ppxsero <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC
 ga_ppxsero <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_28/GeneticAlg/gann.rds")
 plot(ga_ppxsero)
 plot(ga_ppxsero, ylim = c(-310, -200))
-abline(h = -214, col = "red", lty = "dashed")
-abline(h = -215, col = "red", lty = "dashed")
-abline(h = -261, col = "red", lty = "dashed")
-abline(h = -271, col = "red", lty = "dashed")
+abline(h = -216.69839965, col = "black", lty = "dashed", lwd = 2)
+abline(h = -216.56989632, col = "black", lty = "dashed", lwd = 2)
+abline(h = -262.80477525, col = "black", lty = "dashed", lwd = 2)
+abline(h = -272.81986991, col = "black", lty = "dashed", lwd = 2)
 
 delta_ranking <- readRDS(file = "ggC_delta_ranking.rds")
 ga_ppxsero_NFDS_vec <- as.vector(t(apply(ga_ppxsero@solution, 1, decode2)))
@@ -163,10 +163,16 @@ venn.diagram(
 ga_ppxsero_Nepal <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_Nepal_gann.rds")
 ga_ppxsero_UK <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_UK_gann.rds")
 plot(ga_ppxsero_Nepal)
-abline(h = -1130.253, col = "red", lty = "dashed") # 4-param
+abline(h = -1.131159e+03, col = "black", lty = "dashed", lwd = 2) # 4-param
+abline(h = -1.131479e+03, col = "black", lty = "dashed", lwd = 2) # 5-param
+abline(h = -1142.9976312, col = "black", lty = "dashed", lwd = 2) # 3
+abline(h = -1.231712e+03, col = "black", lty = "dashed", lwd = 2) # 2
 
 plot(ga_ppxsero_UK, ylim = c(-700, -450))
-abline(h =  -463.2552469, col = "red", lty = "dashed") # 4-param
+abline(h =  -463.5912310, col = "black", lty = "dashed", lwd = 2) # 4-param
+abline(h = -463.6079444, col = "black", lty = "dashed", lwd = 2) # 5-param
+abline(h = -573.40382476, col = "black", lty = "dashed", lwd = 2) # 3
+abline(h = -573.62852338, col = "black", lty = "dashed", lwd = 2) # 2
 
 # need country-specific delta ranking
 

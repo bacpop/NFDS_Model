@@ -59,7 +59,12 @@ if(length(args)>2){
   #                                                     time = "year",
   #                                                     rate = 1 / dt_test,
   #                                                     initial_time = 1)
-  output_filename <- paste("US_based_simulation_with_freq_", as.character(sampling_freq),sep = "")
+  if(length(args)>3){
+    data_size <- (args[4])
+    output_filename <- paste("US_based_simulation_with_freq", as.character(sampling_freq), as.character(data_size),sep = "_")
+  } else{
+    output_filename <- paste("US_based_simulation_with_freq_", as.character(sampling_freq),sep = "")
+  }
   
 } else{
   print("Please give me the location of the simulated data and the sampling frequency.")
