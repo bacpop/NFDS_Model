@@ -76,6 +76,13 @@ sum(rowSums(find_genes_df[,sort.list(likelihoods_FindGenes_df$ggCPP)[1:10]])==2)
 
 
 # 23.07.2025
+decode2 <- function(x)
+{ 
+  x <- round(x)         
+  return(x)
+}
+
+
 ga_ppxsero <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_23/GeneticAlg/gann.rds")
 ga_ppxsero <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_28/GeneticAlg/gann.rds")
 plot(ga_ppxsero)
@@ -162,7 +169,7 @@ venn.diagram(
 # 30.07.2025
 ga_ppxsero_Nepal <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_Nepal_gann.rds")
 ga_ppxsero_UK <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_UK_gann.rds")
-plot(ga_ppxsero_Nepal)
+plot(ga_ppxsero_Nepal, ylim = c(-1500, -1000))
 abline(h = -1.131159e+03, col = "black", lty = "dashed", lwd = 2) # 4-param
 abline(h = -1.131479e+03, col = "black", lty = "dashed", lwd = 2) # 5-param
 abline(h = -1142.9976312, col = "black", lty = "dashed", lwd = 2) # 3
@@ -175,6 +182,9 @@ abline(h = -573.40382476, col = "black", lty = "dashed", lwd = 2) # 3
 abline(h = -573.62852338, col = "black", lty = "dashed", lwd = 2) # 2
 
 # need country-specific delta ranking
+
+Nepal_delta_ranking <- readRDS("Nepal_delta_ranking.rds")
+UK_delta_ranking <- readRDS("UK_delta_ranking.rds")
 
 ga_ppxsero_Nepal_vec <- as.vector(t(apply(ga_ppxsero_Nepal@solution, 1, decode2)))
 names(ga_ppxsero_Nepal_vec) <- names(Nepal_delta_ranking)
@@ -223,7 +233,7 @@ plot(cumsum(ga_ppxsero_NFDS_vec[gene_name_overlap]))
 points(cumsum(ga_ppxsero_Nepal_vec[gene_name_overlap]))
 points(cumsum(ga_ppxsero_UK_vec[gene_name_overlap]))
 
-mean(c(0.4172699 , 0.4607672, 0.5443756)) = 0.4741376
+#mean(c(0.4172699 , 0.4607672, 0.5443756)) = 0.4741376
 
 mean(ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))[1:(length(gene_name_overlap)*0.4741376)]]) # 0.5170807
 mean(ga_ppxsero_NFDS_vec[names(sort(delta_ranking[gene_name_overlap]))[-(1:(length(gene_name_overlap)*0.4741376))]]) # 0.3128492
@@ -236,8 +246,8 @@ mean(ga_ppxsero_UK_vec[names(sort(delta_ranking[gene_name_overlap]))[-(1:(length
 unname(bakta_annotation_panaroo_dict[ggCaller_us_rowname_genename_dict[names(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) ==3))]])
 
 venn.diagram(
-  x = list(names(which(ga_ppxsero_NFDS_vec[gene_name_overlap] ==1)), names(which(ga_ppxsero_Nepal_vec[gene_name_overlap]==1)), names(which(ga_ppxsero_UK_vec[gene_name_overlap]==1))),
-  category.names = c("US", "Nepal", "UK"),
+  x = list(names(which(ga_ppxsero_NFDS_vec[gene_name_overlap] ==1)), names(which(ga_ppxsero_UK_vec[gene_name_overlap]==1)), names(which(ga_ppxsero_Nepal_vec[gene_name_overlap]==1))),
+  category.names = c("US", "UK", "Nepal"),
   filename = '../venn_diagramm_NFDSgenes_delta_genAlg.png',
   output=TRUE, 
   
@@ -265,3 +275,50 @@ venn.diagram(
   cat.dist = c(0.055, 0.055, 0.055),
   cat.fontfamily = "sans"
 )
+
+# Nepal comparison delta_stat vs genetic alg
+#expected number of genes: 0.4607672 * 0.2964424 * length(Nepal_delta_ranking) = 313.3396
+
+Nepal_delta_underNFDS <- rep(0, length(Nepal_delta_ranking))
+names(Nepal_delta_underNFDS) <- names(Nepal_delta_ranking)
+Nepal_delta_underNFDS[names(which(Nepal_delta_ranking <= 0.2964424 * length(Nepal_delta_ranking)))] <- 1
+
+Nepal_overlap_delta_genAlg <- intersect(names(which(Nepal_delta_underNFDS ==1)), names(which(ga_ppxsero_Nepal_vec==1)))
+length(Nepal_overlap_delta_genAlg)
+
+library(VennDiagram)
+library(RColorBrewer)
+myCol <- brewer.pal(3, "Pastel2")
+
+venn.diagram(
+  x = list(names(which(Nepal_delta_underNFDS ==1)), names(which(ga_ppxsero_Nepal_vec==1))),
+  category.names = c("delta statistic", "genetic algorithm"),
+  filename = '../venn_diagramm_NFDSgenes_delta_genAlg_Nepal.png',
+  output=TRUE, 
+  
+  # Output features
+  imagetype="png" ,
+  height = 960 , 
+  width = 960 , 
+  resolution = 600,
+  compression = "lzw",
+  
+  # Circles
+  lwd = 2,
+  lty = 'blank',
+  fill = c("#B3E2CD", "#FDCDAC"),
+  
+  # Numbers
+  cex = .6,
+  fontface = "bold",
+  fontfamily = "sans",
+  
+  # Set names
+  cat.cex = 0.6,
+  cat.fontface = "bold",
+  cat.default.pos = "outer",
+  cat.dist = c(0.055, 0.055),
+  cat.fontfamily = "sans",
+  cat.just=list(c(-1,0) , c(-2,5))
+)
+ 

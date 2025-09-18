@@ -1,0 +1,275 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+### Loading packages
+# install.packages("drat") # -- if you don't have drat installed
+# drat:::add("ncov-ic")
+# install.packages("odin.dust")
+library(odin.dust)
+#install.packages("mcstate")
+library(mcstate)
+library(coda)
+library(ggplot2)
+library(viridis)
+
+# read in model
+WF_PPxSero <- odin.dust::odin_dust("NFDS_Model.R")
+```
+
+```{r}
+# Set parameters for model
+
+vacc_time <- 4 # time of vaccination
+
+PPsero_startpop6 <- readRDS("PPsero_startpop6.rds") # start population for model
+freq_clust <- which(rowSums(PPsero_startpop6)>(sum(PPsero_startpop6)/100)) # frequencies of clusters
+freq_sero <- which(colSums(PPsero_startpop6)>(sum(PPsero_startpop6)/100)) # frequencies of serotypes
+species_no_test <- length(freq_clust) # number of clusters
+sero_no_test <- length(freq_sero) # numbers of serotypes
+Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero)) # start population as matrix
+  
+Genotypes_test_matrix <- readRDS("Genotypes_test_matrix.rds") # genotype matrix (pangenome matrix of clusters)
+delta_test <- readRDS("delta_test.rds") # delta statistic (computed as in Corander et al.)
+gene_no_test <- length(delta_test) # number of intermediate-frequency genes
+migMatr_test_mtx <- readRDS("migMatr_test_mtx.rds") # immigration matrix
+vaccTypes_test_mtx1 <- readRDS(file = "SeroVT.rds") # information on which types are affected by vaccine
+vaccTypes_test_mtx <- vaccTypes_test_mtx1[freq_sero]
+dt_test <- 1/12 # how many generations between two data points (here: 12 generations per year)
+```
+
+```{r}
+### simulate model 
+PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+
+WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
+                         time = 0,
+                         n_particles = 10L,
+                         n_threads = 4L,
+                         seed = 1L, deterministic = TRUE) # can also run this in stochastic mode with deterministic = FALSE
+
+simulated_data_long <- list()
+simulated_sum_data_long <- list()
+list_of_particle_list <- list()
+for (i in 0:240) {
+  simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_data_long[[i+1]] <- simMean_matrix
+  simSum_all <- rowSums(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simSum_matrix <- matrix(simSum_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_sum_data_long[[i+1]] <- simSum_matrix
+  list_of_particle_list[[i+1]] <-  WFmodel_ppxSero$run(i)[(2:(species_no_test+1)),]
+}
+simulated_data_over_time_clust <- sapply(simulated_data_long, rowSums)
+simulated_data_over_time_clust_df <- as.data.frame(simulated_data_over_time_clust)
+
+# only save one "sample" per year
+simulated_data_over_time_filtered <- simulated_data_over_time_clust[,((1:20)*12)+1]
+simulated_data_over_time_filtered_df <- as.data.frame(rbind(1:20,simulated_data_over_time_filtered))
+saveRDS(simulated_data_over_time_filtered, "simulated_data_over_time_filtered.rds") # we will use this for fitting below
+
+rnd_colours <- c("#a7622a", "#e54828", "#864291", "#5d977b", "#20e1b1", "#f64b13", "#43237b","#9a2753","#327a78","#913b94","#380b82","#a9ab59","#858202","#177e4d","#1e6b7a","#a57771","#955e9b","#54a291","#574116","#1786a7","black","red","yellow")
+plot(1:20, simulated_data_over_time_filtered_df[2,], type = "l", col = rnd_colours[1], ylim = c(0, 1500))
+for (i in 3:23) {
+  lines(1:20, simulated_data_over_time_filtered_df[i,], col = rnd_colours[i])
+}
+```
+
+```{r}
+### fit model to simulated data
+simulated_data <- readRDS("simulated_data_over_time_filtered.rds")
+
+fitting_test_data <- data.frame("year" = 1:20, t(simulated_data))
+names(fitting_test_data) <- c("year", as.character(1:length(freq_clust)))
+# prepare data for mcstate:
+fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,
+                                                     time = "year",
+                                                     rate = 1 / dt_test,
+                                                     initial_time = 0)
+```
+
+```{r}
+# define likelihood (multinomial likelihood)
+combined_compare <- function(state, observed, pars = NULL) {
+  result <- 0
+  data_size <- sum(unlist(observed[as.character(1:(length(unlist(observed))-4))]))
+  model_size = sum(unlist(state[-1, , drop = TRUE]))
+  exp_noise <- 1e6
+  data_vals <- unlist(observed[as.character(1:(length(unlist(observed))-4))])
+  model_vals <- rep(0, length(unlist(observed))-4)
+  data_missing <- FALSE
+  for (i in 1:(length(unlist(observed))-4)){ 
+    state_name <- paste("sum_clust", i, sep = "")
+    model_vals[i] <- state[state_name, , drop = TRUE]
+    if (is.na(observed[[as.character(i)]])) {
+      data_missing <- TRUE
+    } 
+  }
+  models_vals_err <- model_vals + rexp(n = length(model_vals), rate = exp_noise)
+  if(data_missing){
+    ll_obs <- 0
+  }
+  else{
+    ll_obs <- dmultinom(x = (data_vals), prob = models_vals_err/model_size, log = TRUE)   
+  }
+  result <- ll_obs
+  result
+}
+```
+
+```{r}
+# define fitting function using two mcmc runs
+
+Fit_model_to_sim_data <- function(fitting_data, fitting_params){
+  WF <- odin.dust::odin_dust("NFDS_Model.R")
+
+  det_filter <- particle_deterministic$new(data = fitting_data,
+                                           model = WF,
+                                           compare = combined_compare)
+  
+  complex_params = fitting_params
+
+  
+  make_transform <- function(m) {
+    function(theta) {
+      as_double_mtx <- function(x){
+        sapply(x,as.double)
+      }
+      c(lapply(m, as_double_mtx), as.list(theta))
+    }
+  }
+  
+  # read this: https://mrc-ide.github.io/mcstate/reference/pmcmc_parameters.html
+  # it explains how to not fit all parameters but just the ones I want
+  # non-scalar parameters have to be transformed for this.
+  
+  index <- function(info) {
+    list(run = c(sum_clust = info$index$Pop_tot),
+         state = c(Pop = info$index$Pop))
+  }
+
+  proposal_matrix <- diag(c(exp(1), 0.1, exp(1), 0.1))
+  
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m", runif(n=1, min=-10, max=0), min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v", runif(n=1, min=0, max=1), min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  
+  mcmc_pars$initial()
+  
+  det_filter <- particle_deterministic$new(data = fitting_data,
+                                           model = WF,
+                                           index = index,
+                                           compare = combined_compare)
+  
+  n_steps <- 5 # this is a work-around (do a non-parallel run for five steps, which sets up the model and ensures that the parallel mcmc runs)
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains = 1)
+  det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
+  
+  #n_steps <- 1000
+  n_steps <- 500
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains =4, n_workers = 4,
+    n_threads_total = 4)
+  
+  
+  det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
+  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run, burnin = 100, thin = 1)
+  parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
+  print(parameter_mean_hpd)
+  
+  det_mcmc1 <- coda::as.mcmc(cbind(det_pmcmc_run$probabilities, det_pmcmc_run$pars))
+  print("det_mcmc_1 final log likelihood")
+  processed_chains$probabilities[nrow(processed_chains$probabilities),2]
+  print("det_mcmc_1 mean log likelihood")
+  mean(processed_chains$probabilities[,2])
+  det_proposal_matrix <- cov(processed_chains$pars)
+  
+  det_mcmc_pars <- mcstate::pmcmc_parameters$new(list(mcstate::pmcmc_parameter("sigma_f",  parameter_mean_hpd[1], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("prop_f",  parameter_mean_hpd[2], min = 0, max = 1, prior = function(a) a), mcstate::pmcmc_parameter("m",  parameter_mean_hpd[3], min = -1000, max = 0, prior = function(a) 1/a), mcstate::pmcmc_parameter("v",  parameter_mean_hpd[4], min = 0, max = 1, prior = function(a) a)), proposal_matrix, make_transform(complex_params))
+  
+
+  det_filter <- particle_deterministic$new(data = fitting_data,
+                                           model = WF,
+                                           index = index,
+                                           compare = combined_compare)
+  
+  n_steps <- 5
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains = 1)
+  det_pmcmc_run <- mcstate::pmcmc(det_mcmc_pars, det_filter, control = control)
+  
+  # n_steps <- 20000 # good amount of steps but should be done on a cluster
+  n_steps <- 1000
+  n_burnin <- 0
+  
+  
+  control <- mcstate::pmcmc_control(
+    n_steps,
+    save_state = TRUE, 
+    save_trajectories = TRUE,
+    progress = TRUE,
+    adaptive_proposal = TRUE,
+    n_chains = 4, n_workers = 4, n_threads_total = 4)
+  det_pmcmc_run2 <- mcstate::pmcmc(det_mcmc_pars, det_filter, control = control)
+  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run2, burnin = 500, thin = 1)
+  parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
+  print(parameter_mean_hpd)
+  par(mfrow = c(1,1))
+  
+  det_mcmc2 <- coda::as.mcmc(cbind(processed_chains$probabilities, processed_chains$pars))
+  percentile95_low <- apply(det_mcmc2,2,quantile,.025)
+  percentile95_up <- apply(det_mcmc2,2,quantile,.975)
+  print("lower 95 percentile")
+  print(percentile95_low)
+  print("upper 95 percentile")
+  print(percentile95_up)
+  plot(det_mcmc2)
+  dev.off()
+  print("det_mcmc_2 final log likelihood")
+  print(processed_chains$probabilities[nrow(processed_chains$probabilities),2])
+  print("det_mcmc_2 mean log likelihood")
+  print(mean(processed_chains$probabilities[,2]))
+  return(det_pmcmc_run2)
+}
+```
+
+```{r}
+# run mcmc 
+fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test)
+
+MCMC_chain_sample1year_run <- Fit_model_to_sim_data(fitting_data = fitting_test_data_2, fitting_params = fitting_test_params)
+# this will take some time (5-10 mins)
+# to get good fits, this should be run for much longer
+
+processed_chains_1year <- mcstate::pmcmc_thin(MCMC_chain_sample1year_run, burnin = 200, thin = 2)
+MCMC_chain_sample1year <- coda::as.mcmc(cbind(processed_chains_1year$probabilities, processed_chains_1year$pars))
+
+plot(MCMC_chain_sample1year)
+```
+

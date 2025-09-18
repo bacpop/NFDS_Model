@@ -153,6 +153,11 @@ lambda <- -2 * (Mass_likelihood_4param - Mass_likelihood_5param)
 pchisq(lambda, 1,lower.tail = FALSE)
 # 0.3586622
 # 0.6117305
+
+Mass_2_bic<- -2 * (Mass_likelihood_2param) + log(616) * 2 # 558.1187
+Mass_3_bic<- -2 * (Mass_likelihood_3param) + log(616) * 3 # 544.2304
+Mass_4_bic<- -2 * (Mass_likelihood_4param) + log(616) * 4 # 458.9257
+Mass_5_bic<- -2 * (Mass_likelihood_5param) + log(616) * 5 # 465.0913
 ```
 
 ```{r}
@@ -282,6 +287,11 @@ pchisq(lambda, 2,lower.tail = FALSE)
 lambda <- -2 * (UK_likelihood_4param - UK_likelihood_5param)
 pchisq(lambda, 1,lower.tail = FALSE)
 # 1
+
+UK_2_bic<- -2 * (UK_likelihood_2param) + log(672) * 2 # 1160.003
+UK_3_bic<- -2 * (UK_likelihood_3param) + log(672) * 3 # 1165.918
+UK_4_bic<- -2 * (UK_likelihood_4param) + log(672) * 4 # 952.5368
+UK_5_bic<- -2 * (UK_likelihood_5param) + log(672) * 5 # 959.0727
 ```
 
 ```{r}
@@ -481,30 +491,36 @@ saveRDS(cov_matrix, "Nepal_cov_matrix.rds")
 rm(Nepal_4param_mcmc2)
 
 # 11.08.2025 
+# 27.08.2025
 
-Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+#Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_4param_mcmc2$probabilities, Nepal_4param_mcmc2$pars))
 saveRDS(Nepal_4param_mcmc2_probs, "Nepal_4param_mcmc2_probs.rds")
+Nepal_4param_mcmc2_probs <- Nepal_4param_mcmc2_probs[1:37000,]
 Nepal_likelihood_4param <- mean(Nepal_4param_mcmc2_probs[,"log_likelihood"])
 Nepal_param_mean4 <- apply(Nepal_4param_mcmc2_probs, 2, mean)
 Nepal_percentile95_low <- apply(Nepal_4param_mcmc2_probs,2,quantile,.025)
 Nepal_percentile95_up <- apply(Nepal_4param_mcmc2_probs,2,quantile,.975)
 rm(Nepal_4param_mcmc2)
 
-Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
+#Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
+Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
 Nepal_2param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_2param_mcmc2$probabilities, Nepal_2param_mcmc2$pars))
 saveRDS(Nepal_2param_mcmc2_probs, "Nepal_2param_mcmc2_probs.rds")
 Nepal_likelihood_2param <- mean(Nepal_2param_mcmc2_probs[,"log_likelihood"])
 Nepal_param_mean2 <- apply(Nepal_2param_mcmc2_probs, 2, mean)
 rm(Nepal_2param_mcmc2)
 
-Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
+#Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
+Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
 Nepal_3param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_3param_mcmc2$probabilities, Nepal_3param_mcmc2$pars))
 Nepal_likelihood_3param <- mean(Nepal_3param_mcmc2_probs[,"log_likelihood"])
 Nepal_param_mean3 <- apply(Nepal_3param_mcmc2_probs, 2, mean)
 rm(Nepal_3param_mcmc2)
 
-Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
+#Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
+Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
 Nepal_5param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_5param_mcmc2$probabilities, Nepal_5param_mcmc2$pars))
 Nepal_param_mean5 <- apply(Nepal_5param_mcmc2_probs, 2, mean)
 Nepal_likelihood_5param <- mean(Nepal_5param_mcmc2_probs[,"log_likelihood"])
@@ -545,6 +561,14 @@ pchisq(lambda, 1,lower.tail = FALSE)
 # -2256.391
 5 * 1 - 2 * (-Nepal_likelihood_5param)
 # -2256.07
+
+Nepal_4param_logLik <- rep(NA, 1)
+Nepal_4param_logLik$logLik <- Nepal_likelihood_4param
+
+Nepal_2_bic<- -2 * (Nepal_likelihood_2param) + log(2001) * 2 # 2478.225
+Nepal_3_bic<- -2 * (Nepal_likelihood_3param) + log(2001) * 3 # 2246.297 # but the fit is very bad
+Nepal_4_bic<- -2 * (Nepal_likelihood_4param) + log(2001) * 4 # 2290.608
+Nepal_5_bic<- -2 * (Nepal_likelihood_5param) + log(2001) * 5 # 2298.382
 ```
 
 ```{r}
@@ -573,12 +597,22 @@ ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, grou
   labs(y= "Parameter estimate", x = "Population")
 
 joined_mcmc_param_fits$params <- factor(joined_mcmc_param_fits$params, levels = c("vaccination strength","NFDS strength","genes under NFDS","immigration rate"))
+cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
-  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), linewidth = 1) +
-  geom_point(size = 3) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), linewidth = 1.5) +
+  geom_point(size = 4) +
   facet_wrap(~params, ncol = 4) +
   theme(panel.background = element_rect(fill = "white"),
-        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
-  labs(y= "Parameter estimate", x = "Population")
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20), panel.spacing.x = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + scale_color_manual(values=c(cbbPalette[1], cbbPalette[3], cbbPalette[7]))
+
+
+ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), linewidth = 1.5) +
+  geom_point(size = 4) +
+  facet_wrap(~params, ncol = 4, scales = "free") +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20), panel.spacing.x = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + scale_color_manual(values=c(cbbPalette[1], cbbPalette[3], cbbPalette[7]))
 ```

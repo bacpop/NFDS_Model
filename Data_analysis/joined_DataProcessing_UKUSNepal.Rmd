@@ -106,8 +106,52 @@ for (i in names(Nepal_carriage_year_dict)) {
   Nepal_numbers_year[as.character(Nepal_carriage_year_dict[i])] <- Nepal_numbers_year[as.character(Nepal_carriage_year_dict[i])] +1
 }
 barplot(Nepal_numbers_year, xlab = "Sequencing Years", ylim = c(0, 1200), ylab = "Sequence Counts")
+
+barplot(Nepal_numbers_year[-c(1,2,3,4,16,17)], xlab = "Sequencing Years", ylim = c(0, 800), ylab = "Sequence Counts")
 # maybe better winter? no!
 ```
+
+```{r}
+#make ggplot version of this plot
+# Nepal
+myCol <- brewer.pal(3, "Pastel2")
+myCol <- c("#D55E00", "#56B4E9", "black")
+
+Nepal_numbers_year_df <- cbind(names(Nepal_numbers_year)[-c(1,2,3,4,16,17)], as.integer(Nepal_numbers_year[-c(1,2,3,4,16,17)]))
+colnames(Nepal_numbers_year_df) <- c("Years","Isolates")
+ggplot(Nepal_numbers_year_df, aes(x=Years, y=as.integer(Isolates))) + 
+  geom_bar(stat = "identity", color="black", fill=myCol[3]) + theme_bw()
+
+# UK
+UK_PP <- readRDS("UK_PP.rds")
+UK_metadata_proc <- readRDS("UK_metadata_processed.rds")
+UKPP_time_points <- unique(sort(UK_metadata_proc$Winter))
+# [1] "2006" "2007" "2008" "2009" "2010" "2011" "2012"
+
+UK_seq_no_per_year <- rep(0, length(UKPP_time_points))
+names(UK_seq_no_per_year) <- UKPP_time_points
+for (i in 1:length(UK_time_points)) {
+  UK_seq_no_per_year[i] <- length(which(UK_metadata_proc$Winter==UKPP_time_points[i]))
+}
+UK_numbers_year_df <- cbind(names(UK_seq_no_per_year), UK_seq_no_per_year)
+colnames(UK_numbers_year_df) <- c("Winters","Isolates")
+ggplot(UK_numbers_year_df, aes(x=Winters, y=as.integer(Isolates))) + 
+  geom_bar(stat = "identity", color="black", fill=myCol[2]) + theme_bw() + ylim(c(0,125))
+
+# US
+Mass_Samples_accCodes_processed <- readRDS("Mass_Samples_accCodes_processed.rds")
+Mass_time_points <- c(2001, 2004, 2007)
+Mass_seq_no_per_year <- rep(0, length(2001:2007))
+names(Mass_seq_no_per_year) <- 2001:2007
+for (i in 1:length(Mass_time_points)) {
+   Mass_seq_no_per_year[as.character(Mass_time_points[i])] <- length(which(Mass_Samples_accCodes_processed$`Year of Isolation`==Mass_time_points[i]))
+}
+Mass_numbers_year_df <- cbind(names(Mass_seq_no_per_year), Mass_seq_no_per_year)
+colnames(Mass_numbers_year_df) <- c("Years","Isolates")
+ggplot(Mass_numbers_year_df, aes(x=Years, y=as.integer(Isolates))) + 
+  geom_bar(stat = "identity", color="black", fill=myCol[1]) + theme_bw() + ylim(c(0,300))
+```
+
 
 
 ```{r}
@@ -348,6 +392,7 @@ names(UK_SeqYear_dict) <- UK_metadata$Accession
 plot(UK_SeqYear_dict, UK_metadata$Year) # there seem to be some mis-assignments - I'll assume that the date is correct and the winter is incorrectly assigned?
 # so I will re-do the SeqYear dict
 UK_SeqYear_dict <- c()
+UK_winters <- c()
 for (i in 1:length(UK_metadata$Year)){
    if(UK_metadata$Month[i] <= 6){
      UK_SeqYear_dict[i] <- UK_metadata$Year[i] - 1
@@ -374,6 +419,8 @@ UK_metadata$Winter <- UK_winters # correct winters in df as well
 ```{r}
 # save UK metadata in metadata list
 joined_metadata_list[["UK"]] <- UK_metadata
+
+saveRDS(UK_metadata, "UK_metadata_processed.rds")
 ```
 
 # PopPUNK UK
@@ -615,6 +662,8 @@ saveRDS(SeroVT, "SeroVT2.rds")
 ```{r}
 # save US metadata in metadata list
 joined_metadata_list[["US"]] <- Mass_Samples_accCodes
+
+saveRDS(Mass_Samples_accCodes, "Mass_Samples_accCodes_processed.rds")
 
 # save US PopPUNK clusters
 joined_PopPUNK_list[["US"]] <- PopPUNK_clusters

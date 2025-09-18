@@ -307,6 +307,56 @@ saveRDS(simulated_data_over_time_filtered_50percent, "simulated_data_over_time_f
 #saveRDS(simulated_data_over_time_filtered_1000percent, "simulated_data_over_time_filtered_1000percent.rds")
 #saveRDS(simulated_data_over_time_filtered_10000percent, "simulated_data_over_time_filtered_10000percent.rds")
 
+simulated_data_over_time_filtered_01percent <- sample_dataset(simulated_data_over_time_filtered, 0.001)
+simulated_data_over_time_filtered_02percent <- sample_dataset(simulated_data_over_time_filtered, 0.002)
+simulated_data_over_time_filtered_025percent <- sample_dataset(simulated_data_over_time_filtered, 0.0025)
+simulated_data_over_time_filtered_03percent <- sample_dataset(simulated_data_over_time_filtered, 0.003)
+simulated_data_over_time_filtered_04percent <- sample_dataset(simulated_data_over_time_filtered, 0.004)
+simulated_data_over_time_filtered_05percent <- sample_dataset(simulated_data_over_time_filtered, 0.005)
+simulated_data_over_time_filtered_075percent <- sample_dataset(simulated_data_over_time_filtered, 0.0075)
+simulated_data_over_time_filtered_1percent <- sample_dataset(simulated_data_over_time_filtered, 0.01)
+simulated_data_over_time_filtered_1_5percent <- sample_dataset(simulated_data_over_time_filtered, 0.015)
+simulated_data_over_time_filtered_2percent <- sample_dataset(simulated_data_over_time_filtered, 0.02)
+simulated_data_over_time_filtered_2_5percent <- sample_dataset(simulated_data_over_time_filtered, 0.025)
+simulated_data_over_time_filtered_3percent <- sample_dataset(simulated_data_over_time_filtered, 0.03)
+simulated_data_over_time_filtered_4percent <- sample_dataset(simulated_data_over_time_filtered, 0.04)
+simulated_data_over_time_filtered_5percent <- sample_dataset(simulated_data_over_time_filtered, 0.05)
+simulated_data_over_time_filtered_7_5percent <- sample_dataset(simulated_data_over_time_filtered, 0.075)
+simulated_data_over_time_filtered_10percent <- sample_dataset(simulated_data_over_time_filtered, 0.1)
+simulated_data_over_time_filtered_15percent <- sample_dataset(simulated_data_over_time_filtered, 0.15)
+simulated_data_over_time_filtered_20percent <- sample_dataset(simulated_data_over_time_filtered, 0.2)
+simulated_data_over_time_filtered_25percent <- sample_dataset(simulated_data_over_time_filtered, 0.25)
+simulated_data_over_time_filtered_30percent <- sample_dataset(simulated_data_over_time_filtered, 0.3)
+simulated_data_over_time_filtered_40percent <- sample_dataset(simulated_data_over_time_filtered, 0.4)
+simulated_data_over_time_filtered_50percent <- sample_dataset(simulated_data_over_time_filtered, 0.5)
+simulated_data_over_time_filtered_75percent <- sample_dataset(simulated_data_over_time_filtered, 0.75)
+simulated_data_over_time_filtered_100percent <- sample_dataset(simulated_data_over_time_filtered, 1)
+
+saveRDS(simulated_data_over_time_filtered_01percent, "simulated_data_over_time_filtered_01percent.rds")
+saveRDS(simulated_data_over_time_filtered_02percent, "simulated_data_over_time_filtered_02percent.rds")
+saveRDS(simulated_data_over_time_filtered_025percent, "simulated_data_over_time_filtered_025percent.rds")
+saveRDS(simulated_data_over_time_filtered_03percent, "simulated_data_over_time_filtered_03percent.rds")
+saveRDS(simulated_data_over_time_filtered_04percent, "simulated_data_over_time_filtered_04percent.rds")
+saveRDS(simulated_data_over_time_filtered_05percent, "simulated_data_over_time_filtered_05percent.rds")
+saveRDS(simulated_data_over_time_filtered_075percent, "simulated_data_over_time_filtered_075percent.rds")
+saveRDS(simulated_data_over_time_filtered_1percent, "simulated_data_over_time_filtered_1percent.rds")
+saveRDS(simulated_data_over_time_filtered_1_5percent, "simulated_data_over_time_filtered_1_5percent.rds")
+saveRDS(simulated_data_over_time_filtered_2percent, "simulated_data_over_time_filtered_2percent.rds")
+saveRDS(simulated_data_over_time_filtered_2_5percent, "simulated_data_over_time_filtered_2_5percent.rds")
+saveRDS(simulated_data_over_time_filtered_3percent, "simulated_data_over_time_filtered_3percent.rds")
+saveRDS(simulated_data_over_time_filtered_4percent, "simulated_data_over_time_filtered_4percent.rds")
+saveRDS(simulated_data_over_time_filtered_5percent, "simulated_data_over_time_filtered_5percent.rds")
+saveRDS(simulated_data_over_time_filtered_7_5percent, "simulated_data_over_time_filtered_7_5percent.rds")
+saveRDS(simulated_data_over_time_filtered_10percent, "simulated_data_over_time_filtered_10percent.rds")
+saveRDS(simulated_data_over_time_filtered_15percent, "simulated_data_over_time_filtered_15percent.rds")
+saveRDS(simulated_data_over_time_filtered_20percent, "simulated_data_over_time_filtered_20percent.rds")
+saveRDS(simulated_data_over_time_filtered_25percent, "simulated_data_over_time_filtered_25percent.rds")
+saveRDS(simulated_data_over_time_filtered_30percent, "simulated_data_over_time_filtered_30percent.rds")
+saveRDS(simulated_data_over_time_filtered_40percent, "simulated_data_over_time_filtered_40percent.rds")
+saveRDS(simulated_data_over_time_filtered_50percent, "simulated_data_over_time_filtered_50percent.rds")
+saveRDS(simulated_data_over_time_filtered_75percent, "simulated_data_over_time_filtered_75percent.rds")
+saveRDS(simulated_data_over_time_filtered_100percent, "simulated_data_over_time_filtered_100percent.rds")
+
 simulated_data_over_time_filtered_percent_list <- list(simulated_data_over_time_filtered_1percent, simulated_data_over_time_filtered_10percent, simulated_data_over_time_filtered_100percent, simulated_data_over_time_filtered_1000percent, simulated_data_over_time_filtered_10000percent)
 
 reds <- brewer.pal(9, "Reds")[4:8]
@@ -1392,16 +1442,18 @@ for (i in 1:length(sample_years)) {
   }
 }
 
-joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100), 4),
+joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 1/3, 0.5, 1,2.5,10/3,5,10,25,100/3,50,100), 4),
                                      population = as.integer(c(rep(1,length(sample_sizes)), rep(2,length(sample_sizes)), rep(3,length(sample_sizes)),rep(4,length(sample_sizes)))),
                                      mean = mean_v,
                                      lower = low_v,
                                      upper = up_v)
+joined_mcmc_param_fits_sampleSize3$budget <- round(1/joined_mcmc_param_fits_sampleSize3$population * joined_mcmc_param_fits_sampleSize3$params, 2)
+joined_mcmc_param_fits_sampleSize3$budget <- factor(joined_mcmc_param_fits_sampleSize3$budget)
 joined_mcmc_param_fits_sampleSize3$population <- factor(joined_mcmc_param_fits_sampleSize3$population)
 joined_mcmc_param_fits_sampleSize3$params <- factor(joined_mcmc_param_fits_sampleSize3$params)
 
 #greens <- brewer.pal(9, "Greens")[4:8]
-real_vals_df_v <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0814, length(sample_sizes)))
+real_vals_df_v <- data.frame(params = factor(c(0.25, 1/3, 0.5, 1,2.5,10/3,5,10,25,100/3,50,100)), vals = rep(0.0814, length(sample_sizes)))
 
 ggplot(joined_mcmc_param_fits_sampleSize3,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
@@ -1410,8 +1462,16 @@ ggplot(joined_mcmc_param_fits_sampleSize3,aes(x=params,y=mean, colour = params, 
   theme(panel.background = element_rect(fill = "white"),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
   labs(y= "Parameter estimate", x = "Population") + 
-    geom_hline(data = real_vals_df_v, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
-  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+    geom_hline(data = real_vals_df_v, aes(yintercept = vals), colour = "red", linetype = "dashed") 
+
+ggplot(joined_mcmc_param_fits_sampleSize3,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_v, aes(yintercept = vals), colour = "red", linetype = "dashed")
   
 
 # make function for this plot
@@ -1427,18 +1487,29 @@ for (i in 1:length(sample_years)) {
   }
 }
 
-joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100), 4),
+joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 1/3, 0.5, 1,2.5,10/3,5,10,25,100/3,50,100), 4),
                                      population = as.integer(c(rep(1,length(sample_sizes)), rep(2,length(sample_sizes)), rep(3,length(sample_sizes)),rep(4,length(sample_sizes)))),
                                      mean = mean_v,
                                      lower = low_v,
                                      upper = up_v)
+joined_mcmc_param_fits_sampleSize3$budget <- round(1/joined_mcmc_param_fits_sampleSize3$population * joined_mcmc_param_fits_sampleSize3$params, 2)
+joined_mcmc_param_fits_sampleSize3$budget <- factor(joined_mcmc_param_fits_sampleSize3$budget)
 joined_mcmc_param_fits_sampleSize3$population <- factor(joined_mcmc_param_fits_sampleSize3$population)
 joined_mcmc_param_fits_sampleSize3$params <- factor(joined_mcmc_param_fits_sampleSize3$params)
 return(joined_mcmc_param_fits_sampleSize3)
 }
 
 real_vals_df_v <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0814, length(sample_sizes)))
+real_vals_df_v <- data.frame(params = factor(c(0.25, 1/3, 0.5, 1,2.5,10/3,5,10,25,100/3,50,100)), vals = rep(0.0814, length(sample_sizes)))
 
+ggplot(joined_mcmc_param_fits_sampleSize3,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_v, aes(yintercept = vals), colour = "red", linetype = "dashed")
 
 joined_mcmc_param_fits_sampleSize3_sigmaf <- plot_param_comp_sampleSizeYear(4)
 joined_mcmc_param_fits_sampleSize3_sigmaf_exp <- joined_mcmc_param_fits_sampleSize3_sigmaf
@@ -1456,6 +1527,7 @@ joined_mcmc_param_fits_sampleSize3_m_exp$upper <- exp(joined_mcmc_param_fits_sam
 
 # vals = c((0.0345), 0.3, (0.0133), 0.0814)
 real_vals_df_sf <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0345, length(sample_sizes)))
+real_vals_df_sf <- data.frame(params = factor(c(0.25, 1/3, 0.5, 1,2.5,10/3,5,10,25,100/3,50,100)), vals = rep(0.0345, length(sample_sizes)))
 
 ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
@@ -1467,8 +1539,49 @@ ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp,aes(x=params,y=mean, colour
     geom_hline(data = real_vals_df_sf, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
   scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
 
+ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_sf, aes(yintercept = vals), colour = "red", linetype = "dashed")
+
+ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_sf, aes(yintercept = vals), colour = "red", linetype = "dashed")
+
+library(viridis)
+#joined_mcmc_param_fits_sampleSize3_sigmaf_exp$budget <- as.factor(joined_mcmc_param_fits_sampleSize3_sigmaf_exp$budget)
+ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_sf, aes(yintercept = vals), colour = "red", linetype = "dashed")
+
+#joined_mcmc_param_fits_sampleSize3_sigmaf_exp$budget <- as.factor(joined_mcmc_param_fits_sampleSize3_sigmaf_exp$budget)
+#scale_color_viridis_c(option = "rocket",direction = -1) +
+#ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) +
+#  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+##  geom_point(size = 3) + scale_color_viridis_c(option = "turbo",direction = -1) +
+#  facet_wrap(~population, ncol = 4) +coord_cartesian(ylim = c(0,0.2)) +
+#  theme(panel.background = element_rect(fill = "white",),
+#        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+#  labs(y= "Parameter estimate", x = "Population") + 
+#    geom_hline(data = real_vals_df_sf, aes(yintercept = vals), colour = "red", linetype = "dashed")
 
 real_vals_df_pf <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.3, length(sample_sizes)))
+real_vals_df_pf <- data.frame(params = factor(c(0.25, 1/3, 0.5, 1,2.5,10/3,5,10,25,100/3,50,100)), vals = rep(0.3, length(sample_sizes)))
+
 
 ggplot(joined_mcmc_param_fits_sampleSize3_propf,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
@@ -1480,8 +1593,28 @@ ggplot(joined_mcmc_param_fits_sampleSize3_propf,aes(x=params,y=mean, colour = pa
     geom_hline(data = real_vals_df_pf, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
   scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
   
+  ggplot(joined_mcmc_param_fits_sampleSize3_propf,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_pf, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
+  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+  
+  ggplot(joined_mcmc_param_fits_sampleSize3_propf,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + coord_cartesian(ylim = c(0,1)) +
+  facet_wrap(~population, ncol = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_pf, aes(yintercept = vals), colour = "red", linetype = "dashed") 
   
 real_vals_df_m <- data.frame(params = factor(c(0.25, 0.33, 0.5, 1,2.5,3.3,5,10,25,33,50,100)), vals = rep(0.0133, length(sample_sizes)))
+real_vals_df_m <- data.frame(params = factor(c(0.25, 1/3, 0.5, 1,2.5,10/3,5,10,25,100/3,50,100)), vals = rep(0.0133, length(sample_sizes)))
+
 
 ggplot(joined_mcmc_param_fits_sampleSize3_m_exp,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
@@ -1492,5 +1625,155 @@ ggplot(joined_mcmc_param_fits_sampleSize3_m_exp,aes(x=params,y=mean, colour = pa
   labs(y= "Parameter estimate", x = "Population") + 
     geom_hline(data = real_vals_df_m, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
   scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+  
+ggplot(joined_mcmc_param_fits_sampleSize3_m_exp,aes(x=params,y=mean, colour = params, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=params,width=0.2), linewidth = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~population, ncol = 4) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_m, aes(yintercept = vals), colour = "red", linetype = "dashed") #+ 
+  scale_x_discrete(labels=c("1" = "0.25", "10" = "0.5", "100" = "1", "1000" = "2", "10000" = "4"))
+  
+  ggplot(joined_mcmc_param_fits_sampleSize3_m_exp,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 3) + coord_cartesian(ylim = c(0,0.075)) +
+  facet_wrap(~population, ncol = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") + 
+    geom_hline(data = real_vals_df_m, aes(yintercept = vals), colour = "red", linetype = "dashed") 
+```
+
+```{r}
+# new surveillance strategy (same "budget") 09.09.2025
+sample_years2 <- c("1","2","3","4")
+sample_sizes2 <- c("01","025","05","1","2_5","5","10","25","50","100")
+
+#list1 <- vector(mode = "list", length = length(sample_years))
+list2_2 <- vector(mode = "list", length = length(sample_sizes2))
+
+params_sampleSizesAndYears2 <- list(list2_2, list2_2, list2_2, list2_2)
+
+for (i in 1:length(sample_years2)) {
+  for (j in 1:length(sample_sizes2)) {
+    name_part <- paste(sample_years2[i],sample_sizes2[j],sep = "_")
+    full_name <- paste("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_09_09/ModelSimulation_newPriorSampleYearsAndSize/US_based_simulation_with_freq_",name_part, "percent_4param_det_pmcmc_run2_simulation.rds", sep = "")
+    if(file.exists(full_name)){
+      print(full_name)
+    mcmc_data <- readRDS(full_name)
+    processed_chains <- mcstate::pmcmc_thin(mcmc_data, burnin = 5000, thin = 1)
+    params_sampleSizesAndYears2[[i]][[j]] <- calculate_param_vals(processed_chains)
+    rm(mcmc_data)
+    rm(processed_chains)
+    }
+  }
+}
+
+plot_param_comp_sampleSizeYear2 <- function(index){
+  mean_v <- rep(NA, 20)
+  low_v <- rep(NA, 20)
+  up_v <- rep(NA, 20)
+  i_help <- 1
+  j_help <- 1
+  ij_help <- 1
+  for (i in 1:length(sample_years2)) {
+    for (j in 1:length(sample_sizes2)) {
+      #print(j)
+      if(!((i==1 & j==1)| (i==1 & j==7) |(i==1 & j==8) |(i==1 & j==9) | (i==1 & j==10)| (i==2 & j==1) | (i==2 & j==7) |(i==2 & j==8) |(i==2 & j==9) |(i==2 & j==10) | (i==3 & j ==1) | (i==3 & j ==7)| (i==3 & j ==8)| (i==3 & j ==9) |  (i==3 & j ==10) |(i==4 & j==1) | (i==4 & j==7) | (i==4 & j==8) | (i==4 & j==9) | (i==4 & j==10))){
+        mean_v[ij_help] <- params_sampleSizesAndYears2[[i]][[j]][[1]][index]
+        low_v[ij_help] <- params_sampleSizesAndYears2[[i]][[j]][[2]][index]
+        up_v[ij_help] <- params_sampleSizesAndYears2[[i]][[j]][[3]][index]
+        j_help <- j_help +1
+        ij_help <- ij_help +1
+      }
+    }
+    i_help <- i_help +1
+    j_help <- 1
+  }
+  #print(mean_v)
+joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 0.5, 1,2.5,5), 4),
+                                     population = as.integer(c(rep(1,length(sample_sizes2)-5), rep(2,length(sample_sizes2)-5), rep(3,length(sample_sizes2)-5),rep(4,length(sample_sizes2)-5))),
+                                     mean = mean_v,
+                                     lower = low_v,
+                                     upper = up_v)
+joined_mcmc_param_fits_sampleSize3$budget <- rep(c(0.25, 0.5, 1,2.5,5), 4)
+joined_mcmc_param_fits_sampleSize3$budget <- factor(joined_mcmc_param_fits_sampleSize3$budget)
+joined_mcmc_param_fits_sampleSize3$population <- factor(joined_mcmc_param_fits_sampleSize3$population)
+joined_mcmc_param_fits_sampleSize3$params <- factor(joined_mcmc_param_fits_sampleSize3$params)
+return(joined_mcmc_param_fits_sampleSize3)
+}
+
+
+joined_mcmc_param_fits_sampleSize3_v_2 <- plot_param_comp_sampleSizeYear2(7)
+
+joined_mcmc_param_fits_sampleSize3_sigmaf_2 <- plot_param_comp_sampleSizeYear2(4)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2 <- joined_mcmc_param_fits_sampleSize3_sigmaf_2
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$mean)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$lower)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$upper)
+
+joined_mcmc_param_fits_sampleSize3_propf_2 <- plot_param_comp_sampleSizeYear2(5)
+
+joined_mcmc_param_fits_sampleSize3_m_2 <- plot_param_comp_sampleSizeYear2(6)
+joined_mcmc_param_fits_sampleSize3_m_exp_2 <- joined_mcmc_param_fits_sampleSize3_m_2
+joined_mcmc_param_fits_sampleSize3_m_exp_2$mean <- exp(joined_mcmc_param_fits_sampleSize3_m_2$mean)
+joined_mcmc_param_fits_sampleSize3_m_exp_2$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2$lower)
+joined_mcmc_param_fits_sampleSize3_m_exp_2$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2$upper)
+
+# plot v
+library(viridis)
+
+real_vals_df_v_2 <- data.frame(params = factor(c(0.25, 0.5, 1,2.5,5)), vals = rep(0.0814, length(sample_sizes2)-5))
+
+
+ggplot(joined_mcmc_param_fits_sampleSize3_v_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(data = real_vals_df_v_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
+
+# sigma f
+real_vals_df_sf_2 <- data.frame(params = factor(c(0.25, 0.5, 1,2.5,5)), vals = rep(0.0345, length(sample_sizes2)-5))
+
+
+ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(data = real_vals_df_sf_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
+
+# prop f
+real_vals_df_pf_2 <- data.frame(params = factor(c(0.25, 0.5, 1,2.5,5)), vals = rep(0.3, length(sample_sizes2)-5))
+
+
+ggplot(joined_mcmc_param_fits_sampleSize3_propf_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(data = real_vals_df_pf_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.5)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
+
+# immigration
+real_vals_df_m_2 <- data.frame(params = factor(c(0.25, 0.5, 1,2.5,5)), vals = rep(0.0133, length(sample_sizes2)-5))
+
+
+ggplot(joined_mcmc_param_fits_sampleSize3_m_exp_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(data = real_vals_df_m_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.1)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
 ```
 
