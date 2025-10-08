@@ -22,8 +22,7 @@ pi_f_genotypes[] <- sum(pi_f_freq[1:gene_no,i])
 probs[,] <- (1 + exp(sigma_f))^pi_f_genotypes[i] * Pop[i,j] * (1- (as.integer(time >= vacc_time) * vaccTypes[j] * v))
 
 # generate the next generation based on the current one
-y[,] <- if ((probs[i,j]/sum(probs[1:species_no,1:sero_no])) < 1) 
-  rpois(capacity * (probs[i,j] / sum(probs[1:species_no,1:sero_no])) * (1-exp(m)) ) else rpois(capacity * 1 *(1-exp(m)) )
+y[,] <- rpois(capacity * (probs[i,j] / sum(probs[1:species_no,1:sero_no])) * (1-exp(m)) )
 
 # m is the migration rate
 # fitness of individuals in the community is reduced by this rate
@@ -72,8 +71,6 @@ dim(gene_eq) <- c(gene_no, species_no) #frequency of genes at equilibrium
 dim(eq) <- gene_no
 dim(pi_f_freq) <- c(gene_no, species_no)
 dim(pi_f_genotypes) <- species_no
-#dim(pi_w_freq) <- c(gene_no, species_no)
-#dim(pi_w_genotypes) <- species_no
 dim(delta) <- gene_no
 dim(Genotypes) <- c(gene_no, species_no) # we have in each column the genes (present/not present, i.e. 1/0) of one genotype
 dim(Pop) <- c(species_no,sero_no)

@@ -42,6 +42,7 @@ Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum <- rbind(Nepal_cluster
 
 
 ```{r}
+library(ggplot2)
 library(hrbrthemes)
 library(viridis)
 ggplot(Nepal_cluster_sero_freqs_pre_post_df_plot_selected, aes(fill=Time, y=relCount, x=Serotype)) + 

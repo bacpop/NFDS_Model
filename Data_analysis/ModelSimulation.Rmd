@@ -1652,79 +1652,141 @@ sample_years2 <- c("1","2","3","4")
 sample_sizes2 <- c("01","025","05","1","2_5","5","10","25","50","100")
 
 #list1 <- vector(mode = "list", length = length(sample_years))
-list2_2 <- vector(mode = "list", length = length(sample_sizes2))
 
-params_sampleSizesAndYears2 <- list(list2_2, list2_2, list2_2, list2_2)
 
-for (i in 1:length(sample_years2)) {
-  for (j in 1:length(sample_sizes2)) {
-    name_part <- paste(sample_years2[i],sample_sizes2[j],sep = "_")
-    full_name <- paste("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_09_09/ModelSimulation_newPriorSampleYearsAndSize/US_based_simulation_with_freq_",name_part, "percent_4param_det_pmcmc_run2_simulation.rds", sep = "")
-    if(file.exists(full_name)){
-      print(full_name)
-    mcmc_data <- readRDS(full_name)
-    processed_chains <- mcstate::pmcmc_thin(mcmc_data, burnin = 5000, thin = 1)
-    params_sampleSizesAndYears2[[i]][[j]] <- calculate_param_vals(processed_chains)
-    rm(mcmc_data)
-    rm(processed_chains)
+read_sim_data <- function(sample_sizes2, folder_path){
+  list2_2 <- vector(mode = "list", length = length(sample_sizes2))
+  params_sampleSizesAndYears2_f <- list(list2_2, list2_2, list2_2, list2_2)
+  for (i in 1:length(sample_years2)) {
+    for (j in 1:length(sample_sizes2)) {
+      name_part <- paste(sample_years2[i],sample_sizes2[j],sep = "_")
+      full_name <- paste(folder_path,name_part, "percent_4param_det_pmcmc_run2_simulation.rds", sep = "")
+      if(file.exists(full_name)){
+        print(full_name)
+        mcmc_data <- readRDS(full_name)
+        processed_chains <- mcstate::pmcmc_thin(mcmc_data, burnin = 5000, thin = 1)
+        params_sampleSizesAndYears2_f[[i]][[j]] <- calculate_param_vals(processed_chains)
+        rm(mcmc_data)
+        rm(processed_chains)
+      }
     }
   }
+  params_sampleSizesAndYears2_f
 }
 
-plot_param_comp_sampleSizeYear2 <- function(index){
-  mean_v <- rep(NA, 20)
-  low_v <- rep(NA, 20)
-  up_v <- rep(NA, 20)
+params_sampleSizesAndYears2 <- read_sim_data(sample_sizes2, folder_path = "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_09_09/ModelSimulation_newPriorSampleYearsAndSize/US_based_simulation_with_freq_")
+
+params_sampleSizesAndYears2_v2 <- read_sim_data(sample_sizes2, folder_path = "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_09_22/ModelSimulation_newPriorSampleYearsAndSize_run2/US_based_simulation_with_freq_")
+
+params_sampleSizesAndYears2_v3 <- read_sim_data(sample_sizes2, folder_path = "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_09_22/ModelSimulation_newPriorSampleYearsAndSize_run3/US_based_simulation_with_freq_")
+
+#saveRDS(params_sampleSizesAndYears2, "params_sampleSizesAndYears2.rds")
+#params_sampleSizesAndYears2 <- readRDS("params_sampleSizesAndYears2.rds")
+
+#saveRDS(params_sampleSizesAndYears2_v2, "params_sampleSizesAndYears2_v2.rds")
+#params_sampleSizesAndYears2_v2 <- readRDS("params_sampleSizesAndYears2_v2.rds")
+
+#saveRDS(params_sampleSizesAndYears2_v3, "params_sampleSizesAndYears2_v3.rds")
+params_sampleSizesAndYears2_v3 <- readRDS("params_sampleSizesAndYears2_v3.rds")
+
+plot_param_comp_sampleSizeYear2 <- function(index, params_sampleSizesAndYears2_f2){
+  #mean_v <- rep(NA, 20)
+  #low_v <- rep(NA, 20)
+  #up_v <- rep(NA, 20)
+  #mean_v <- rep(NA, 40)
+  #low_v <- rep(NA, 40)
+  #up_v <- rep(NA, 40)
+  mean_v <- rep(NA, 32)
+  low_v <- rep(NA, 32)
+  up_v <- rep(NA, 32)
   i_help <- 1
   j_help <- 1
   ij_help <- 1
   for (i in 1:length(sample_years2)) {
     for (j in 1:length(sample_sizes2)) {
       #print(j)
-      if(!((i==1 & j==1)| (i==1 & j==7) |(i==1 & j==8) |(i==1 & j==9) | (i==1 & j==10)| (i==2 & j==1) | (i==2 & j==7) |(i==2 & j==8) |(i==2 & j==9) |(i==2 & j==10) | (i==3 & j ==1) | (i==3 & j ==7)| (i==3 & j ==8)| (i==3 & j ==9) |  (i==3 & j ==10) |(i==4 & j==1) | (i==4 & j==7) | (i==4 & j==8) | (i==4 & j==9) | (i==4 & j==10))){
-        mean_v[ij_help] <- params_sampleSizesAndYears2[[i]][[j]][[1]][index]
-        low_v[ij_help] <- params_sampleSizesAndYears2[[i]][[j]][[2]][index]
-        up_v[ij_help] <- params_sampleSizesAndYears2[[i]][[j]][[3]][index]
+      #if(!((i==1 & j==1)| (i==1 & j==7) |(i==1 & j==8) |(i==1 & j==9) | (i==1 & j==10)| (i==2 & j==1) | (i==2 & j==7) |(i==2 & j==8) |(i==2 & j==9) |(i==2 & j==10) | (i==3 & j ==1) | (i==3 & j ==7)| (i==3 & j ==8)| (i==3 & j ==9) |  (i==3 & j ==10) |(i==4 & j==1) | (i==4 & j==7) | (i==4 & j==8) | (i==4 & j==9) | (i==4 & j==10))){
+      if(!((i==1 & j==9) | (i==1 & j==10)| (i==2 & j==9) | (i==2 & j==10) | (i==3 & j ==9) |(i==3 & j ==10) | (i==4 & j==9) | (i==4 & j==10))){
+        mean_v[ij_help] <- params_sampleSizesAndYears2_f2[[i]][[j]][[1]][index]
+        low_v[ij_help] <- params_sampleSizesAndYears2_f2[[i]][[j]][[2]][index]
+        up_v[ij_help] <- params_sampleSizesAndYears2_f2[[i]][[j]][[3]][index]
         j_help <- j_help +1
         ij_help <- ij_help +1
       }
+      #ij_help <- ij_help +1
     }
     i_help <- i_help +1
     j_help <- 1
   }
   #print(mean_v)
-joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.25, 0.5, 1,2.5,5), 4),
-                                     population = as.integer(c(rep(1,length(sample_sizes2)-5), rep(2,length(sample_sizes2)-5), rep(3,length(sample_sizes2)-5),rep(4,length(sample_sizes2)-5))),
+  # rep(c(0.25, 0.5, 1,2.5,5), 4)
+  # rep(c(0.1, 0.25, 0.5, 1,2.5,5, 10, 25, 50, 100), 4)
+joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(0.1, 0.25, 0.5, 1,2.5,5, 10, 25), 4), 
+                                     population = as.integer(c(rep(1,length(sample_sizes2)-2), rep(2,length(sample_sizes2)-2), rep(3,length(sample_sizes2)-2),rep(4,length(sample_sizes2)-2))),
                                      mean = mean_v,
                                      lower = low_v,
                                      upper = up_v)
-joined_mcmc_param_fits_sampleSize3$budget <- rep(c(0.25, 0.5, 1,2.5,5), 4)
+joined_mcmc_param_fits_sampleSize3$budget <- rep(c(0.1, 0.25, 0.5, 1,2.5,5, 10, 25), 4)
 joined_mcmc_param_fits_sampleSize3$budget <- factor(joined_mcmc_param_fits_sampleSize3$budget)
 joined_mcmc_param_fits_sampleSize3$population <- factor(joined_mcmc_param_fits_sampleSize3$population)
 joined_mcmc_param_fits_sampleSize3$params <- factor(joined_mcmc_param_fits_sampleSize3$params)
 return(joined_mcmc_param_fits_sampleSize3)
 }
 
-
-joined_mcmc_param_fits_sampleSize3_v_2 <- plot_param_comp_sampleSizeYear2(7)
-
-joined_mcmc_param_fits_sampleSize3_sigmaf_2 <- plot_param_comp_sampleSizeYear2(4)
+# 1st run
+joined_mcmc_param_fits_sampleSize3_v_2 <- plot_param_comp_sampleSizeYear2(7, params_sampleSizesAndYears2)
+  
+joined_mcmc_param_fits_sampleSize3_sigmaf_2 <- plot_param_comp_sampleSizeYear2(4, params_sampleSizesAndYears2)
 joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2 <- joined_mcmc_param_fits_sampleSize3_sigmaf_2
 joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$mean)
 joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$lower)
 joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$upper)
 
-joined_mcmc_param_fits_sampleSize3_propf_2 <- plot_param_comp_sampleSizeYear2(5)
+joined_mcmc_param_fits_sampleSize3_propf_2 <- plot_param_comp_sampleSizeYear2(5, params_sampleSizesAndYears2)
 
-joined_mcmc_param_fits_sampleSize3_m_2 <- plot_param_comp_sampleSizeYear2(6)
+joined_mcmc_param_fits_sampleSize3_m_2 <- plot_param_comp_sampleSizeYear2(6, params_sampleSizesAndYears2)
 joined_mcmc_param_fits_sampleSize3_m_exp_2 <- joined_mcmc_param_fits_sampleSize3_m_2
 joined_mcmc_param_fits_sampleSize3_m_exp_2$mean <- exp(joined_mcmc_param_fits_sampleSize3_m_2$mean)
 joined_mcmc_param_fits_sampleSize3_m_exp_2$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2$lower)
 joined_mcmc_param_fits_sampleSize3_m_exp_2$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2$upper)
 
+#2nd run
+joined_mcmc_param_fits_sampleSize3_v_2_v2 <- plot_param_comp_sampleSizeYear2(7, params_sampleSizesAndYears2_v2)
+  
+joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2 <- plot_param_comp_sampleSizeYear2(4, params_sampleSizesAndYears2_v2)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2 <- joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2$mean)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2$lower)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2$upper)
+
+joined_mcmc_param_fits_sampleSize3_propf_2_v2 <- plot_param_comp_sampleSizeYear2(5, params_sampleSizesAndYears2_v2)
+
+joined_mcmc_param_fits_sampleSize3_m_2_v2 <- plot_param_comp_sampleSizeYear2(6, params_sampleSizesAndYears2_v2)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2 <- joined_mcmc_param_fits_sampleSize3_m_2_v2
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2$mean <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v2$mean)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v2$lower)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v2$upper)
+
+#3rd run
+joined_mcmc_param_fits_sampleSize3_v_2_v3 <- plot_param_comp_sampleSizeYear2(7, params_sampleSizesAndYears2_v3)
+  
+joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3 <- plot_param_comp_sampleSizeYear2(4, params_sampleSizesAndYears2_v3)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3 <- joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3$mean)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3$lower)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3$upper)
+
+joined_mcmc_param_fits_sampleSize3_propf_2_v3 <- plot_param_comp_sampleSizeYear2(5, params_sampleSizesAndYears2_v3)
+
+joined_mcmc_param_fits_sampleSize3_m_2_v3 <- plot_param_comp_sampleSizeYear2(6, params_sampleSizesAndYears2_v3)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3 <- joined_mcmc_param_fits_sampleSize3_m_2_v3
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$mean <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$mean)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$lower)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$upper)
+
 # plot v
 library(viridis)
-
+library(ggplot2)
 real_vals_df_v_2 <- data.frame(params = factor(c(0.25, 0.5, 1,2.5,5)), vals = rep(0.0814, length(sample_sizes2)-5))
 
 
@@ -1732,6 +1794,19 @@ ggplot(joined_mcmc_param_fits_sampleSize3_v_2,aes(x=params,y=mean, colour = budg
     geom_hline(data = real_vals_df_v_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
   geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
+
+allruns_joined_mcmc_param_fits_sampleSize3_v_2 <- rbind(cbind(joined_mcmc_param_fits_sampleSize3_v_2, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_v_2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_v_2_v2, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_v_2_v2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_v_2_v3, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_v_2_v3))))
+
+ggplot(allruns_joined_mcmc_param_fits_sampleSize3_v_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+  geom_hline(data = real_vals_df_v_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2, group = run), linewidth = 1) +
+  geom_point(aes(color = budget, group = run),size = 4, position = position_dodge(width = 1)) + scale_color_viridis_d(option = "turbo",direction = -1) +
   facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
   theme(panel.background = element_rect(fill = "white",),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
@@ -1750,6 +1825,19 @@ ggplot(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2,aes(x=params,y=mean, colo
         panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
   labs(y= "Parameter estimate", x = "Population") 
 
+allruns_joined_mcmc_param_fits_sampleSize3_sf_2 <- rbind(cbind(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3))))
+
+ggplot(allruns_joined_mcmc_param_fits_sampleSize3_sf_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+  geom_hline(data = real_vals_df_sf_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2, group = run), linewidth = 1) +
+  geom_point(aes(color = budget, group = run),size = 4, position = position_dodge(width = 1)) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
+
 # prop f
 real_vals_df_pf_2 <- data.frame(params = factor(c(0.25, 0.5, 1,2.5,5)), vals = rep(0.3, length(sample_sizes2)-5))
 
@@ -1763,11 +1851,37 @@ ggplot(joined_mcmc_param_fits_sampleSize3_propf_2,aes(x=params,y=mean, colour = 
         panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
   labs(y= "Parameter estimate", x = "Population") 
 
+allruns_joined_mcmc_param_fits_sampleSize3_propf_2 <- rbind(cbind(joined_mcmc_param_fits_sampleSize3_propf_2, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_propf_2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_propf_2_v2, "run" = rep(2, nrow(joined_mcmc_param_fits_sampleSize3_propf_2_v2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_propf_2_v3, "run" = rep(3, nrow(joined_mcmc_param_fits_sampleSize3_propf_2_v3))))
+
+ggplot(allruns_joined_mcmc_param_fits_sampleSize3_propf_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(data = real_vals_df_pf_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.5)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
+
 # immigration
 real_vals_df_m_2 <- data.frame(params = factor(c(0.25, 0.5, 1,2.5,5)), vals = rep(0.0133, length(sample_sizes2)-5))
 
 
 ggplot(joined_mcmc_param_fits_sampleSize3_m_exp_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(data = real_vals_df_m_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.1)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population") 
+
+allruns_joined_mcmc_param_fits_sampleSize3_m_exp_2 <- rbind(cbind(joined_mcmc_param_fits_sampleSize3_m_exp_2, "run" = rep(1, nrow(joined_mcmc_param_fits_sampleSize3_m_exp_2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_m_exp_2_v2, "run" = rep(2, nrow(joined_mcmc_param_fits_sampleSize3_m_exp_2_v2))),
+                                                        cbind(joined_mcmc_param_fits_sampleSize3_m_exp_2_v3, "run" = rep(3, nrow(joined_mcmc_param_fits_sampleSize3_m_exp_2_v3))))
+
+ggplot(allruns_joined_mcmc_param_fits_sampleSize3_m_exp_2,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
     geom_hline(data = real_vals_df_m_2, aes(yintercept = vals), colour = "red", linetype = "dashed", linewidth = 1.5) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
   geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +

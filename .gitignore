@@ -12,3 +12,7 @@ Data_analysis/.Rapp.history
 .Rproj.user
 *.png
 *.log
+*/.RData
+*/.Rhistory
+*/.Rproj.user
+ModelExample/MCMC_output/.*

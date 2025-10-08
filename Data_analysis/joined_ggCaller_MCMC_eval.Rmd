@@ -103,6 +103,8 @@ percentile95_up_UK <- percentile95_up
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_18/Nepal_5k/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_09/Nepal/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+
 Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
 Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
 Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
@@ -190,6 +192,10 @@ Nepal_delta_rank <- readRDS("Nepal_delta_ranking.rds") # 2484 intermed-freq gene
 
 gene_overlap_USUKNepal <- intersect(intersect(names(Mass_delta_rank), names(UK_delta_rank)), names(Nepal_delta_rank))
 # 1418 intermed-freq genes overlap btw all three
+# no, it's 1360
+
+# random would be:
+# 1360 * 0.34412010 * 0.2264006 * 0.241534 = 25.59203
 
 Mass_underNFDS <- rep(0, length(Mass_delta_rank))
 names(Mass_underNFDS) <- names(Mass_delta_rank)
