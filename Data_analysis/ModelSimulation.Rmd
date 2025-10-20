@@ -1784,6 +1784,24 @@ joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$mean <- exp(joined_mcmc_param_fits
 joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$lower)
 joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$upper)
 
+
+# save these dfs
+write.csv(joined_mcmc_param_fits_sampleSize3_v_2_v3, "joined_mcmc_param_fits_sampleSize3_v_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_v_2_v2, "joined_mcmc_param_fits_sampleSize3_v_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_v_2, "joined_mcmc_param_fits_sampleSize3_v_2.csv", row.names = TRUE)
+
+write.csv(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3, "joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2, "joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2, "joined_mcmc_param_fits_sampleSize3_sigmaf_2.csv", row.names = TRUE)
+
+write.csv(joined_mcmc_param_fits_sampleSize3_propf_2_v3, "joined_mcmc_param_fits_sampleSize3_propf_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_propf_2_v2, "joined_mcmc_param_fits_sampleSize3_propf_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_propf_2, "joined_mcmc_param_fits_sampleSize3_propf_2.csv", row.names = TRUE)
+
+write.csv(joined_mcmc_param_fits_sampleSize3_m_exp_2_v3, "joined_mcmc_param_fits_sampleSize3_m_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_m_exp_2_v2, "joined_mcmc_param_fits_sampleSize3_m_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_m_exp_2, "joined_mcmc_param_fits_sampleSize3_m_2.csv", row.names = TRUE)
+
 # plot v
 library(viridis)
 library(ggplot2)

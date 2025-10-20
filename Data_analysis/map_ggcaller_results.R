@@ -1780,6 +1780,8 @@ for (i in 1:nrow(Mass_UK_mmseq_clusters_50_panaroo)) {
 #plot(mmseqs_dict_freqs_Mass,mmseqs_dict_freqs_UK)
 plot(mmseqs_dict_freqs_Mass_UK, groundtruth_freqs_Mass_UK, pch = 19, col = "#00000030")
 
+plot(mmseqs_dict_freqs_Mass_UK, groundtruth_freqs_Mass_UK, pch = 19, col = "#00000030", cex = 1.5, cex.lab=1, cex.axis=2.5, cex.main=1.5, cex.sub=1.5)
+
 plot(1:length(groundtruth_freqs_Mass_UK),sort(as.double(groundtruth_freqs_Mass_UK)))
 plot(1:length(mmseqs_dict_freqs_Mass_UK),sort(as.double(mmseqs_dict_freqs_Mass_UK)))
 

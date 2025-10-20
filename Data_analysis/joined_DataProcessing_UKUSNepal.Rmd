@@ -773,7 +773,8 @@ sum_as_int <- function(x){
 }
 
 Nepal_gene_freq_preVac <- rep(0, nrow(Nepal_ggCaller_byYear[[1]])-1)
-Nepal_time_points_preVac <- c(5,8,10) # updated this now too (July 2025) to use all pre-vac samples
+#Nepal_time_points_preVac <- c(5,8,10) # updated this now too (July 2025) to use all pre-vac samples
+Nepal_time_points_preVac <- c(1,4,6) # Oct 2025, correction after just using carriage data
 preVac_datapoints <- 0
 for (i in Nepal_time_points_preVac) {
   Nepal_gene_freq_preVac <- Nepal_gene_freq_preVac + apply(Nepal_ggCaller_byYear[[i]][-1,-1],1, sum_as_int)
@@ -787,6 +788,7 @@ Nepal_gene_filter <- as.integer(Nepal_gene_freq_preVac<=0.95 & Nepal_gene_freq_p
 # 2120 intermediate-frequency genes (of 6533)
 # now: 2890 intermediate-frequency genes (of 9059)
 # now: 2295 (using all three pre-vac time points)
+# now: 2290
 ```
 
 # create intermediate frequency dataframes
@@ -799,7 +801,7 @@ for (i in 1:length(Nepal_time_points_selected)) {
     Nepal_ggCaller_year <-  Nepal_ggCaller_byYear[[i]][c(1,which(Nepal_gene_filter==1)+1),]
   }
   else{
-    Nepal_ggCaller_year <-  data.frame(matrix(Nepal_ggCaller_byYear[[6]][c(1,which(Nepal_gene_filter==1)+1),1], nrow = sum(Nepal_gene_filter)+1,ncol = 1))
+    Nepal_ggCaller_year <-  data.frame(matrix(Nepal_ggCaller_byYear[[2]][c(1,which(Nepal_gene_filter==1)+1),1], nrow = sum(Nepal_gene_filter)+1,ncol = 1))
   }
   Nepal_ggCaller_byYear_intermed[[i]] <- Nepal_ggCaller_year 
 }
@@ -808,9 +810,12 @@ Nepal_ggCaller_intermed <- data.frame(matrix(0, nrow = sum(Nepal_gene_filter)+1,
 Nepal_ggCaller_intermed <-  Nepal_ggCallerPP_bool[c(1,which(Nepal_gene_filter==1)+1),]
 
 # use 2009 as preVac reference
-Nepal_ggCaller_intermed_preVac <- Nepal_ggCaller_byYear_intermed[[5]]
+#Nepal_ggCaller_intermed_preVac <- Nepal_ggCaller_byYear_intermed[[5]]
+Nepal_ggCaller_intermed_preVac <- Nepal_ggCaller_byYear_intermed[[1]]
 # no, use all pre-vac years
-Nepal_ggCaller_intermed_preVac <- cbind(Nepal_ggCaller_byYear_intermed[[5]],Nepal_ggCaller_byYear_intermed[[8]][,-1],Nepal_ggCaller_byYear_intermed[[10]][,-1])
+#Nepal_ggCaller_intermed_preVac <- cbind(Nepal_ggCaller_byYear_intermed[[5]],Nepal_ggCaller_byYear_intermed[[8]][,-1],Nepal_ggCaller_byYear_intermed[[10]][,-1])
+Nepal_ggCaller_intermed_preVac <- cbind(Nepal_ggCaller_byYear_intermed[[1]],Nepal_ggCaller_byYear_intermed[[4]][,-1],Nepal_ggCaller_byYear_intermed[[6]][,-1])
+
 ```
 
 # create consensus gene presence absence matrices for the clusters
@@ -856,10 +861,24 @@ for(j in 1:length(Nepal_time_points_selected)){
   }
 }
 
+# separate VT and NVT parts of cluster for GPSC-VT likelihood
+Nepal_cluster_freqs_VT <- vector(mode = "list", length = length(Nepal_time_points_selected))
+Nepal_cluster_freqs_NVT <- vector(mode = "list", length = length(Nepal_time_points_selected))
+
+for(j in 1:length(Nepal_time_points_selected)){
+  Nepal_cluster_freqs_VT[[j]] <- rep(0, no_Nepal_PP)
+  for (i in unique(Nepal_PP$GPSC)){
+    Nepal_cluster_freqs_VT[[j]][which(unique(Nepal_PP$GPSC) == i)] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == i & Nepal_PP$VT == "VT","sample"]],]$Year==Nepal_time_points_selected[j]))
+    Nepal_cluster_freqs_NVT[[j]][which(unique(Nepal_PP$GPSC) == i)] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == i & Nepal_PP$VT == "NVT","sample"]],]$Year==Nepal_time_points_selected[j]))
+  }
+}
+
 #Nepal_cluster_freqs[[6]] <- rep(NA, no_Nepal_PP)
 
 # I will use 2009 as start population I think # no, I should use a combination of 2009, 2012 and 2014 (see next code bit)
-Nepal_time_points_preVac <- c(5,8,10)
+#Nepal_time_points_preVac <- c(5,8,10)
+Nepal_time_points_preVac <- c(1,4,6)
+
 
 Nepal_cluster_freqs_preVac <- rep(0, no_Nepal_PP)
 for (i in Nepal_time_points_preVac) {
@@ -868,7 +887,12 @@ for (i in Nepal_time_points_preVac) {
 
 for (i in 1:length(Nepal_time_points_selected)) {
   file_name <- paste("Nepal_cluster_freqs_", as.character(i),".rds", sep = "")
+  file_name_VT <- paste("Nepal_clusterVT_freqs_", as.character(i),".rds", sep = "")
+  file_name_NVT <- paste("Nepal_clusterNVT_freqs_", as.character(i),".rds", sep = "")
+  #print(file_name_VT)
   saveRDS(Nepal_cluster_freqs[[i]], file_name)
+  saveRDS(Nepal_cluster_freqs_VT[[i]], file_name_VT)
+  saveRDS(Nepal_cluster_freqs_NVT[[i]], file_name_NVT)
 }
 
 
@@ -883,7 +907,8 @@ iter1 <- 1
 iter2 <- 1
 for (i in sort(unique(Nepal_PP$Serotype))){
   for (j in unique(Nepal_PP$GPSC)) {
-    Nepal_cluster_sero_freqs_pre_post_df[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[5]))/length(which(Nepal_meta_dataPP$Year == "2009"))
+    Nepal_cluster_sero_freqs_pre_post_df[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[1]))/length(which(Nepal_meta_dataPP$Year == "2009"))
+    #print(length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[1]))/length(which(Nepal_meta_dataPP$Year == "2009")))
     #print(iter1+iter2-1)
     iter1 <- iter1 + 1
   }
@@ -894,7 +919,7 @@ for (i in sort(unique(Nepal_PP$Serotype))){
 #iter2 <- 1
 for (i in sort(unique(Nepal_PP$Serotype))){
   for (j in unique(Nepal_PP$GPSC)) {
-    Nepal_cluster_sero_freqs_pre_post_df[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[15]))/length(which(Nepal_meta_dataPP$Year == "2019"))
+    Nepal_cluster_sero_freqs_pre_post_df[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[11]))/length(which(Nepal_meta_dataPP$Year == "2019"))
     #print(iter1+iter2-1)
     iter1 <- iter1 + 1
   }
@@ -933,7 +958,7 @@ iter1 <- 1
 iter2 <- 1
 for (i in sort(names(Nepal_serotype_counts_selected))){
   for (j in names(Nepal_GPSC_counts_selected)) {
-    Nepal_cluster_sero_freqs_pre_post_df_selected[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[5]))/length(which(Nepal_meta_dataPP$Year == "2009"))
+    Nepal_cluster_sero_freqs_pre_post_df_selected[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[1]))/length(which(Nepal_meta_dataPP$Year == "2009"))
     #print(iter1+iter2-1)
     iter1 <- iter1 + 1
   }
@@ -944,7 +969,7 @@ for (i in sort(names(Nepal_serotype_counts_selected))){
 #iter2 <- 1
 for (i in sort(names(Nepal_serotype_counts_selected))){
   for (j in names(Nepal_GPSC_counts_selected)) {
-    Nepal_cluster_sero_freqs_pre_post_df_selected[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[15]))/length(which(Nepal_meta_dataPP$Year == "2019"))
+    Nepal_cluster_sero_freqs_pre_post_df_selected[(iter1+iter2-1),3] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$GPSC == j,][Nepal_PP[Nepal_PP$GPSC == j,]$Serotype==i,"sample"]],]$Year==Nepal_time_points_selected[11]))/length(which(Nepal_meta_dataPP$Year == "2019"))
     #print(iter1+iter2-1)
     iter1 <- iter1 + 1
   }
@@ -977,6 +1002,8 @@ colnames(Nepal_pre_and_post_vac_df) <- unique(Nepal_PP$GPSC)[which(Nepal_cluster
 rownames(Nepal_pre_and_post_vac_df) <- c("2009", "2012", "2014", "2017", "2018", "2019")
 
 barplot(as.matrix(Nepal_pre_and_post_vac_df), beside = TRUE, col = c(rep("red",3),rep("blue",3)),legend = rownames(as.matrix(Nepal_pre_and_post_vac_df)), ylim = c(0, 0.15))
+
+
 
 # make stacked barplot - with serotypes - or maybe VTs?
 Nepal_PP_with_time1 <- Nepal_PP
@@ -1089,7 +1116,8 @@ saveRDS(Nepal_model_start_pop, "Nepal_model_start_pop.rds")
 #Nepal_gene_freq_preVac <- apply(Nepal_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int)
 #Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[length(Nepal_ggCaller_byYear_intermed)]][-1,-1], 1, sum_as_int)
 Nepal_gene_freq_preVac <- apply(Nepal_ggCaller_intermed_preVac[-1,-1], 1, sum_as_int) # this now includes all three pre-vac samples
-Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[15]][-1,-1], 1, sum_as_int)
+#Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[15]][-1,-1], 1, sum_as_int)
+Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[11]][-1,-1], 1, sum_as_int)
 
 
 # first, calculate pre/peri and post vacc frequencies of genes:
@@ -1097,7 +1125,7 @@ Nepal_gene_freq_postVac <- apply(Nepal_ggCaller_byYear_intermed[[15]][-1,-1], 1,
 #Nepal_gene_freq_postVac_rel <- Nepal_gene_freq_postVac/sum(Nepal_gene_freq_postVac)
 # no, I don't want to divide by the sum of the number of genes, I want to divide by number of seqs
 Nepal_gene_freq_preVac_rel <- Nepal_gene_freq_preVac/(ncol(Nepal_ggCaller_intermed_preVac[-1,-1]))
-Nepal_gene_freq_postVac_rel <- Nepal_gene_freq_postVac/(ncol(Nepal_ggCaller_byYear_intermed[[15]][-1,-1]))
+Nepal_gene_freq_postVac_rel <- Nepal_gene_freq_postVac/(ncol(Nepal_ggCaller_byYear_intermed[[11]][-1,-1]))
 
 # calculate delta statistic (refer to Corander et al. for more info)
 Nepal_delta_data <- (Nepal_gene_freq_postVac_rel - Nepal_gene_freq_preVac_rel) ^ 2 / (1 - Nepal_gene_freq_preVac_rel * (1 - Nepal_gene_freq_preVac_rel))

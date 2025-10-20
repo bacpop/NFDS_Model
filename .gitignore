@@ -10,6 +10,8 @@ Data_analysis/.Rproj.user
 Data_analysis/.DS_Store
 Data_analysis/.Rapp.history
 .Rproj.user
+Data_analysis/*.csv
+Data_analysis/*.tsv
 *.png
 *.log
 */.RData

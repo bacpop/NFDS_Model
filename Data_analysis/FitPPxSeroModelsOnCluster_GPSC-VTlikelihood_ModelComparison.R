@@ -27,7 +27,7 @@ if(length(args)==0){
 
 
 # read in model from file
-WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_GPSC-VT.R")
 
 # likelihood for fitting:
 combined_compare <- function(state, observed, pars = NULL) {
@@ -42,7 +42,7 @@ combined_compare <- function(state, observed, pars = NULL) {
   data_missing <- FALSE
   # if(data_size == 0) # I don't actually need this because dmultinom of c(0,0,...,0) is anyway 1
   for (i in 1:(length(unlist(observed))-4)){ 
-    state_name <- paste("sum_clust", i, sep = "")
+    state_name <- paste("sum_clust_VTNVT", i, sep = "")
     model_vals[i] <- state[state_name, , drop = TRUE]
     if (is.na(observed[[as.character(i)]])) {
       #Creates vector of zeros in ll with same length, if no data
@@ -97,17 +97,29 @@ if(args[1] == "ggCaller" & args[2] == "PopPUNK"){
   #mass_cluster_freq_4 <- readRDS(file = "Nepal_cluster_freqs_4.rds")
   #mass_cluster_freq_5 <- readRDS(file = "Nepal_cluster_freqs_5.rds")
   #mass_cluster_freq_6 <- readRDS(file = "Nepal_cluster_freqs_6.rds")
-  mass_cluster_freq_7 <- readRDS(file = "Nepal_cluster_freqs_7.rds")
-  mass_cluster_freq_8 <- readRDS(file = "Nepal_cluster_freqs_8.rds")
-  mass_cluster_freq_9 <- readRDS(file = "Nepal_cluster_freqs_9.rds")
-  mass_cluster_freq_10 <- readRDS(file = "Nepal_cluster_freqs_10.rds") # now ignoring the earlier because pre-vac is composed of first three pre-vac timepoints
-  mass_cluster_freq_11 <- readRDS(file = "Nepal_cluster_freqs_11.rds")
+  #mass_cluster_freq_7 <- readRDS(file = "Nepal_cluster_freqs_7.rds")
+  #mass_cluster_freq_8 <- readRDS(file = "Nepal_cluster_freqs_8.rds")
+  #mass_cluster_freq_9 <- readRDS(file = "Nepal_cluster_freqs_9.rds")
+  #mass_cluster_freq_10 <- readRDS(file = "Nepal_cluster_freqs_10.rds") # now ignoring the earlier because pre-vac is composed of first three pre-vac timepoints
+  #mass_cluster_freq_11 <- readRDS(file = "Nepal_cluster_freqs_11.rds")
   #mass_cluster_freq_12 <- readRDS(file = "Nepal_cluster_freqs_12.rds")
   #mass_cluster_freq_13 <- readRDS(file = "Nepal_cluster_freqs_13.rds")
   #mass_cluster_freq_14 <- readRDS(file = "Nepal_cluster_freqs_14.rds")
   #mass_cluster_freq_15 <- readRDS(file = "Nepal_cluster_freqs_15.rds")
   #mass_cluster_freq_16 <- readRDS(file = "Nepal_cluster_freqs_16.rds")
   #mass_cluster_freq_17 <- readRDS(file = "Nepal_cluster_freqs_17.rds")
+  
+  mass_clusterVT_freq_7 <- readRDS(file = "Nepal_clusterVT_freqs_7.rds")
+  mass_clusterVT_freq_8 <- readRDS(file = "Nepal_clusterVT_freqs_8.rds")
+  mass_clusterVT_freq_9 <- readRDS(file = "Nepal_clusterVT_freqs_9.rds")
+  mass_clusterVT_freq_10 <- readRDS(file = "Nepal_clusterVT_freqs_10.rds") 
+  mass_clusterVT_freq_11 <- readRDS(file = "Nepal_clusterVT_freqs_11.rds")
+  
+  mass_clusterNVT_freq_7 <- readRDS(file = "Nepal_clusterNVT_freqs_7.rds")
+  mass_clusterNVT_freq_8 <- readRDS(file = "Nepal_clusterNVT_freqs_8.rds")
+  mass_clusterNVT_freq_9 <- readRDS(file = "Nepal_clusterNVT_freqs_9.rds")
+  mass_clusterNVT_freq_10 <- readRDS(file = "Nepal_clusterNVT_freqs_10.rds") 
+  mass_clusterNVT_freq_11 <- readRDS(file = "Nepal_clusterNVT_freqs_11.rds")
   
   mass_clusters <- length(unique(seq_clusters$Cluster))
   sero_no = length(unique(seq_clusters$Serotype))
@@ -120,8 +132,8 @@ if(args[1] == "ggCaller" & args[2] == "PopPUNK"){
   dt <- 1/12
   #peripost_mass_cluster_freq <- data.frame("year" = 1:10, rbind(mass_cluster_freq_8,mass_cluster_freq_9, mass_cluster_freq_10, mass_cluster_freq_11,mass_cluster_freq_12, mass_cluster_freq_13, mass_cluster_freq_14,mass_cluster_freq_15,mass_cluster_freq_16,mass_cluster_freq_17))
   #peripost_mass_cluster_freq <- data.frame("year" = 1:7, rbind(mass_cluster_freq_11,mass_cluster_freq_12, mass_cluster_freq_13, mass_cluster_freq_14,mass_cluster_freq_15,mass_cluster_freq_16,mass_cluster_freq_17))
-  peripost_mass_cluster_freq <- data.frame("year" = 1:5, rbind(mass_cluster_freq_7, mass_cluster_freq_8,mass_cluster_freq_9,mass_cluster_freq_10,mass_cluster_freq_11))
-  names(peripost_mass_cluster_freq) <- c("year", as.character(1:mass_clusters))
+  peripost_mass_cluster_freq <- data.frame("year" = 1:5, rbind(c(mass_clusterVT_freq_7, mass_clusterNVT_freq_7), c(mass_clusterVT_freq_8, mass_clusterNVT_freq_8),  c(mass_clusterVT_freq_9, mass_clusterNVT_freq_9),c(mass_clusterVT_freq_10, mass_clusterNVT_freq_10),c(mass_clusterVT_freq_11, mass_clusterNVT_freq_11)))
+  names(peripost_mass_cluster_freq) <- c("year", paste(as.character(1:(2 * mass_clusters))))
   #vacc_time <- 6
   vacc_time <- 1
   #cov_matrix <- readRDS("Nepal_cov_matrix.rds")
@@ -214,7 +226,7 @@ if(params_total == 2){
   }
   
   index <- function(info) {
-    list(run = c(sum_clust = info$index$Pop_tot),
+    list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
          state = c(Pop = info$index$Pop))
   }
   
@@ -336,7 +348,7 @@ if(params_total == 2){
   }
   
   index <- function(info) {
-    list(run = c(sum_clust = info$index$Pop_tot),
+    list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
          state = c(Pop = info$index$Pop))
   }
   
@@ -462,7 +474,7 @@ if(params_total == 2){
   proposal_matrix <- diag(0.1,4) # the proposal matrix defines the covariance-variance matrix for a mult normal dist
   
   index <- function(info) {
-    list(run = c(sum_clust = info$index$Pop_tot),
+    list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
          state = c(Pop = info$index$Pop))
   }
   
@@ -482,6 +494,9 @@ if(params_total == 2){
   n_steps <- 5
   n_burnin <- 0
   
+  #all_params <- list(sigma_f = -5, prop_f = 0.3, m = -8, v = 0.1, species_no = species_no, Pop_ini = as.matrix(Pop_ini), Pop_eq = Pop_eq, Genotypes = Genotypes, capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = as.matrix(migVec), sero_no = sero_no)
+  #WF_model <- WF$new(pars = all_params, time = 0, n_particles = 1L)
+  #index(WF_model$info())
   
   control <- mcstate::pmcmc_control(
     n_steps,
@@ -596,7 +611,7 @@ if(params_total == 2){
   proposal_matrix <- diag(0.1,5) # the proposal matrix defines the covariance-variance matrix for a mult normal dist
   
   index <- function(info) {
-    list(run = c(sum_clust = info$index$Pop_tot),
+    list(run = c(sum_clust_VT = info$index$Pop_tot_VT, sum_clust_NVT = info$index$Pop_tot_NVT),
          state = c(Pop = info$index$Pop))
   }
   
@@ -778,9 +793,8 @@ if(stoch_run == TRUE){
   if(params_total == 4){
     complex_params1 = list(species_no = species_no, Pop_ini = sapply(Pop_ini,as.double), Pop_eq = sapply(Pop_eq,as.double), Genotypes = intermed_gene_presence_absence_consensus_matrix, capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = sapply(migVec,as.double), sero_no = sero_no)
     index <- function(info) {
-      list(run = c(sum_clust = info$index$Pop_tot),
+      list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
            state = c(Pop = info$index$Pop))
-      #browser()
     }
     #index <- function(info) {
     #  list(run = c(sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot,sum_clust = info$index$Pop_tot),
@@ -800,7 +814,7 @@ if(stoch_run == TRUE){
     WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_5param.R")
     complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, migVec = (migVec), sero_no = sero_no)
     index <- function(info) {
-      list(run = c(sum_clust = info$index$Pop_tot),
+      list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
            state = c(Pop = info$index$Pop))
     }
     us_det_fit <- readRDS("../US/PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
@@ -814,7 +828,7 @@ if(stoch_run == TRUE){
   else if(params_total == 2){
     complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no, sigma_f = -1000, prop_f = 1)
     index <- function(info) {
-      list(run = c(sum_clust = info$index$Pop_tot),
+      list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
            state = c(Pop = info$index$Pop))
     }
     us_det_fit <- readRDS("../US/PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
@@ -828,7 +842,7 @@ if(stoch_run == TRUE){
   else if(params_total == 3){
     complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = (migVec), sero_no = sero_no, prop_f = 1)
     index <- function(info) {
-      list(run = c(sum_clust = info$index$Pop_tot),
+      list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
            state = c(Pop = info$index$Pop))
     }
     us_det_fit <- readRDS("../US/PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
