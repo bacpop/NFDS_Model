@@ -1187,7 +1187,13 @@ SeroVT <- rep(0, length(unique(Nepal_clusters$Serotype)))
 for (i in 1:nrow(Nepal_clusters)) {
   SeroVT[SerotypeToIndex_dict[Nepal_clusters$Serotype[i]]] <- as.integer(Nepal_clusters$VT[i]=="VT")
 }
+names(SeroVT) <- names(SerotypeToIndex_dict)
 saveRDS(SeroVT, "Nepal_SeroVT.rds")
+
+### vt vector that includes 6A (which appears to have cross immunity with 6B and is therefore affected by the vaccine, e.g. https://pmc.ncbi.nlm.nih.gov/articles/PMC5848315/)
+SeroVT_6A <- SeroVT
+SeroVT_6A["6A"] <- 1
+saveRDS(SeroVT_6A, "Nepal_SeroVT_6A.rds")
 ```
 
 # UK

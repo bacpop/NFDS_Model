@@ -120,18 +120,21 @@ ggplot(Nepal_meta_dataPP_forplot_serocounts, aes(x=Time, y=relCount, fill = VT))
 Nepal_GPSC_counts <- readRDS("Nepal_GPSC_counts.rds")
 Nepal_GPSC_counts_selected <- Nepal_GPSC_counts[which(Nepal_GPSC_counts > 18)]
 
+### this one is not correct I think
+# filtering with double-which chooses incorrect rows
 
 Nepal_meta_dataPP_forplot_GPSCcounts <- data.frame(matrix(NA, nrow = 2 * length(Nepal_GPSC_counts_selected), ncol = 4))
 colnames(Nepal_meta_dataPP_forplot_GPSCcounts) <- c("GPSC", "relCount", "Time", "VT")
 Nepal_meta_dataPP_forplot_GPSCcounts[,1] <- rep(sort(rep(names(Nepal_GPSC_counts_selected))),2)
 Nepal_meta_dataPP_forplot_GPSCcounts[,3] <- factor(c(rep("pre",length(Nepal_GPSC_counts_selected)), rep("post", length(Nepal_GPSC_counts_selected))), levels = c("pre","post"))
+Nepal_meta_dataPP_forplot_GPSCcounts[,4] <- factor(c(rep("VT",length(Nepal_GPSC_counts_selected)), rep("VT", length(Nepal_GPSC_counts_selected))), levels = c("NVT","Mixed","VT"))
 #Nepal_meta_dataPP_forplot_GPSCcounts[,4] <- 
 
 Nepal_PP_with_time1 <- Nepal_PP
 Nepal_PP_with_time1$Time <- Nepal_SeqYear_dict[Nepal_PP$sample]
 
 iter1 <- 1
-for (i in names(Nepal_GPSC_counts_selected)) {
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
   Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[1])) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[4])) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[6])))/(length(which(Nepal_meta_dataPP$Year == "2009")) + length(which(Nepal_meta_dataPP$Year == "2012")) + length(which(Nepal_meta_dataPP$Year == "2014")))
   VT_info <- unique(c(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[1]),]$VT, Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[4]),]$VT, Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[6]),]$VT))
   if(length(VT_info)>1){
@@ -142,7 +145,7 @@ for (i in names(Nepal_GPSC_counts_selected)) {
   }
     iter1 <- iter1 + 1
 }
-for (i in names(Nepal_GPSC_counts_selected)) {
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
   Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[11])))/(length(which(Nepal_meta_dataPP$Year == "2019")))
   VT_info <- unique(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[11]),]$VT)
   if(length(VT_info)>1){
@@ -171,24 +174,76 @@ Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[,4] <- c(rep("VT",length(Nepal_GPSC_c
 #Nepal_PP_with_time1$Time <- Nepal_SeqYear_dict[Nepal_PP$sample]
 
 iter1 <- 1
-for (i in names(Nepal_GPSC_counts_selected)) {
-  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[1]),]$VT == "VT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[4]),]$VT == "VT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[6]),]$VT == "VT")))/(length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2009"),]$VT == "VT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2012"),]$VT == "VT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2014"),]$VT == "VT")))
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[1] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[4] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[6]) & (Nepal_PP_with_time1$VT == "VT"),]))/(length(which(Nepal_PP_with_time1$Time == "2009")) + length(which(Nepal_PP_with_time1$Time == "2012")) + length(which(Nepal_PP_with_time1$Time == "2014")))
     iter1 <- iter1 + 1
 }
-for (i in names(Nepal_GPSC_counts_selected)) {
-  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[1]),]$VT == "NVT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[4]),]$VT == "NVT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[6]),]$VT == "NVT")))/(length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2009"),]$VT == "NVT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2012"),]$VT == "NVT")) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2014"),]$VT == "NVT")))
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[1] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[4] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[6]) & (Nepal_PP_with_time1$VT == "NVT"),]))/(length(which(Nepal_PP_with_time1$Time == "2009")) + length(which(Nepal_PP_with_time1$Time == "2012")) + length(which(Nepal_PP_with_time1$Time == "2014")))
     iter1 <- iter1 + 1
 }
-for (i in names(Nepal_GPSC_counts_selected)) {
-  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[11]),]$VT == "VT")))/(length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2019"),]$VT == "VT")))
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[11]) & (Nepal_PP_with_time1$VT == "VT"),]))/(length(which(Nepal_PP_with_time1$Time == "2019")))
     iter1 <- iter1 + 1
 }
-for (i in names(Nepal_GPSC_counts_selected)) {
-  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[11]),]$VT == "NVT")))/(length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$Time == "2019"),]$VT == "NVT")))
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[11]) & (Nepal_PP_with_time1$VT == "NVT"),]))/(length(which(Nepal_PP_with_time1$Time == "2019")))
     iter1 <- iter1 + 1
 }
 
 
 ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=Time, y=relCount, fill = VT)) + 
   geom_bar(stat = "identity") + facet_grid(~(GPSC)) + theme_bw()
+
+# sum(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT$relCount[55:108])
 ```
+
+# investigate the serotypes of the GPSCs that are difficult to capture
+# mixed GPSC 10;209, 101, 230, 84, 225
+# NVT GPSC 11, 25, 30, 206
+```{r}
+# pre and post 10;209
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "10;209") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# VT "19F"
+# NVT "10A" "7B"  "35B"
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "10;209") & (Nepal_PP_with_time1$Time == 2019)])
+# VT  "19F" "23F"   
+# NVT "10A" "17F"   "19A" "35B" "7B"  "6C"  "24B/24C/24F" "18C"  "22F" 
+
+# pre and post 101
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "101") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "23F" "19F" "23B"
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "101") & (Nepal_PP_with_time1$Time == 2019)])
+# "23F" "23B" "17F" "19B"
+
+# pre and post 230
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "230") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "34"  "33B" "6C" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "230") & (Nepal_PP_with_time1$Time == 2019)])
+# "13"  "33B" "34"  "6C"  "35B" "6A"
+
+# pre and post 25
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "25") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "15B/15C" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "25") & (Nepal_PP_with_time1$Time == 2019)])
+# "15B/15C"
+
+# pre and post 11
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "11") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "6A"  "17F" "21"  "9N" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "11") & (Nepal_PP_with_time1$Time == 2019)])
+# "21"  "6A"  "17F"
+
+# pre and post 13
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "13") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "6D" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "13") & (Nepal_PP_with_time1$Time == 2019)])
+# "6A"
+
+# pre and post 30
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "30") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "10A" "10F"
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "30") & (Nepal_PP_with_time1$Time == 2019)])
+# "10A" "10F"
+```
+
