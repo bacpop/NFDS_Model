@@ -351,6 +351,14 @@ ggplot(mse_SimFromSimFits_paramDistMean95_df_cumu_mean,aes(x=Year,y=MSEmean, col
         panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
   labs(y= "Cumulative mean squared error", x = "Years")
 
+ggplot(mse_SimFromSimFits_paramDistMean95_df_cumu_mean,aes(x=Year,y=MSEmean, colour = sample_freq, group = interaction(sample_freq, budget), fill = sample_freq)) + 
+  geom_errorbar(aes(ymin=MSElow, ymax=MSEup),alpha=0.5) +
+  geom_point(size = 1) + scale_color_viridis_d(option = "turbo",direction = -1) + 
+  geom_line(linewidth = 1) + 
+  facet_wrap(~budget, ncol = 2) + coord_cartesian(ylim = c(0,0.0075)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines"),legend.position="bottom") +
+  labs(y= "Cumulative mean squared error", x = "Years")
 
 # or make 32 plots? :D
 ggplot(mse_SimFromSimFits_paramDistMean95_df_cumu_mean,aes(x=Year,y=MSEmean, colour = sample_freq, fill = sample_freq)) + 

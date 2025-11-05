@@ -82,12 +82,44 @@ plot(Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC/sum(Nepal_post_GPSC
 
 barplot((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC/sum(Nepal_post_GPSC)))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)])
 ```
+# what if I sub-sample the post vt time point?
+```{r}
+Nepal_post_GPSC_subsample <- rmultinom(1, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))[,1]
+
+plot.new()
+barplot(((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC_subsample/sum(Nepal_post_GPSC_subsample)))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]), col = "#00000030")
+
+Nepal_post_GPSC_subsample_reps <- rmultinom(100, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))
+plot((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC_subsample_reps[,1]/sum(Nepal_post_GPSC_subsample_reps[,1])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], xaxt = "n", pch = 19, col = "#00000030", ylim = c(-0.06, 0.06))
+axis(1, at=1:length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)), labels=names(Nepal_post_GPSC)[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], cex.axis=0.8)
+abline(h = 0)
+
+for (i in 1:100) {
+  Nepal_post_GPSC_subsample <- rmultinom(1, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))[,1]
+points((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC_subsample_reps[,i]/sum(Nepal_post_GPSC_subsample_reps[,i])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], pch = 19, col = "#00000030")
+}
+
+
+# just look at freq variation in last tp
+Nepal_post_GPSC_subsample_reps <- rmultinom(100, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))
+plot(((Nepal_post_GPSC_subsample_reps[,1]/sum(Nepal_post_GPSC_subsample_reps[,1])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], pch = 19, col = "#00000030",xaxt = "n", ylim = c(0, 0.15))
+axis(1, at=1:length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)), labels=names(Nepal_post_GPSC)[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], cex.axis=0.8)
+
+for (i in 2:100) {
+points(((Nepal_post_GPSC_subsample_reps[,i]/sum(Nepal_post_GPSC_subsample_reps[,i])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], pch = 19, col = "#00000030")
+}
+```
+
+
+
 
 # try to make similar plot for serotypes
 ```{r}
 Nepal_meta_dataPP_forplot <- readRDS("Nepal_meta_dataPP.rds")
 Nepal_serotype_counts <- readRDS("Nepal_serotype_counts.rds")
 Nepal_serotype_counts_selected <- Nepal_serotype_counts[which(Nepal_serotype_counts > 18)]
+#Nepal_serotype_counts_selected <- Nepal_serotype_counts
+
 
 Nepal_meta_dataPP_forplot_serocounts <- data.frame(matrix(NA, nrow = 2 * length(Nepal_serotype_counts_selected), ncol = 4))
 colnames(Nepal_meta_dataPP_forplot_serocounts) <- c("Serotype", "relCount", "Time", "VT")
@@ -98,13 +130,14 @@ Nepal_meta_dataPP_forplot_serocounts[,4] <- PCV10_VTsPP[Nepal_meta_dataPP_forplo
 
 iter1 <- 1
 for (i in names(Nepal_serotype_counts_selected)) {
-  Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[1])) + length(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[4])) + length(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[6])))/(length(which(Nepal_meta_dataPP$Year == "2009")) + length(which(Nepal_meta_dataPP$Year == "2012")) + length(which(Nepal_meta_dataPP$Year == "2014")))
+  Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[1])) + length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[4])) + length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[6])))/(length(which(Nepal_meta_dataPP_forplot$Year == "2009")) + length(which(Nepal_meta_dataPP_forplot$Year == "2012")) + length(which(Nepal_meta_dataPP_forplot$Year == "2014")))
   #print(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[1]))
     #print(iter1+iter2-1)
     iter1 <- iter1 + 1
 }
 for (i in names(Nepal_serotype_counts_selected)) {
-  Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[11])))/(length(which(Nepal_meta_dataPP$Year == "2019")))
+  Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[11])))/(length(which(Nepal_meta_dataPP_forplot$Year == "2019")))
+  #Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[10])))/(length(which(Nepal_meta_dataPP$Year == "2018")))
   #print(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[1]))
     #print(iter1+iter2-1)
     iter1 <- iter1 + 1

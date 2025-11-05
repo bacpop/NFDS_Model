@@ -126,7 +126,7 @@ if(args[1] == "ggCaller" & args[2] == "PopPUNK"){
   
   model_start_pop <- readRDS(file = "Nepal_PPsero_startpop.rds")
   
-  mass_VT <- readRDS(file = "Nepal_SeroVT.rds")
+  mass_VT <- readRDS(file = "Nepal_SeroVT_6A.rds")
   mass_clusters <- length(unique(seq_clusters$GPSC))
   avg_cluster_freq <- readRDS(file = "Nepal_PPsero_mig.rds")
   dt <- 1/12
@@ -173,12 +173,6 @@ if(length(args)>=6 & args[6]=="stoch"){
 }
 
 # process data with particle filter:
-#dt <- 1/36 # we assume that the generation time of Strep. pneumo is 1 month
-# we have data from 2001, 2004, 2007, so we want 3 (years) * 12 (months) = 36 updates in-between
-
-#peripost_mass_cluster_freq <- data.frame("year" = c(1, 2), rbind(mass_cluster_freq_2, mass_cluster_freq_3))
-#names(peripost_mass_cluster_freq) <- c("year", as.character(1:mass_clusters))
-
 fitting_mass_data <- mcstate::particle_filter_data(data = peripost_mass_cluster_freq,
                                                    time = "year",
                                                    rate = 1 / dt,
@@ -594,7 +588,7 @@ if(params_total == 2){
   saveRDS(det_pmcmc_run2, paste(output_filename, "_4param_det_pmcmc_run2.rds", sep = ""))
   
 } else if(params_total == 5){
-  WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_5param.R")
+  WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_GPSC-VT_5param.R")
   complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, migVec = (migVec), sero_no = sero_no)
   #complex_params <- c(Pop_ini, Pop_eq, Genotypes, capacity, delta, species_no, gene_no, vacc_time, dt, migVec,vT)
   
@@ -611,7 +605,7 @@ if(params_total == 2){
   proposal_matrix <- diag(0.1,5) # the proposal matrix defines the covariance-variance matrix for a mult normal dist
   
   index <- function(info) {
-    list(run = c(sum_clust_VT = info$index$Pop_tot_VT, sum_clust_NVT = info$index$Pop_tot_NVT),
+    list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),
          state = c(Pop = info$index$Pop))
   }
   
@@ -811,7 +805,7 @@ if(stoch_run == TRUE){
     
   }
   else if(params_total == 5){
-    WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_5param.R")
+    WF <- odin.dust::odin_dust("NFDS_Model_PPxSero_GPSC-VT_5param.R")
     complex_params = list(species_no = species_no, Pop_ini = Pop_ini, Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus[-1,-1], capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, migVec = (migVec), sero_no = sero_no)
     index <- function(info) {
       list(run = c(sum_clust_VTNVT = c(info$index$Pop_tot_VT, info$index$Pop_tot_NVT)),

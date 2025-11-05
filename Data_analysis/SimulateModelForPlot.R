@@ -22,7 +22,7 @@ simulate_model_for_plot2 <- function(Nepal_mcmc_run, Nepal_params_loc){
                                       n_particles = 1L,
                                       n_threads = 4L,
                                       seed = 1L)
-    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(7*12)[(2:(Nepal_params_loc$species_no+1)),])
+    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(5*12)[(2:(Nepal_params_loc$species_no+1)),]) # time point 0 is 2014, then simulate 5 years (until 2019)
   }
   cluster_samples_ParamVar
 }
@@ -45,7 +45,7 @@ simulate_model_for_plot2_null <- function(Nepal_mcmc_run, Nepal_params_loc){
                                       n_particles = 1L,
                                       n_threads = 4L,
                                       seed = 1L)
-    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(7*12)[(2:(Nepal_params_loc$species_no+1)),])
+    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(5*12)[(2:(Nepal_params_loc$species_no+1)),])
   }
   cluster_samples_ParamVar
 }

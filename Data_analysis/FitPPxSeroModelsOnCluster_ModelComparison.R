@@ -78,6 +78,7 @@ if(args[1] == "ggCaller" & args[2] == "PopPUNK"){
   mass_cluster_freq_3 <- readRDS(file = "PP_mass_cluster_freq_3.rds")
   #mass_VT <- readRDS(file = "SeroVT.rds")
   mass_VT <- readRDS(file = "SeroVT.rds")
+  #mass_VT["6A"] <- 1
   mass_clusters <- length(unique(seq_clusters$Cluster))
   avg_cluster_freq <- readRDS(file = "PPsero_mig.rds")
   dt <- 1/36
