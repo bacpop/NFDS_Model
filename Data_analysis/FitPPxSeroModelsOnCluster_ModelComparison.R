@@ -115,7 +115,7 @@ if(args[1] == "ggCaller" & args[2] == "PopPUNK"){
   
   model_start_pop <- readRDS(file = "Nepal_PPsero_startpop.rds")
   
-  mass_VT <- readRDS(file = "Nepal_SeroVT.rds")
+  mass_VT <- readRDS(file = "Nepal_SeroVT_6A.rds")
   mass_clusters <- length(unique(seq_clusters$GPSC))
   avg_cluster_freq <- readRDS(file = "Nepal_PPsero_mig.rds")
   dt <- 1/12

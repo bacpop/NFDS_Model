@@ -32,44 +32,44 @@ WF_PPxSero <- odin.dust::odin_dust("NFDS_Model.R")
 
 ```{r}
 # Set parameters for model
+vacc_time <- 4 # time of vaccination, in years after start of dataset
 
-vacc_time <- 4 # time of vaccination
-
-PPsero_startpop6 <- readRDS("PPsero_startpop6.rds") # start population for model (GPSC x serotypes)
+PPsero_startpop <- readRDS("PPsero_startpop.rds") # start population for model (GPSC x serotypes)
 # rows are GPSCs, columns are serotypes
 # based on real data (counts) from first time point of dataset
 # created by Poisson sampling from real data and scaling it up to model population size (15,000)
 # GPSC-serotype combinations that appear in the dataset - but not in the first time point - are set to 1
 
-freq_clust <- which(rowSums(PPsero_startpop6)>(sum(PPsero_startpop6)/100)) # keep only frequent clusters (filtering only for purpose of this example)
-freq_sero <- which(colSums(PPsero_startpop6)>(sum(PPsero_startpop6)/100)) # keep only frequent serotypes (filtering only for purpose of this example)
-species_no_test <- length(freq_clust) # number of GPSCs
-sero_no_test <- length(freq_sero) # number of serotypes
-Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero)) # start population as matrix, and filtered down for frequenct GPSCs and serotypes
+# freq_clust
+no_GPSC <- nrow(PPsero_startpop) # number of GPSCs
+#freq_sero 
+no_sero <- ncol(PPsero_startpop) # number of serotypes
+
+#Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero)) # start population as matrix, and filtered down for frequenct GPSCs and serotypes
   
-Genotypes_test_matrix <- readRDS("Genotypes_test_matrix.rds") # genotype matrix (pangenome matrix of GPSCs) (rows = gene clusters, columns = GPSCs)
+Genotypes_matrix <- readRDS("Genotypes_matrix.rds")
 # genotype matrix is constant over time
 # prepare genotype matrix by:
 # 1) binarise panaroo's pangenome matrix (replace all empty spaces by 0 (=not present), all gene calls by 1 (= present))
 # 2) filter for genes that are present at 5-95% frequency (intermediate-frequency genes)
 # 3) summarise information by GPSC: take all columns that correspond to one GPSC, take the median and then round the value (to 0 or 1), to determine which genes are present in which GPSC
 
-delta_test <- readRDS("delta_test.rds") # delta statistic (computed as in Corander et al.)
+delta_test <- readRDS("gene_delta_ranking.rds") # delta statistic (computed as in Corander et al.)
 # calculates the changes in gene frequencies of the first time point (which are assumed to be at equilibrium) to the last time point
 # Genes that change the least in frequency have a low delta statistic value, genes that change more have a higher value.
 # then apply rank() function to determine order of genes
 # (NFDS model will determine a cut-off for genes to be under NFDS or not based on this order)
 gene_no_test <- length(delta_test) # number of intermediate-frequency genes
-migMatr_test_mtx <- readRDS("migMatr_test_mtx.rds") # immigration matrix (rows are GPSCs, columns are serotypes)
+migMatr_test_mtx <- readRDS("PPsero_mig.rds") # immigration matrix (rows are GPSCs, columns are serotypes)
 # compute immigration matrix by assigning all GPSC-serotype combinations that appear at least once in the data set equal probabilities of immigration (i.e. one over the number of GPSC-serotype combinations)
-vaccTypes_test_mtx1 <- readRDS(file = "SeroVT.rds") # information on which types are affected by vaccine (1 = serotype affected by vaccine, 0 = serotypes not affected)
-vaccTypes_test_mtx <- vaccTypes_test_mtx1[freq_sero] # filter for frequent serotypes only 
+vaccTypes_test <- readRDS(file = "SeroVT.rds") # information on which types are affected by vaccine (1 = serotype affected by vaccine, 0 = serotypes not affected)
+ 
 dt_test <- 1/12 # determines how many generations there are between two data points (here: 12 generations per year)
 ```
 
 ```{r}
 ### simulate model 
-PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = Pop_ini_test_mtx, Pop_eq = rowSums(Pop_ini_test_mtx), capacity = sum(Pop_ini_test_mtx), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+PPxSero_testparams <- list(dt = dt_test, species_no = no_GPSC, sero_no = no_sero, gene_no = gene_no_test, Pop_ini = PPsero_startpop, Pop_eq = rowSums(PPsero_startpop), capacity = sum(PPsero_startpop), Genotypes = Genotypes_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test, v = 0.0814, vacc_time = 4)
 
 WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
                          time = 0,
@@ -81,13 +81,13 @@ simulated_data_long <- list()
 simulated_sum_data_long <- list()
 list_of_particle_list <- list()
 for (i in 0:240) {
-  simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
-  simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(no_GPSC+1)),])
+  simMean_matrix <- matrix(simMean_all, ncol = no_sero, nrow = no_GPSC, byrow = FALSE)
   simulated_data_long[[i+1]] <- simMean_matrix
-  simSum_all <- rowSums(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
-  simSum_matrix <- matrix(simSum_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simSum_all <- rowSums(WFmodel_ppxSero$run(i)[-(1:(no_GPSC+1)),])
+  simSum_matrix <- matrix(simSum_all, ncol = no_sero, nrow = no_GPSC, byrow = FALSE)
   simulated_sum_data_long[[i+1]] <- simSum_matrix
-  list_of_particle_list[[i+1]] <-  WFmodel_ppxSero$run(i)[(2:(species_no_test+1)),]
+  list_of_particle_list[[i+1]] <-  WFmodel_ppxSero$run(i)[(2:(no_GPSC+1)),]
 }
 simulated_data_over_time_clust <- sapply(simulated_data_long, rowSums)
 simulated_data_over_time_clust_df <- as.data.frame(simulated_data_over_time_clust)
@@ -109,7 +109,7 @@ for (i in 3:23) {
 simulated_data <- readRDS("simulated_data_over_time_filtered.rds")
 
 fitting_test_data <- data.frame("year" = 1:20, t(simulated_data))
-names(fitting_test_data) <- c("year", as.character(1:length(freq_clust)))
+names(fitting_test_data) <- c("year", as.character(1:(no_GPSC)))
 # prepare data for mcstate:
 fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,
                                                      time = "year",
@@ -204,7 +204,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params, output_loc){
   det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
   
   #n_steps <- 1000
-  n_steps <- 500
+  n_steps <- 100
   n_burnin <- 0
   
   
@@ -219,7 +219,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params, output_loc){
   
   
   det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
-  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run, burnin = 100, thin = 1)
+  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run, burnin = 20, thin = 1)
   parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
   print(parameter_mean_hpd)
   
@@ -252,7 +252,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params, output_loc){
   det_pmcmc_run <- mcstate::pmcmc(det_mcmc_pars, det_filter, control = control)
   
   # n_steps <- 20000 # good amount of steps but should be done on a cluster
-  n_steps <- 1000
+  n_steps <- 500
   n_burnin <- 0
   
   
@@ -264,7 +264,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params, output_loc){
     adaptive_proposal = TRUE,
     n_chains = 4, n_workers = 4, n_threads_total = 4)
   det_pmcmc_run2 <- mcstate::pmcmc(det_mcmc_pars, det_filter, control = control)
-  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run2, burnin = 500, thin = 1)
+  processed_chains <- mcstate::pmcmc_thin(det_pmcmc_run2, burnin = 100, thin = 1)
   parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
   print(parameter_mean_hpd)
   par(mfrow = c(1,1))
@@ -300,10 +300,11 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params, output_loc){
 
 ```{r}
 # run mcmc 
-fitting_test_params <- list(species_no = species_no_test, Pop_ini = data.frame(Pop_ini_test_mtx), Pop_eq = rowSums(Pop_ini_test_mtx), Genotypes = as.data.frame(Genotypes_test_matrix), capacity = sum(Pop_ini_test_mtx), delta = delta_test, vaccTypes = vaccTypes_test_mtx, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = sero_no_test)
+fitting_test_params <- list(species_no = no_GPSC, Pop_ini = data.frame(PPsero_startpop), Pop_eq = rowSums(PPsero_startpop), Genotypes = as.data.frame(Genotypes_matrix), capacity = sum(PPsero_startpop), delta = delta_test, vaccTypes = vaccTypes_test, gene_no = gene_no_test, vacc_time = 4, dt = dt_test, pmcmc_sigma_w = -1000, migVec = data.frame(migMatr_test_mtx), sero_no = no_sero)
 
 MCMC_chain_sample1year_run <- Fit_model_to_sim_data(fitting_data = fitting_test_data_2, fitting_params = fitting_test_params, output_loc = "./MCMC_output")
-# this will take some time (5-10 mins)
+# this will take some time (15-20 mins) 
+# for quicker runs, reduce n_steps 
 # to get good fits, this should be run for much longer
 
 processed_chains_1year <- mcstate::pmcmc_thin(MCMC_chain_sample1year_run, burnin = 200, thin = 2)

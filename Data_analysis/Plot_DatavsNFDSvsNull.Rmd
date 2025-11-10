@@ -299,7 +299,7 @@ create_cred_int_plot_change_sorted <- function(post_VT_data, NFDS_model_out, Nul
   cluster_VTs_info <- calc_VTNVT_cluster_info(seq_cluster_data)
   
   # choose to display only clusters that are at least at 1% frequency at the beginning
-  no_small_clusters <- which(preVac_data/sum(preVac_data) > 0.0)
+  no_small_clusters <- which(preVac_data/sum(preVac_data) > 0.01)
   
   # create df for ggplot
   data_and_model_with_errors_and_null_ModelSample <- data.frame(
@@ -315,16 +315,11 @@ create_cred_int_plot_change_sorted <- function(post_VT_data, NFDS_model_out, Nul
   # VTs and NVTs separately
   data_and_model_with_errors_and_null_ModelSample_NVT <- data_and_model_with_errors_and_null_ModelSample[which(data_and_model_with_errors_and_null_ModelSample$VT=="NVT"),]
   data_and_model_with_errors_and_null_ModelSample_NVT$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_NVT)/3),3)
-  #data_and_model_with_errors_and_null_ModelSample_NVT$xvals <- rep(order(data_and_model_with_errors_and_null_ModelSample_NVT$values[which(data_and_model_with_errors_and_null_ModelSample_NVT$Group == "Data")]),3)
   data_and_model_with_errors_and_null_ModelSample_VT <- data_and_model_with_errors_and_null_ModelSample[which(data_and_model_with_errors_and_null_ModelSample$VT=="VT"),]
-  data_and_model_with_errors_and_null_ModelSample_VT$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_VT)/3),3)
-  #data_and_model_with_errors_and_null_ModelSample_VT$xvals <- rep(order(data_and_model_with_errors_and_null_ModelSample_VT$values[which(data_and_model_with_errors_and_null_ModelSample_VT$Group == "Data")]),3)
   data_and_model_with_errors_and_null_ModelSample_mixed <- data_and_model_with_errors_and_null_ModelSample[which(data_and_model_with_errors_and_null_ModelSample$VT=="mixed"),]
   data_and_model_with_errors_and_null_ModelSample_mixed$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_mixed)/3),3)
-  #data_and_model_with_errors_and_null_ModelSample_mixed$xvals <- rep(order(data_and_model_with_errors_and_null_ModelSample_mixed$values[which(data_and_model_with_errors_and_null_ModelSample_mixed$Group == "Data")]),3)
   
   level_order_NVT <- order(data_and_model_with_errors_and_null_ModelSample_NVT$values[which(data_and_model_with_errors_and_null_ModelSample_NVT$Group == "Data")], decreasing = TRUE)
-  level_order_VT <- order(data_and_model_with_errors_and_null_ModelSample_VT$values[which(data_and_model_with_errors_and_null_ModelSample_VT$Group == "Data")], decreasing = TRUE)
   level_order_mixed <- order(data_and_model_with_errors_and_null_ModelSample_mixed$values[which(data_and_model_with_errors_and_null_ModelSample_mixed$Group == "Data")], decreasing = TRUE)
  
   # make NVT plot
@@ -349,6 +344,8 @@ create_cred_int_plot_change_sorted <- function(post_VT_data, NFDS_model_out, Nul
   
   # make VT plot
   if(nrow(data_and_model_with_errors_and_null_ModelSample_VT)>0){
+    data_and_model_with_errors_and_null_ModelSample_VT$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_VT)/3),3)
+    level_order_VT <- order(data_and_model_with_errors_and_null_ModelSample_VT$values[which(data_and_model_with_errors_and_null_ModelSample_VT$Group == "Data")], decreasing = TRUE)
 
     plot_VT <- ggplot(data_and_model_with_errors_and_null_ModelSample_VT, aes(y=values, x=factor(xvals,level = level_order_VT), group = Group, color = Group)) +  
     geom_hline(yintercept = 0, linetype="dashed") +
@@ -450,14 +447,21 @@ create_cred_int_plot(UK_2012, UK_params_4_model_data_rel, UK_params_null_model_d
 # read in forward simulation of model and data and cluster information (from PopPUNK)
 ```{r}
 ### waiting for new Nepal fits for this one
-Nepal_params_4_model_data_rel <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_15/Nepal_simModelForPlot_year5/Nepal_params_4_model_data_rel.rds")
-Nepal_params_null_model_data_rel <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_15/Nepal_simModelForPlot_year5/Nepal_params_null_model_data_rel.rds")
+Nepal_params_4_model_data_rel <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_06/Nepal_SimForPlot_Nepal_NewMetaData_6A_preFitParams/params_4_model_data_rel.rds")
+Nepal_params_null_model_data_rel <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_06/Nepal_SimForPlot_Nepal_NewMetaData_6A_preFitParams/params_null_model_data_rel.rds")
+
+Nepal_preVac <- readRDS(file = "Nepal_cluster_freqs_1.rds") + readRDS(file = "Nepal_cluster_freqs_4.rds") + readRDS(file = "Nepal_cluster_freqs_6.rds")
+#Nepal_preVac <- readRDS(file = "Nepal_cluster_freqs_1.rds")
 
 Nepal_cluster_freq_2019 <- readRDS(file = "Nepal_cluster_freqs_11.rds")
 Nepal_seq_clusters <- readRDS("Nepal_PP.rds")
+Nepal_metadata <- readRDS("Nepal_meta_dataPP.rds")
+
+location_for_plots_Nepal <- "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_06/Nepal_SimForPlot_Nepal_NewMetaData_6A_preFitParams/"
+minmax_Nepal <- 0.1
 ```
 
 ```{r}
-create_cred_int_plot(Nepal_cluster_freq_2019, Nepal_params_4_model_data_rel, Nepal_params_null_model_data_rel, Nepal_seq_clusters)
+create_cred_int_plot_change_sorted(Nepal_cluster_freq_2019, Nepal_params_4_model_data_rel, Nepal_params_null_model_data_rel, Nepal_seq_clusters, location_for_plots_Nepal, Nepal_preVac, minmax_Nepal)
 ```
 

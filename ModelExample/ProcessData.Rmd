@@ -1,0 +1,234 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+### Data anlysis to be performed before using NFDS model
+# 1) assemble genomes if necessary (e.g, using shovill 1.1.0 using default parameters (Torsten Seemann. Tseemann/Shovill. 2024)) 
+# 2) Compute Global pneumococcal sequence clusters (GPSCs) using PopPUNK 2.6.0 (Lees et al. (2019), doi: 10.1101/gr.241455.118.) with the PopPUNK database for S. pneumoniae GPS_v4 via poppunk_assign, applying quality control (--run-qc), allowing maximally one distance of zero (--max-zero-dist 1), and merging a maximum of three clusters based on one single isolate (--max-merge 3). 
+# 3) Construct a pangenome: 
+# 3.1) ggCaller 1.3.4 \cite{Horsfield et al. (2023), doi: 10.1101/gr.277733.123} can be used for gene calling using the SPARC dataset for annotation (Croucher et al. (2015), doi: 10.1038/sdata.2015.58 and Croucher et al. (2016), doi: 10.5061/DRYAD.T55GQ) and with the options --gene-finding-only --annotation sensitive. 
+# 3.2) bakta (Schwengers et al. (2021), doi: 10.1099/mgen.0.000685) with default parameters can be used for functional annotation (if wanted)
+# 3.3) panaroo v1.5.2 ( Tonkin-Hill et al. (2020), doi: 10.1186/s13059-020-02090-4) can be run with the options --refind-mode off --clean-mode moderate --family_threshold 0.7 --min_trailing_support 2 --trailing_recursive 0 --min_edge_support_sv 2 --edge_support_threshold 0.0 --aligner none
+
+### Format data in the way the NFDS model expects it to be
+
+# Read in meta data and PopPUNK GPSCs and add information to PopPUNK data frame
+```{r}
+MetaData <- read.csv("MetaData.csv")
+
+PopPUNK_clusters <- read.csv("poppunk_clusters_external_clusters.csv")
+# Add Serotype Information
+Serotype_dict <- MetaData$Serotype
+names(Serotype_dict) <- MetaData$filename
+PopPUNK_clusters$Serotype <- Serotype_dict[PopPUNK_clusters$Taxon]
+# Add sequencing year information
+SeqYear_dict <- MetaData$`Year.of.Isolation`
+names(SeqYear_dict) <- MetaData$filename
+PopPUNK_clusters$SeqYear <- SeqYear_dict[PopPUNK_clusters$Taxon]
+
+# calculate how many GPSCs are in the dataset
+GPSC_no <- length(unique(PopPUNK_clusters$Cluster))
+# Add VT information
+VT_dict <- MetaData$`Vaccine.Type`
+names(VT_dict) <- MetaData$filename
+PopPUNK_clusters$VT <- VT_dict[PopPUNK_clusters$Taxon]
+
+# create dictionary between GPSC and index
+PPclustToIndex_dict <- 1:length(unique(PopPUNK_clusters$Cluster))
+names(PPclustToIndex_dict) <- (unique(PopPUNK_clusters$Cluster))
+# create dictionary between serotype and index
+SerotypeToIndex_dict <- 1:length(unique(PopPUNK_clusters$Serotype))
+names(SerotypeToIndex_dict) <- (unique(PopPUNK_clusters$Serotype))
+# create dictionary between GPSC and taxon
+GPSC_dict <- PopPUNK_clusters$Cluster
+names(GPSC_dict) <- PopPUNK_clusters$Taxon
+```
+
+
+# Create immigration matrix and start population
+```{r}
+# Create PP clusters, split by serotype
+# calculate the frequency of the gene clusters and year and serotype
+# 3 time points --> 3 matrices
+# rows = GPSCs, columns = serotypes
+PP_mass_cluster_freq_1_sero <- matrix(0,nrow = GPSC_no, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_2_sero <- matrix(0,nrow = GPSC_no, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_3_sero <- matrix(0,nrow = GPSC_no, ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_cluster_freq_sero_names <- unique(PopPUNK_clusters$Serotype)
+for (i in 1:GPSC_no){
+  for (k in unique(PopPUNK_clusters$Serotype)){
+  PP_mass_cluster_freq_1_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2001))
+  PP_mass_cluster_freq_2_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2004))
+  PP_mass_cluster_freq_3_sero[i,which(unique(PopPUNK_clusters$Serotype)==k)] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),][PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$Serotype ==k, ]$"SeqYear"==2007))
+  }
+}
+
+# matrix shows information whether serotypes and GPSCs co-occur
+PPxSero_matrix <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:nrow(PopPUNK_clusters)) {
+  PPxSero_matrix[PPclustToIndex_dict[as.character(PopPUNK_clusters$Cluster[i])],SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- 1
+}
+# matrix shows information whether PP and serotype co-occur in the dataset (1=TRUE)
+# this can be used as the migration matrix:
+PPxSero_matrix_prob <- PPxSero_matrix / sum(PPxSero_matrix)
+PPsero_mig <- matrix(sapply(PPxSero_matrix_prob,as.double), nrow = nrow(PPxSero_matrix), ncol = ncol(PPxSero_matrix))
+saveRDS(PPsero_mig, "PPsero_mig.rds") # immigration matrix
+
+
+# create start population
+# based on data, includes some noise
+# and is expanded to a population size of 15,000
+PPsero_startpop <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+PP_expand_factor <- 15000 / sum(PP_mass_cluster_freq_1_sero)
+exp_noise <- 1000
+for (i in 1:nrow(PPsero_startpop6)) {
+    PPsero_startpop[i,] <- (sapply((PP_mass_cluster_freq_1_sero[i,] + rexp(n = length(PP_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob[i,])
+}
+saveRDS(PPsero_startpop, "PPsero_startpop.rds") # start population
+```
+
+# Create vector that saves which serotypes are affected by the vaccine
+```{r}
+# serotype VT vector
+SeroVT <- rep(0, length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:nrow(PopPUNK_clusters)) {
+  SeroVT[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
+}
+saveRDS(SeroVT, "SeroVT.rds") # serotype vector
+```
+
+# Start computing genotype matrix
+
+# First, read in panaroo output
+```{r}
+gene_presence_absence_mtx <- read.csv("gene_presence_absence.csv")
+
+
+# convert presence absence into boolean (0-1-based) matrix
+convert_to_bool <- function(x){
+  if (x=="") 0 else 1
+}
+gene_presence_absence_mtx_bool <- gene_presence_absence_mtx[,c(-2,-3)]
+gene_presence_absence_mtx_bool[-1,-1] <- apply(gene_presence_absence_mtx_bool[-1,-1],c(1,2), convert_to_bool)
+colnames(gene_presence_absence_mtx_bool) <- gene_presence_absence_mtx_bool[1,]
+# filter for mobile genetic elements here if wanted
+```
+
+# Create time point specific presence absence matrices
+```{r}
+gene_presence_absence_mtx_bool_2001 <- data.frame(matrix(0, nrow = nrow(gene_presence_absence_mtx_bool), ncol = length(MetaData[MetaData$Year.of.Isolation==2001,]$filename)+1))
+gene_presence_absence_mtx_bool_2001[1,-1] <- gene_presence_absence_mtx_bool[1,c(FALSE,SeqYear_dict[unlist(gene_presence_absence_mtx_bool[1,-1])]==2001)]
+gene_presence_absence_mtx_bool_2001[-1,1] <- gene_presence_absence_mtx_bool[-1,1]
+gene_presence_absence_mtx_bool_2001[-1,-1] <- gene_presence_absence_mtx_bool[-1,c(FALSE,SeqYear_dict[unlist(gene_presence_absence_mtx_bool[1,-1])]==2001)]
+
+gene_presence_absence_mtx_bool_2004 <- data.frame(matrix(0, nrow = nrow(gene_presence_absence_mtx_bool), ncol = length(MetaData[MetaData$Year.of.Isolation==2004,]$filename)+1))
+gene_presence_absence_mtx_bool_2004[1,-1] <- gene_presence_absence_mtx_bool[1,c(FALSE,SeqYear_dict[unlist(gene_presence_absence_mtx_bool[1,-1])]==2004)]
+gene_presence_absence_mtx_bool_2004[-1,1] <- gene_presence_absence_mtx_bool[-1,1]
+gene_presence_absence_mtx_bool_2004[-1,-1] <- gene_presence_absence_mtx_bool[-1,c(FALSE,SeqYear_dict[unlist(gene_presence_absence_mtx_bool[1,-1])]==2004)]
+
+gene_presence_absence_mtx_bool_2007 <- data.frame(matrix(0, nrow = nrow(gene_presence_absence_mtx_bool), ncol = length(MetaData[MetaData$Year.of.Isolation==2007,]$filename)+1))
+gene_presence_absence_mtx_bool_2007[1,-1] <- gene_presence_absence_mtx_bool[1,c(FALSE,SeqYear_dict[unlist(gene_presence_absence_mtx_bool[1,-1])]==2007)]
+gene_presence_absence_mtx_bool_2007[-1,1] <- gene_presence_absence_mtx_bool[-1,1]
+gene_presence_absence_mtx_bool_2007[-1,-1] <- gene_presence_absence_mtx_bool[-1,c(FALSE,SeqYear_dict[unlist(gene_presence_absence_mtx_bool[1,-1])]==2007)]
+```
+
+# Find intermediate genes (5-95%) in first sampling time point (here 2001)
+```{r}
+sum_as_int <- function(x){
+  sum(as.integer(x))
+}
+
+gene_freq_2001 <- rep(0, nrow(gene_presence_absence_mtx_bool_2001)-1)
+gene_freq_2001 <- apply(gene_presence_absence_mtx_bool_2001[-1,-1],1, sum_as_int)
+gene_freq_2001 <- gene_freq_2001 / (ncol(gene_presence_absence_mtx_bool_2001)-1)
+
+gene_filter <- as.integer(gene_freq_2001<=0.95 & gene_freq_2001>=0.05) # these are the genes that are at intermediate frequency 
+```
+
+# Filter gene presence absence matrix for intermediate genes only
+```{r}
+# intermediate gene presence absence matrices filtered by genes that are present at 5-95% frequency in 2001
+intermed_gene_presence_absence_mtx_bool_2001 <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(MetaData[MetaData$Year.of.Isolation==2001,]$filename)+1))
+intermed_gene_presence_absence_mtx_bool_2001 <- gene_presence_absence_mtx_bool_2001[c(1,which(gene_filter==1)+1),]
+
+intermed_gene_presence_absence_mtx_bool_2004 <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(MetaData[MetaData$Year.of.Isolation==2004,]$filename)+1))
+intermed_gene_presence_absence_mtx_bool_2004 <- gene_presence_absence_mtx_bool_2004[c(1,which(gene_filter==1)+1),]
+
+intermed_gene_presence_absence_mtx_bool_2007 <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(MetaData[MetaData$Year.of.Isolation==2007,]$filename)+1))
+intermed_gene_presence_absence_mtx_bool_2007 <- gene_presence_absence_mtx_bool_2007[c(1,which(gene_filter==1)+1),]
+
+intermed_gene_presence_absence_mtx_bool <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(MetaData$filename)+1))
+intermed_gene_presence_absence_mtx_bool <- gene_presence_absence_mtx_bool[c(1,which(gene_filter==1)+1),]
+```
+
+# Compute consensus for GPSCs (columns in gene presence absence matrix will now not be isolates but GPSCs)
+```{r}
+consensus_intermed_gene_presence_absence_mtx_bool <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+consensus_intermed_gene_presence_absence_mtx_bool[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+consensus_intermed_gene_presence_absence_mtx_bool_2001 <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+consensus_intermed_gene_presence_absence_mtx_bool_2001[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+consensus_intermed_gene_presence_absence_mtx_bool_2004 <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+consensus_intermed_gene_presence_absence_mtx_bool_2004[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+consensus_intermed_gene_presence_absence_mtx_bool_2007 <- data.frame(matrix(0, nrow = sum(gene_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+consensus_intermed_gene_presence_absence_mtx_bool_2007[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+
+cons_genomes <- function(x){
+  as.double(ceiling(median(as.integer(x))))
+}
+
+for (i in unique(PopPUNK_clusters$Cluster)) {
+  consensus_intermed_gene_presence_absence_mtx_bool[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(intermed_gene_presence_absence_mtx_bool[-1,c(FALSE,GPSC_dict[unlist(intermed_gene_presence_absence_mtx_bool[1,-1])]==i)]), 1, cons_genomes)
+  
+  consensus_intermed_gene_presence_absence_mtx_bool_2001[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(intermed_gene_presence_absence_mtx_bool_2001[-1,c(FALSE,GPSC_dict[unlist(intermed_gene_presence_absence_mtx_bool_2001[1,-1])]==i)]), 1, cons_genomes)
+  
+    consensus_intermed_gene_presence_absence_mtx_bool_2004[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(intermed_gene_presence_absence_mtx_bool_2004[-1,c(FALSE,GPSC_dict[unlist(intermed_gene_presence_absence_mtx_bool_2004[1,-1])]==i)]), 1, cons_genomes)
+    
+    consensus_intermed_gene_presence_absence_mtx_bool_2007[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(intermed_gene_presence_absence_mtx_bool_2007[-1,c(FALSE,GPSC_dict[unlist(intermed_gene_presence_absence_mtx_bool_2007[1,-1])]==i)]), 1, cons_genomes)
+}
+
+consensus_intermed_gene_presence_absence_mtx_bool[-1,1] <- intermed_gene_presence_absence_mtx_bool[-1,1]
+consensus_intermed_gene_presence_absence_mtx_bool_2001[-1,1] <- intermed_gene_presence_absence_mtx_bool[-1,1]
+consensus_intermed_gene_presence_absence_mtx_bool_2004[-1,1] <- intermed_gene_presence_absence_mtx_bool[-1,1]
+consensus_intermed_gene_presence_absence_mtx_bool_2007[-1,1] <- intermed_gene_presence_absence_mtx_bool[-1,1]
+
+saveRDS(apply(as.matrix(consensus_intermed_gene_presence_absence_mtx_bool, ncol = GPSC_no)[-1,-1], c(1,2), as.double), file = "Genotypes_matrix.rds") # Genotypes matrix for model input
+```
+
+# Calculate delta statistic for ordering genes according to frequency changes (the less they change the more likely they are to be under NFDS)
+```{r}
+# calculate gene frequencies first, separate for pre and post vaccine (first and last time point in dataset)
+gene_freq_pre <- apply(intermed_gene_presence_absence_mtx_bool_2001[-1,-1], 1, sum_as_int)
+gene_freq_post <- apply(intermed_gene_presence_absence_mtx_bool_2007[-1,-1], 1, sum_as_int)
+
+# first, calculate pre and post vacc frequencies of genes:
+ggC_pre_vacc_gene_freq <- (gene_freq_pre) / (ncol(intermed_gene_presence_absence_mtx_bool_2001)-1)
+ggC_post_vacc_gene_freq <- gene_freq_post / (ncol(intermed_gene_presence_absence_mtx_bool_2007)-1)
+
+# calculate delta statistic (refer to Corander et al. for more info)
+gene_delta_data <- (ggC_post_vacc_gene_freq - ggC_pre_vacc_gene_freq) ^ 2 / (1 - ggC_pre_vacc_gene_freq * (1 - ggC_pre_vacc_gene_freq))
+gene_delta_ranking <- rank(gene_delta_data)
+
+saveRDS(gene_delta_ranking, file = "gene_delta_ranking.rds") # ranking describes the over from very little frequency changes to large frequency changes of intermediate-frequency genes
+```
+
+# Calculate GPSC counts for each data time point (this is for fitting the model to data)
+```{r}
+#calculate the frequency of the gene clusters and year
+GPSC_count_1 <- rep(0,GPSC_no)
+GPSC_count_2 <- rep(0,GPSC_no)
+GPSC_count_3 <- rep(0,GPSC_no)
+for (i in 1:GPSC_no){
+  GPSC_count_1[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2001))
+  GPSC_count_2[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2004))
+  GPSC_count_3[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Cluster==unique(PopPUNK_clusters$Cluster)[i]),]$"SeqYear"==2007))
+}
+
+saveRDS(GPSC_count_1, "GPSC_count_1.rds")
+saveRDS(GPSC_count_2, "GPSC_count_2.rds")
+saveRDS(GPSC_count_3, "GPSC_count_3.rds")
+```

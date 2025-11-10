@@ -26,20 +26,138 @@ sim_fit_propf_3 <- read.csv("joined_mcmc_param_fits_sampleSize3_propf_2_v3.csv")
 ```
 
 ```{r}
-# calculate mean of means for each parameter
+# save all three replicates in one data.frame per parameter
+sim_fit_m_mean <- cbind(sim_fit_m_1$params, sim_fit_m_1$population, c(sim_fit_m_1$mean, sim_fit_m_2$mean, sim_fit_m_3$mean), c(sim_fit_m_1$lower, sim_fit_m_2$lower, sim_fit_m_3$lower), c(sim_fit_m_1$upper, sim_fit_m_2$upper, sim_fit_m_3$upper), sim_fit_m_1$budget)
+sim_fit_v_mean <- cbind(sim_fit_v_1$params, sim_fit_v_1$population, c(sim_fit_v_1$mean, sim_fit_v_2$mean, sim_fit_v_3$mean), c(sim_fit_v_1$lower, sim_fit_v_2$lower, sim_fit_v_3$lower), c(sim_fit_v_1$upper, sim_fit_v_2$upper, sim_fit_v_3$upper), sim_fit_v_3$budget)
+sim_fit_sigmaf_mean <- cbind(sim_fit_sigmaf_1$params, sim_fit_sigmaf_1$population, c(sim_fit_sigmaf_1$mean, sim_fit_sigmaf_2$mean, sim_fit_sigmaf_3$mean), c(sim_fit_sigmaf_1$lower, sim_fit_sigmaf_2$lower, sim_fit_sigmaf_3$lower), c(sim_fit_sigmaf_1$upper, sim_fit_sigmaf_2$upper, sim_fit_sigmaf_3$upper), sim_fit_sigmaf_1$budget)
+sim_fit_propf_mean <- cbind(sim_fit_propf_1$params, sim_fit_propf_1$population, c(sim_fit_propf_1$mean, sim_fit_propf_2$mean, sim_fit_propf_3$mean), c(sim_fit_propf_1$lower, sim_fit_propf_2$lower, sim_fit_propf_3$lower), c(sim_fit_propf_1$upper, sim_fit_propf_2$upper, sim_fit_propf_3$upper), sim_fit_propf_1$budget)
 
-sim_fit_m_mean <- cbind(sim_fit_m_1$params, sim_fit_m_1$population, sapply(c(sim_fit_m_1$mean, sim_fit_m_2$mean, sim_fit_m_3$mean), mean), sapply(c(sim_fit_m_1$lower, sim_fit_m_2$lower, sim_fit_m_3$lower), mean), sapply(c(sim_fit_m_1$upper, sim_fit_m_2$upper, sim_fit_m_3$upper), mean))
-sim_fit_v_mean <- cbind(sim_fit_v_1$params, sim_fit_v_1$population, sapply(c(sim_fit_v_1$mean, sim_fit_v_2$mean, sim_fit_v_3$mean), mean), sapply(c(sim_fit_v_1$lower, sim_fit_v_2$lower, sim_fit_v_3$lower), mean), sapply(c(sim_fit_v_1$upper, sim_fit_v_2$upper, sim_fit_v_3$upper), mean))
-sim_fit_sigmaf_mean <- cbind(sim_fit_sigmaf_1$params, sim_fit_sigmaf_1$population, sapply(c(sim_fit_sigmaf_1$mean, sim_fit_sigmaf_2$mean, sim_fit_sigmaf_3$mean), mean), sapply(c(sim_fit_sigmaf_1$lower, sim_fit_sigmaf_2$lower, sim_fit_sigmaf_3$lower), mean), sapply(c(sim_fit_sigmaf_1$upper, sim_fit_sigmaf_2$upper, sim_fit_sigmaf_3$upper), mean))
-sim_fit_propf_mean <- cbind(sim_fit_propf_1$params, sim_fit_propf_1$population, sapply(c(sim_fit_propf_1$mean, sim_fit_propf_2$mean, sim_fit_propf_3$mean), mean), sapply(c(sim_fit_propf_1$lower, sim_fit_propf_2$lower, sim_fit_propf_3$lower), mean), sapply(c(sim_fit_propf_1$upper, sim_fit_propf_2$upper, sim_fit_propf_3$upper), mean))
-
-colnames(sim_fit_m_mean) <- colnames(sim_fit_m_1)[1:5]
-colnames(sim_fit_v_mean) <- colnames(sim_fit_m_1)[1:5]
-colnames(sim_fit_sigmaf_mean) <- colnames(sim_fit_m_1)[1:5]
-colnames(sim_fit_propf_mean) <- colnames(sim_fit_m_1)[1:5]
+colnames(sim_fit_m_mean) <- colnames(sim_fit_m_1)[1:6]
+colnames(sim_fit_v_mean) <- colnames(sim_fit_m_1)[1:6]
+colnames(sim_fit_sigmaf_mean) <- colnames(sim_fit_m_1)[1:6]
+colnames(sim_fit_propf_mean) <- colnames(sim_fit_m_1)[1:6]
 ```
 
 # next steps: make new plot with means
+# calculate mean of of means and credible intervals
+```{r}
+sim_fit_m_mean_df <- data.frame(sim_fit_m_mean)
+sim_fit_m_mean_df <- aggregate(. ~ params + population, data = sim_fit_m_mean_df, FUN = mean)
+#sim_fit_m_mean_df[,3:5] <- exp(sim_fit_m_mean_df[,3:5])
+sim_fit_m_mean_df$budget <- factor(sim_fit_m_mean_df$budget)
+sim_fit_m_mean_df$population <- factor(sim_fit_m_mean_df$population)
+sim_fit_m_mean_df$params <- factor(sim_fit_m_mean_df$params)
+
+sim_fit_v_mean_df <- data.frame(sim_fit_v_mean)
+sim_fit_v_mean_df <- aggregate(. ~ params + population, data = sim_fit_v_mean_df, FUN = mean)
+sim_fit_v_mean_df$budget <- factor(sim_fit_v_mean_df$budget)
+sim_fit_v_mean_df$population <- factor(sim_fit_v_mean_df$population)
+sim_fit_v_mean_df$params <- factor(sim_fit_v_mean_df$params)
+
+sim_fit_sigmaf_mean_df <- data.frame(sim_fit_sigmaf_mean)
+sim_fit_sigmaf_mean_df <- aggregate(. ~ params + population, data = sim_fit_sigmaf_mean_df, FUN = mean)
+sim_fit_sigmaf_mean_df[,3:5] <- exp(sim_fit_sigmaf_mean_df[,3:5])
+sim_fit_sigmaf_mean_df$budget <- factor(sim_fit_sigmaf_mean_df$budget)
+sim_fit_sigmaf_mean_df$population <- factor(sim_fit_sigmaf_mean_df$population)
+sim_fit_sigmaf_mean_df$params <- factor(sim_fit_sigmaf_mean_df$params)
+
+sim_fit_propf_mean_df <- data.frame(sim_fit_propf_mean)
+sim_fit_propf_mean_df <- aggregate(. ~ params + population, data = sim_fit_propf_mean_df, FUN = mean)
+sim_fit_propf_mean_df$budget <- factor(sim_fit_propf_mean_df$budget)
+sim_fit_propf_mean_df$population <- factor(sim_fit_propf_mean_df$population)
+sim_fit_propf_mean_df$params <- factor(sim_fit_propf_mean_df$params)
+```
+
+
+```{r}
+library(viridis)
+library(ggplot2)
+
+output_location <- "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Figures/Data_for_figures/"
+
+# vaccine parameter
+real_val_v <- 0.0814
+
+ggplot(sim_fit_v_mean_df,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(aes(yintercept = real_val_v), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+v_plot <- ggplot(sim_fit_v_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_v), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(v_plot, 
+    filename = paste(output_location,"Fig4_byBudget_v_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+
+# immigration parameter
+real_val_m <- 0.0133
+
+m_plot <- ggplot(sim_fit_m_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_m), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.1)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(m_plot, 
+    filename = paste(output_location,"Fig4_byBudget_m_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+
+# sigma_f
+real_val_sigmaf <- 0.0345
+
+sigmaf_plot <- ggplot(sim_fit_sigmaf_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_sigmaf), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(sigmaf_plot, 
+    filename = paste(output_location,"Fig4_byBudget_sigmaf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+
+# prop_f
+real_val_prop_f <- 0.3
+  
+propf_plot <- ggplot(sim_fit_propf_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_prop_f), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.5)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(propf_plot, 
+    filename = paste(output_location,"Fig4_byBudget_propf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+```
+
+
 # make joint df with means of all params
 # use this df for running simulation analysis on cluster (simulate model forward with fitted parameters and then compare to original trajectory)
 
@@ -375,6 +493,18 @@ ggplot(mse_SimFromSimFits_paramDistMean95_df_cumu_mean,aes(x=Year,y=MSEmean, col
   geom_point(size = 1) + scale_color_viridis_d(option = "turbo",direction = -1) + 
   geom_line(linewidth = 1) + 
   facet_grid(sample_freq~budget, axes = "all", axis.labels = "all_x") + coord_cartesian(ylim = c(0,0.0075)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Cumulative mean squared error", x = "Years")
+```
+
+```{r}
+# horizontal version of the plot (4 columns, 2 rows)
+ggplot(mse_SimFromSimFits_paramDistMean95_df_cumu_mean,aes(x=Year,y=MSEmean, colour = sample_freq, group = interaction(sample_freq, budget), fill = sample_freq)) + 
+  geom_errorbar(aes(ymin=MSElow, ymax=MSEup),alpha=0.5) +
+  geom_point(size = 1) + scale_color_viridis_d(option = "turbo",direction = -1) + 
+  geom_line(linewidth = 1) + 
+  facet_wrap(~budget, ncol = 4) + coord_cartesian(ylim = c(0,0.0075)) +
   theme(panel.background = element_rect(fill = "white",),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
   labs(y= "Cumulative mean squared error", x = "Years")
