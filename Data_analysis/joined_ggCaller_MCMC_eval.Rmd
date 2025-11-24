@@ -177,35 +177,37 @@ ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, grou
 
 ```{r}
 # compare genes under NFDS
-# US: 0.34412010
-# UK: 0.2264006
-# Nepal: 0.241534
+# US: 0.353438108
+# UK: 0.115461801
+# Nepal: 0.405269203
 
-Mass_delta_rank <- readRDS("ggC_delta_ranking.rds") # 2035 intermed-freq genes
-UK_delta_rank <- readRDS("UK_delta_ranking.rds") # 2048 intermed-freq genes
-Nepal_delta_rank <- readRDS("Nepal_delta_ranking.rds") # 2484 intermed-freq genes
+Mass_delta_rank <- readRDS("ggC_delta_ranking.rds") # 1934 intermed-freq genes
+UK_delta_rank <- readRDS("UK_delta_ranking.rds") # 1938 intermed-freq genes
+Nepal_delta_rank <- readRDS("Nepal_delta_ranking.rds") # 2340 intermed-freq genes
 
 # absolute number of genes under NFDS:
-# US: 700
-# UK: 464
-# Nepal: 600
+# US: 1934 * 0.353438108 = 683.5493
+# UK: 1938 * 0.115461801 = 223.765
+# Nepal: 2340 * 0.405269203 = 948.3299
 
 gene_overlap_USUKNepal <- intersect(intersect(names(Mass_delta_rank), names(UK_delta_rank)), names(Nepal_delta_rank))
 # 1418 intermed-freq genes overlap btw all three
 # no, it's 1360
+# it's 1367
 
 # random would be:
 # 1360 * 0.34412010 * 0.2264006 * 0.241534 = 25.59203
+# 1367 * 0.353438108 * 0.115461801 * 0.405269203 = 22.60809
 
 Mass_underNFDS <- rep(0, length(Mass_delta_rank))
 names(Mass_underNFDS) <- names(Mass_delta_rank)
-Mass_underNFDS[which(Mass_delta_rank <= 0.34412010 * length(Mass_delta_rank))] <- 1
+Mass_underNFDS[which(Mass_delta_rank <= 0.353438108 * length(Mass_delta_rank))] <- 1
 UK_underNFDS <- rep(0, length(UK_delta_rank))
 names(UK_underNFDS) <- names(UK_delta_rank)
-UK_underNFDS[which(UK_delta_rank <= 0.2264006 * length(UK_delta_rank))] <- 1
+UK_underNFDS[which(UK_delta_rank <= 0.115461801 * length(UK_delta_rank))] <- 1
 Nepal_underNFDS <- rep(0, length(Nepal_delta_rank))
 names(Nepal_underNFDS) <- names(Nepal_delta_rank)
-Nepal_underNFDS[which(Nepal_delta_rank <= 0.241534 * length(Nepal_delta_rank))] <- 1
+Nepal_underNFDS[which(Nepal_delta_rank <= 0.405269203 * length(Nepal_delta_rank))] <- 1
 
 gene_overlap_USUKNepal_underNFDS <- rep(0, length(gene_overlap_USUKNepal))
 names(gene_overlap_USUKNepal_underNFDS) <- gene_overlap_USUKNepal
@@ -214,9 +216,10 @@ gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + UK_underN
 gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + Nepal_underNFDS[gene_overlap_USUKNepal]
 
 names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)])
-# 18
-# "1352" "1419" "1452" "1494" "1535" "1572" "2153" "2232" "2238" "2361" "2748" "2944" "3011" "3054" "3097" "3181" "3355" "3585"
+# 14
+# "1383" "1937" "2215" "2492" "2495" "2660" "2889" "2899" "2938" "3041" "3159" "3198" "3321" "3741"
 
+# 18 old analysis genes
 # 1352 Ascorbate-specific PTS system EIIC component
 # 1419 hypothetical protein
 # 1452 hypothetical protein
@@ -237,6 +240,35 @@ names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3
 # 3585 hypothetical protein
 
 # this is based on the new panaroo run though 
+
+# 10.11.2025 --> but need to update with new Nepal fit
+# 11
+# "1937" "2215" "2492" "2495" "2660" "2889" "2899" "3159" "3198" "3321" "3741"
+
+bakta_annotation_panaroo <- read.delim("~/Documents/PhD_Project/Data/StrepPneumo_UKUSNepal/bakta_annotation/create_tsv_annotation/bakta_annotation_and_before.tsv")
+bakta_anno_dict <- bakta_annotation_panaroo$Header1
+names(bakta_anno_dict) <- unlist(strsplit(bakta_annotation_panaroo$Header2, split = "_"))[(1:length(bakta_annotation_panaroo$Header2))*2]
+
+bakta_anno_dict[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)])]
+# hmm, this is not really working since not all genes have a functional annotation
+# 14
+# "1383" "1937" "2215" "2492" "2495" "2660" "2889" "2899" "2938" "3041" "3159" "3198" "3321" "3741"
+# the result:
+#  1383                                                    1937 
+#                      "putative tRNA sulfurtransferase"          "TIGR04197 family type VII secretion effector" 
+#                                                   2215                                                    <NA> 
+#                                        "Phage protein"                                                      NA 
+#                                                   2495                                                    2660 
+#                                 "hypothetical protein"           "MIP18 family-like domain-containing protein" 
+#                                                   2889                                                    <NA> 
+#               "DegV domain-containing protein SP-1557"                                                      NA 
+#                                                   2938                                                    3041 
+#"sodium-coupled multidrug efflux MATE transporter PdrM"                            "ATP-dependent DNA helicase" 
+#                                                   <NA>                                                    3198 
+#                                                     NA                             "Transcriptional regulator" 
+#                                                   3321                                                    3741 
+#                      "Helix-turn-helix family protein"                                          "DpnD protein" 
+
 
 UK_ggCaller_intermed_preVac[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]),1]
 # "group_8480"  "group_8014"  "group_3107"  "group_2288"  "group_6380" 

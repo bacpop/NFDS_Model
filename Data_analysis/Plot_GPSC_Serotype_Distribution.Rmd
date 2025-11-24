@@ -229,6 +229,9 @@ ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=Time, y=relCount, fill 
   geom_bar(stat = "identity") + facet_grid(~(GPSC)) + theme_bw()
 
 # sum(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT$relCount[55:108])
+
+ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=interaction(Time,GPSC), y=relCount, fill = VT, group = Time)) + 
+  geom_bar(stat = "identity") #+ facet_grid(~(GPSC)) + theme_bw()
 ```
 
 # investigate the serotypes of the GPSCs that are difficult to capture

@@ -231,4 +231,10 @@ for (i in 1:GPSC_no){
 saveRDS(GPSC_count_1, "GPSC_count_1.rds")
 saveRDS(GPSC_count_2, "GPSC_count_2.rds")
 saveRDS(GPSC_count_3, "GPSC_count_3.rds")
+
+# create a dataframe that contains all these counts but also accounts for missing years (in this case we have data for 2001, 2004, and 2007, so we want to account for missing data for 2002, 2003, 2005, 2006, and we won't use the first time point for fitting, we've already used that in the definition of the start population)
+empty_sample <- rep(NA, length(GPSC_count_2)) # accounts for missing years
+
+joint_GPSC_counts <- cbind(empty_sample, empty_sample, GPSC_count_2, empty_sample, empty_sample, GPSC_count_3)
+saveRDS(joint_GPSC_counts, "joint_GPSC_counts.rds")
 ```

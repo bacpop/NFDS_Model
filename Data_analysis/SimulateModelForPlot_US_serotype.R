@@ -27,8 +27,8 @@ simulate_model_for_plot2 <- function(mcmc_run, params_loc){
   rand_ind <- sample(x = 1:nrow(mcmc_run), size = 200, replace = FALSE)
   WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
   
-  empty_vec <- rep(0,params_loc$species_no)
-  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$species_no))
+  empty_vec <- rep(0,params_loc$sero_no)
+  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$sero_no))
   
   for (i in 1:length(rand_ind)) {
     pars <- mcmc_run[rand_ind[i],]
@@ -42,7 +42,7 @@ simulate_model_for_plot2 <- function(mcmc_run, params_loc){
                                       n_particles = 1L,
                                       n_threads = 4L,
                                       seed = 1L)
-    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(5*12)[(2:(params_loc$species_no+1)),]) # time point 0 is 2014, simulate until 2019
+    cluster_samples_ParamVar[i,] <- rowSums(matrix(WFmodel_ppxSero$run(2*36)[-(1:(params_loc$species_no+1)),], nrow = params_loc$sero_no, ncol = params_loc$species_no, byrow = TRUE)) # time point 0 is 2001, simulate until 2007
   }
   cluster_samples_ParamVar
 }
@@ -52,8 +52,8 @@ simulate_model_for_plot2_null <- function(mcmc_run, params_loc){
   rand_ind <- sample(x = 1:nrow(mcmc_run), size = 200, replace = FALSE)
   WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
   
-  empty_vec <- rep(0,params_loc$species_no)
-  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$species_no))
+  empty_vec <- rep(0,params_loc$sero_no)
+  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$sero_no))
   
   for (i in 1:length(rand_ind)) {
     pars <- mcmc_run[rand_ind[i],]
@@ -65,23 +65,28 @@ simulate_model_for_plot2_null <- function(mcmc_run, params_loc){
                                       n_particles = 1L,
                                       n_threads = 4L,
                                       seed = 1L)
-    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(5*12)[(2:(params_loc$species_no+1)),])
+    cluster_samples_ParamVar[i,] <- rowSums(matrix(WFmodel_ppxSero$run(2*36)[-(1:(params_loc$species_no+1)),], nrow = params_loc$sero_no, ncol = params_loc$species_no, byrow = TRUE))
   }
   cluster_samples_ParamVar
 }
 
-seq_clusters <- readRDS("Nepal_PP.rds")
-intermed_gene_presence_absence_consensus <- readRDS(file = "Nepal_ggCaller_intermed_consensus.rds")
-intermed_gene_presence_absence_consensus_matrix <- sapply(intermed_gene_presence_absence_consensus[-1,-1],as.double)
-delta_ranking <- readRDS(file = "Nepal_delta_ranking.rds")
-mass_clusters <- length(unique(seq_clusters$GPSC))
+seq_clusters <- readRDS("PopPUNK_clusters.rds")
 sero_no = length(unique(seq_clusters$Serotype))
-model_start_pop <- readRDS(file = "Nepal_PPsero_startpop.rds")
-mass_VT <- readRDS(file = "Nepal_SeroVT_6A.rds")
-mass_clusters <- length(unique(seq_clusters$GPSC))
-avg_cluster_freq <- readRDS(file = "Nepal_PPsero_mig.rds")
-dt <- 1/12
-vacc_time <- 1
+intermed_gene_presence_absence_consensus <- readRDS(file = "ggCPP_intermed_gene_presence_absence_consensus.rds")
+intermed_gene_presence_absence_consensus_matrix <- sapply(intermed_gene_presence_absence_consensus[-1,-1],as.double)
+model_start_pop <- readRDS("PPsero_startpop6.rds") 
+delta_ranking <- readRDS(file = "ggC_delta_ranking.rds")
+#mass_cluster_freq_1 <- readRDS(file = "PP_mass_cluster_freq_1.rds")
+#mass_cluster_freq_2 <- readRDS(file = "PP_mass_cluster_freq_2.rds")
+#mass_cluster_freq_3 <- readRDS(file = "PP_mass_cluster_freq_3.rds")
+mass_VT <- readRDS(file = "SeroVT.rds")
+mass_clusters <- length(unique(seq_clusters$Cluster))
+avg_cluster_freq <- readRDS(file = "PPsero_mig.rds")
+dt <- 1/36
+#peripost_mass_cluster_freq <- data.frame("year" = c(1, 2), rbind(mass_cluster_freq_2, mass_cluster_freq_3))
+#names(peripost_mass_cluster_freq) <- c("year", as.character(1:mass_clusters))
+vacc_time <- 0
+
 species_no <- mass_clusters
 no_clusters <- mass_clusters
 gene_no <- nrow(intermed_gene_presence_absence_consensus_matrix)
@@ -96,7 +101,7 @@ migVec <- data.frame(avg_cluster_freq)
 if(model_version == "4"){
   # 4-param model
   fit_4param_mcmc2_probs <- readRDS(fit_file) # something like "PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds"
-  # fit_4param_mcmc2_probs <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_05/Nepal_GPSC_VT_NewMetaData_6A_preFitParams_v3_BasedOnNepal_NewMetaData_6A_preFitParams/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+  # fit_4param_mcmc2_probs <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/US_newPrior/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
   fit_4param_mcmc2_probs_pars <- mcstate::pmcmc_thin(fit_4param_mcmc2_probs, burnin = 5000, thin = 1)$pars
   
   params_4_woFit <- list(species_no = species_no, Pop_ini = as.matrix(Pop_ini), Pop_eq = (Pop_eq), Genotypes = intermed_gene_presence_absence_consensus_matrix, capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, migVec = as.matrix(migVec), sero_no = sero_no, sigma_f = NA, prop_f = NA, m = NA, v = NA)
@@ -105,6 +110,7 @@ if(model_version == "4"){
   params_4_model_data_rel <- params_4_model_data/rowSums(params_4_model_data)
   saveRDS(params_4_model_data_rel, "params_4_model_data_rel.rds")
   # saveRDS(params_4_model_data_rel, "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_10_23/US_SimulateModelForPlots/params_4_model_data_rel.rds")
+  # saveRDS(params_4_model_data_rel, "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/US_SimForPlot_serotypes/params_4_model_data_rel.rds")
 } else if(model_version == "2"){
   # Null model
   fit_2param_mcmc2_probs <- readRDS(fit_file) # something like "PPxSero_ggCaller_PopPUNK_2param_det_pmcmc_run2.rds"
@@ -117,4 +123,5 @@ if(model_version == "4"){
   params_null_model_data_rel <- params_null_model_data/rowSums(params_null_model_data)
   saveRDS(params_null_model_data_rel, "params_null_model_data_rel.rds")
   # saveRDS(params_null_model_data_rel, "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_10_23/US_SimulateModelForPlots/params_2_model_data_rel.rds")
+  # saveRDS(params_null_model_data_rel, "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/US_SimForPlot_serotypes/params_null_model_data_rel.rds")
 }

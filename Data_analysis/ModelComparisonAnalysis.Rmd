@@ -492,9 +492,11 @@ rm(Nepal_4param_mcmc2)
 
 # 11.08.2025 
 # 27.08.2025
+# 17.11.2025
 
 #Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
-Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+#Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_NewGPSCorder_10k_fit2/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Nepal_4param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_4param_mcmc2$probabilities, Nepal_4param_mcmc2$pars))
 saveRDS(Nepal_4param_mcmc2_probs, "Nepal_4param_mcmc2_probs.rds")
 Nepal_4param_mcmc2_probs <- Nepal_4param_mcmc2_probs[1:37000,]
@@ -505,7 +507,8 @@ Nepal_percentile95_up <- apply(Nepal_4param_mcmc2_probs,2,quantile,.975)
 rm(Nepal_4param_mcmc2)
 
 #Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
-Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
+#Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
+Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_NewGPSCorder_10k_fit2/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
 Nepal_2param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_2param_mcmc2$probabilities, Nepal_2param_mcmc2$pars))
 saveRDS(Nepal_2param_mcmc2_probs, "Nepal_2param_mcmc2_probs.rds")
 Nepal_likelihood_2param <- mean(Nepal_2param_mcmc2_probs[,"log_likelihood"])
@@ -513,14 +516,16 @@ Nepal_param_mean2 <- apply(Nepal_2param_mcmc2_probs, 2, mean)
 rm(Nepal_2param_mcmc2)
 
 #Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
-Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
+#Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
+Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_NewGPSCorder_10k_fit2/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
 Nepal_3param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_3param_mcmc2$probabilities, Nepal_3param_mcmc2$pars))
 Nepal_likelihood_3param <- mean(Nepal_3param_mcmc2_probs[,"log_likelihood"])
 Nepal_param_mean3 <- apply(Nepal_3param_mcmc2_probs, 2, mean)
 rm(Nepal_3param_mcmc2)
 
 #Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
-Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
+#Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
+Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_NewGPSCorder_10k_fit2/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
 Nepal_5param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_5param_mcmc2$probabilities, Nepal_5param_mcmc2$pars))
 Nepal_param_mean5 <- apply(Nepal_5param_mcmc2_probs, 2, mean)
 Nepal_likelihood_5param <- mean(Nepal_5param_mcmc2_probs[,"log_likelihood"])
@@ -531,44 +536,44 @@ rm(Nepal_5param_mcmc2)
 ```{r}
 lambda <- -2 * (Nepal_likelihood_2param - Nepal_likelihood_3param)
 pchisq(lambda, 1,lower.tail = FALSE)
-# 1.155942e-40
+# 3.416704e-34
 
 lambda <- -2 * (Nepal_likelihood_2param - Nepal_likelihood_4param)
 pchisq(lambda, 2,lower.tail = FALSE)
-# 9.795061e-45
+# 8.240171e-43
 
 lambda <- -2 * (Nepal_likelihood_3param - Nepal_likelihood_4param)
 pchisq(lambda, 1,lower.tail = FALSE)
-# 7.83549e-07
+# 1.822945e-11
 
 lambda <- -2 * (Nepal_likelihood_2param - Nepal_likelihood_5param)
 pchisq(lambda, 3,lower.tail = FALSE)
-# 1.567219e-43
+# 1.030786e-41
 
 lambda <- -2 * (Nepal_likelihood_3param - Nepal_likelihood_5param)
 pchisq(lambda, 2,lower.tail = FALSE)
-# 7.07051e-06
+# 1.757722e-10
 
 lambda <- -2 * (Nepal_likelihood_4param - Nepal_likelihood_5param)
 pchisq(lambda, 1,lower.tail = FALSE)
 # 1
 
 2 * 1 - 2 * (-Nepal_likelihood_2param)
-# -2461.06
+# -2421.05
 3 * 1 - 2 * (-Nepal_likelihood_3param)
-# -2281.789
+# -2271.398
 4 * 1 - 2 * (-Nepal_likelihood_4param)
-# -2256.391
+# -2225.246
 5 * 1 - 2 * (-Nepal_likelihood_5param)
-# -2256.07
+# -2224.474
 
 Nepal_4param_logLik <- rep(NA, 1)
 Nepal_4param_logLik$logLik <- Nepal_likelihood_4param
 
-Nepal_2_bic<- -2 * (Nepal_likelihood_2param) + log(2001) * 2 # 2478.225
-Nepal_3_bic<- -2 * (Nepal_likelihood_3param) + log(2001) * 3 # 2246.297 # but the fit is very bad
-Nepal_4_bic<- -2 * (Nepal_likelihood_4param) + log(2001) * 4 # 2290.608
-Nepal_5_bic<- -2 * (Nepal_likelihood_5param) + log(2001) * 5 # 2298.382
+Nepal_2_bic<- -2 * (Nepal_likelihood_2param) + log(2001) * 2 # 2438.253
+Nepal_3_bic<- -2 * (Nepal_likelihood_3param) + log(2001) * 3 # 2297.202
+Nepal_4_bic<- -2 * (Nepal_likelihood_4param) + log(2001) * 4 # 2259.651
+Nepal_5_bic<- -2 * (Nepal_likelihood_5param) + log(2001) * 5 # 2267.481
 ```
 
 ```{r}

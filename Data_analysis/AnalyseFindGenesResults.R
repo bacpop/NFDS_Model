@@ -167,13 +167,15 @@ venn.diagram(
 )
 
 # 30.07.2025
-ga_ppxsero_Nepal <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_Nepal_gann.rds")
+#ga_ppxsero_Nepal <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_Nepal_gann.rds")
+# 17.11.2025
+ga_ppxsero_Nepal <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_geneticAlg_NewGPSCorder/FindGenes_Nepal_gann.rds")
 ga_ppxsero_UK <- readRDS("~/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_30/GeneticAlg_NepalUK/FindGenes_UK_gann.rds")
-plot(ga_ppxsero_Nepal, ylim = c(-1500, -1000))
-abline(h = -1.131159e+03, col = "black", lty = "dashed", lwd = 2) # 4-param
-abline(h = -1.131479e+03, col = "black", lty = "dashed", lwd = 2) # 5-param
-abline(h = -1142.9976312, col = "black", lty = "dashed", lwd = 2) # 3
-abline(h = -1.231712e+03, col = "black", lty = "dashed", lwd = 2) # 2
+plot(ga_ppxsero_Nepal, ylim = c(-1250, -1000))
+abline(h = -1.115118e+03, col = "black", lty = "dashed", lwd = 2) # 4-param
+abline(h = -1.115237e+03, col = "black", lty = "dashed", lwd = 2) # 5-param
+abline(h = -1.137828e+03, col = "black", lty = "dashed", lwd = 2) # 3
+abline(h = -1.211707e+03, col = "black", lty = "dashed", lwd = 2) # 2
 
 plot(ga_ppxsero_UK, ylim = c(-700, -450))
 abline(h =  -463.5912310, col = "black", lty = "dashed", lwd = 2) # 4-param
@@ -188,13 +190,13 @@ UK_delta_ranking <- readRDS("UK_delta_ranking.rds")
 
 ga_ppxsero_Nepal_vec <- as.vector(t(apply(ga_ppxsero_Nepal@solution, 1, decode2)))
 names(ga_ppxsero_Nepal_vec) <- names(Nepal_delta_ranking)
-sum(ga_ppxsero_Nepal_vec)/length(ga_ppxsero_Nepal_vec) # 0.4607672
+sum(ga_ppxsero_Nepal_vec)/length(ga_ppxsero_Nepal_vec) # 0.507265
 
 ga_ppxsero_UK_vec <- as.vector(t(apply(ga_ppxsero_UK@solution, 1, decode2)))
 names(ga_ppxsero_UK_vec) <- names(UK_delta_ranking)
 sum(ga_ppxsero_UK_vec)/length(ga_ppxsero_UK_vec) # 0.5443756
 
-gene_name_overlap <- intersect(intersect(names(delta_ranking), names(Nepal_delta_ranking)), names(UK_delta_ranking)) # 1360 genes in intersection
+gene_name_overlap <- intersect(intersect(names(delta_ranking), names(Nepal_delta_ranking)), names(UK_delta_ranking)) # 1367 genes in intersection
 
 plot(1:length(gene_name_overlap), ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap])
 length(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 3))
@@ -203,13 +205,10 @@ length(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene
 length(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 0))
 
 # expected no of genes under NFDS all three:
-# 1360 * 0.4172699 * 0.4607672 * 0.5443756 = 142.343 (actual 138, so slightly less)
-# US-Nepal: 1360 * 0.4172699 * 0.4607672 = 261.4794 (actual 243)
-# US-UK: 1360 * 0.4172699 * 0.5443756 = 308.9261 (actual 317)
-# UK-Nepal: 1360 * 0.4607672 * 0.5443756 = 341.1294 (actual 332)
+# 1367 * 0.4172699 * 0.507265 * 0.5443756 = 157.514 (actual 155, so slightly less)
 
 length(intersect(names(which((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap]) == 3)), names(which(delta_underNFDS==1))))
-# 58
+# 70
 
 plot(gene_name_overlap, ((ga_ppxsero_NFDS_vec[gene_name_overlap] + ga_ppxsero_Nepal_vec[gene_name_overlap] + ga_ppxsero_UK_vec[gene_name_overlap])))
 points(gene_name_overlap,  (delta_underNFDS[gene_name_overlap]), col = "red")
@@ -277,11 +276,11 @@ venn.diagram(
 )
 
 # Nepal comparison delta_stat vs genetic alg
-#expected number of genes: 0.4607672 * 0.2964424 * length(Nepal_delta_ranking) = 313.3396
+#expected number of genes: 0.507265 * 4.052692e-01 * length(Nepal_delta_ranking) = 481.0546
 
 Nepal_delta_underNFDS <- rep(0, length(Nepal_delta_ranking))
 names(Nepal_delta_underNFDS) <- names(Nepal_delta_ranking)
-Nepal_delta_underNFDS[names(which(Nepal_delta_ranking <= 0.2964424 * length(Nepal_delta_ranking)))] <- 1
+Nepal_delta_underNFDS[names(which(Nepal_delta_ranking <= 4.052692e-01 * length(Nepal_delta_ranking)))] <- 1
 
 Nepal_overlap_delta_genAlg <- intersect(names(which(Nepal_delta_underNFDS ==1)), names(which(ga_ppxsero_Nepal_vec==1)))
 length(Nepal_overlap_delta_genAlg)

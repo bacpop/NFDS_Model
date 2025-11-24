@@ -27,8 +27,8 @@ simulate_model_for_plot2 <- function(mcmc_run, params_loc){
   rand_ind <- sample(x = 1:nrow(mcmc_run), size = 200, replace = FALSE)
   WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
   
-  empty_vec <- rep(0,params_loc$species_no)
-  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$species_no))
+  empty_vec <- rep(0,params_loc$sero_no)
+  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$sero_no))
   
   for (i in 1:length(rand_ind)) {
     pars <- mcmc_run[rand_ind[i],]
@@ -42,7 +42,7 @@ simulate_model_for_plot2 <- function(mcmc_run, params_loc){
                                       n_particles = 1L,
                                       n_threads = 4L,
                                       seed = 1L)
-    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(5*12)[(2:(params_loc$species_no+1)),]) # time point 0 is 2014, simulate until 2019
+    cluster_samples_ParamVar[i,] <- rowSums(matrix(WFmodel_ppxSero$run(5*12)[-(1:(params_loc$species_no+1)),], nrow = params_loc$sero_no, ncol = params_loc$species_no, byrow = TRUE)) # time point 0 is 2014, simulate until 2019
   }
   cluster_samples_ParamVar
 }
@@ -52,8 +52,8 @@ simulate_model_for_plot2_null <- function(mcmc_run, params_loc){
   rand_ind <- sample(x = 1:nrow(mcmc_run), size = 200, replace = FALSE)
   WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
   
-  empty_vec <- rep(0,params_loc$species_no)
-  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$species_no))
+  empty_vec <- rep(0,params_loc$sero_no)
+  cluster_samples_ParamVar <- array(rep(empty_vec,length(rand_ind)),dim = c(length(rand_ind),params_loc$sero_no))
   
   for (i in 1:length(rand_ind)) {
     pars <- mcmc_run[rand_ind[i],]
@@ -65,7 +65,7 @@ simulate_model_for_plot2_null <- function(mcmc_run, params_loc){
                                       n_particles = 1L,
                                       n_threads = 4L,
                                       seed = 1L)
-    cluster_samples_ParamVar[i,] <- (WFmodel_ppxSero$run(5*12)[(2:(params_loc$species_no+1)),])
+    cluster_samples_ParamVar[i,] <- rowSums(matrix(WFmodel_ppxSero$run(5*12)[-(1:(params_loc$species_no+1)),], nrow = params_loc$sero_no, ncol = params_loc$species_no, byrow = TRUE))
   }
   cluster_samples_ParamVar
 }

@@ -44,8 +44,6 @@ PPsero_startpop <- readRDS("PPsero_startpop.rds") # start population for model (
 no_GPSC <- nrow(PPsero_startpop) # number of GPSCs
 #freq_sero 
 no_sero <- ncol(PPsero_startpop) # number of serotypes
-
-#Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero)) # start population as matrix, and filtered down for frequenct GPSCs and serotypes
   
 Genotypes_matrix <- readRDS("Genotypes_matrix.rds")
 # genotype matrix is constant over time
@@ -108,7 +106,10 @@ for (i in 3:23) {
 ### fit model to simulated data (23 GPSCs for 20 years)
 simulated_data <- readRDS("simulated_data_over_time_filtered.rds")
 
-fitting_test_data <- data.frame("year" = 1:20, t(simulated_data))
+# or if you want to use the data that you processed in the ProcessData.Rmd script
+simulated_data <- readRDS("joint_GPSC_counts.rds")
+
+fitting_test_data <- data.frame("year" = 1:ncol(simulated_data), t(simulated_data))
 names(fitting_test_data) <- c("year", as.character(1:(no_GPSC)))
 # prepare data for mcstate:
 fitting_test_data_2 <- mcstate::particle_filter_data(data = fitting_test_data,

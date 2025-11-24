@@ -56,7 +56,7 @@ sim_fit_v_mean_df$params <- factor(sim_fit_v_mean_df$params)
 
 sim_fit_sigmaf_mean_df <- data.frame(sim_fit_sigmaf_mean)
 sim_fit_sigmaf_mean_df <- aggregate(. ~ params + population, data = sim_fit_sigmaf_mean_df, FUN = mean)
-sim_fit_sigmaf_mean_df[,3:5] <- exp(sim_fit_sigmaf_mean_df[,3:5])
+#sim_fit_sigmaf_mean_df[,3:5] <- exp(sim_fit_sigmaf_mean_df[,3:5])
 sim_fit_sigmaf_mean_df$budget <- factor(sim_fit_sigmaf_mean_df$budget)
 sim_fit_sigmaf_mean_df$population <- factor(sim_fit_sigmaf_mean_df$population)
 sim_fit_sigmaf_mean_df$params <- factor(sim_fit_sigmaf_mean_df$params)
@@ -78,14 +78,20 @@ output_location <- "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Figur
 # vaccine parameter
 real_val_v <- 0.0814
 
-ggplot(sim_fit_v_mean_df,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+v_plot_byFreq <- ggplot(sim_fit_v_mean_df,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
     geom_hline(aes(yintercept = real_val_v), colour = "red", linetype = "dashed", linewidth = 1.5) +
-  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.2), linewidth = 1) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
   geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
   facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
   theme(panel.background = element_rect(fill = "white",),
         panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
   labs(y= "Parameter estimate", x = "Population")
+
+ggsave(v_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_v_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
 
 v_plot <- ggplot(sim_fit_v_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
   geom_hline(aes(yintercept = real_val_v), colour = "red", linetype = "dashed", linewidth = 1.5) +
@@ -105,6 +111,21 @@ ggsave(v_plot,
 # immigration parameter
 real_val_m <- 0.0133
 
+m_plot_byFreq <- ggplot(sim_fit_m_mean_df,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(aes(yintercept = real_val_m), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.1)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(m_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_m_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
+
 m_plot <- ggplot(sim_fit_m_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
   geom_hline(aes(yintercept = real_val_m), colour = "red", linetype = "dashed", linewidth = 1.5) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
@@ -122,6 +143,21 @@ ggsave(m_plot,
 
 # sigma_f
 real_val_sigmaf <- 0.0345
+
+sigmaf_plot_byFreq <- ggplot(sim_fit_sigmaf_mean_df,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(aes(yintercept = real_val_sigmaf), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(sigmaf_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_sigmaf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
 
 sigmaf_plot <- ggplot(sim_fit_sigmaf_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
   geom_hline(aes(yintercept = real_val_sigmaf), colour = "red", linetype = "dashed", linewidth = 1.5) +
@@ -141,6 +177,22 @@ ggsave(sigmaf_plot,
 # prop_f
 real_val_prop_f <- 0.3
   
+propf_plot_byFreq <- ggplot(sim_fit_propf_mean_df,aes(x=params,y=mean, colour = budget, group = interaction(population, params))) + 
+    geom_hline(aes(yintercept = real_val_prop_f), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~population, ncol = 4) + coord_cartesian(ylim = c(0,0.5)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(propf_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_propf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
+
+
 propf_plot <- ggplot(sim_fit_propf_mean_df,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
   geom_hline(aes(yintercept = real_val_prop_f), colour = "red", linetype = "dashed", linewidth = 1.5) +
   geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +

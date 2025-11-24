@@ -67,7 +67,7 @@ for (i in names(filter_for_carriage)) {
     filter_for_carriage[i] <- TRUE
   }
 }
-Nepal_meta_data_gps2_v2_selection <- Nepal_meta_data_gps2_v2[filter_for_carriage,c(2:4, 7:9, 11, 23)]
+Nepal_meta_data_gps2_v2_selection <- Nepal_meta_data_gps2_v2[filter_for_carriage,c(2:4, 7:9, 11, 22,23)]
 #Nepal_meta_data_gps2_v2_selection$Month <- rep(NA, nrow(Nepal_meta_data_gps2_v2_selection))
 #Nepal_meta_data_gps2_v2_selection$Phenotypic_serotype <- rep(NA, nrow(Nepal_meta_data_gps2_v2_selection))
 #Nepal_meta_data_gps2_v2_selection$Clinical_manifestation[which(Nepal_meta_data_gps2_selection$Clinical_manifestation == "OTHER")] <- "CARRIAGE"
@@ -77,6 +77,13 @@ for (i in unique(Nepal_meta_data_gps2_v2_selection$Year)) {
 }
 # total 1881 nrow(Nepal_meta_data_gps2_v2_selection) 
 # will use this going forward (Oct 2025)
+
+#install.packages("xtable")
+#library(xtable)
+#print(xtable(data.frame(Nepal_meta_data_gps2_v2_selection$Lane_id[1:100]), type = "latex"), file = "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Data/NepalAccNos.tex")
+#Nepall_accNos <- data.frame(Nepal_meta_data_gps2_v2_selection$Lane_id)
+#colnames(Nepall_accNos) <- "Lane_id"
+#write.csv(Nepall_accNos, file = "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Data/NepalAccNos.csv")
 
 # use this updated metadata sheet for serotyping
 #gps2_serotype_dict_v2 <- Nepal_meta_data_gps2_v2$In_silico_serotype
@@ -241,6 +248,26 @@ no_Nepal_PP <- length(unique(Nepal_PP$GPSC))
 
 Nepal_seq_clusters_dict <- Nepal_PP$GPSC
 names(Nepal_seq_clusters_dict) <- Nepal_PP$sample
+
+# based on metadata
+Nepal_seq_clusters_dict_metadata <- Nepal_meta_data_gps2_v2_selection$GPSC
+names(Nepal_seq_clusters_dict_metadata) <- Nepal_meta_data_gps2_v2_selection$Lane_id
+
+for (sample in names(Nepal_seq_clusters_dict)) {
+  if(!(is.na(Nepal_seq_clusters_dict_metadata[sample])) & Nepal_seq_clusters_dict[sample] == Nepal_seq_clusters_dict_metadata[sample]){
+    #print("same!")
+  }
+  else{
+    print(paste(sample, Nepal_seq_clusters_dict[sample], Nepal_seq_clusters_dict_metadata[sample]))
+  }
+}
+# main disagreement: 10;209 vs 10 or 209
+unique(Nepal_meta_data_gps2_v2_selection$In_silico_serotype[which(Nepal_meta_data_gps2_v2_selection$GPSC == "10")])
+# "7B"           "10A"          "19F"          "17F"          "6A"           "19A"          "22F"          "SEROGROUP 24" "23F"          "6C"
+table(Nepal_meta_data_gps2_v2_selection$Year[which(Nepal_meta_data_gps2_v2_selection$GPSC == "10")])
+unique(Nepal_meta_data_gps2_v2_selection$In_silico_serotype[which(Nepal_meta_data_gps2_v2_selection$GPSC == "209")])
+# "35B"
+table(Nepal_meta_data_gps2_v2_selection$Year[which(Nepal_meta_data_gps2_v2_selection$GPSC == "209")])
 ```
 
 # filter meta data by PopPUNK sequences (PopPUNK qc removed some of the sequences)
@@ -812,6 +839,15 @@ for(j in 1:length(Nepal_time_points_selected)){
   }
 }
 
+Nepal_sero_freqs <- vector(mode = "list", length = length(Nepal_time_points_selected))
+for(j in 1:length(Nepal_time_points_selected)){
+  Nepal_sero_freqs[[j]] <- rep(0, length(unique(Nepal_PP$Serotype)))
+  for (i in unique(Nepal_PP$Serotype)){
+    Nepal_sero_freqs[[j]][SerotypeToIndex_dict[i]] <- length(which(Nepal_meta_dataPP[Nepal_meta_IDtoIndPP[Nepal_PP[Nepal_PP$Serotype == i,"sample"]],]$Year==Nepal_time_points_selected[j]))
+  }
+}
+
+
 #Nepal_cluster_freqs[[6]] <- rep(NA, no_Nepal_PP)
 
 # I should use a combination of 2009, 2012 and 2014 (see next code bit)
@@ -828,10 +864,12 @@ for (i in 1:length(Nepal_time_points_selected)) {
   file_name <- paste("Nepal_cluster_freqs_", as.character(i),".rds", sep = "")
   file_name_VT <- paste("Nepal_clusterVT_freqs_", as.character(i),".rds", sep = "")
   file_name_NVT <- paste("Nepal_clusterNVT_freqs_", as.character(i),".rds", sep = "")
+  file_name_sero <- paste("Nepal_sero_freqs_", as.character(i),".rds", sep = "")
   #print(file_name_VT)
   saveRDS(Nepal_cluster_freqs[[i]], file_name)
   saveRDS(Nepal_cluster_freqs_VT[[i]], file_name_VT)
   saveRDS(Nepal_cluster_freqs_NVT[[i]], file_name_NVT)
+  saveRDS(Nepal_sero_freqs[[i]], file_name_sero)
 }
 
 
@@ -1411,6 +1449,20 @@ for (i in 1:length(UK_time_points)) {
   file_name <- paste("UK_cluster_freqs_sero_", as.character(i),".rds", sep = "")
   saveRDS(UK_cluster_freqs_sero[[i]], file_name)
 }
+
+
+# do same per serotype
+UK_sero_freq_1 <- rep(0,length(unique(UK_PP$Serotype)))
+#UK_sero_freq_2 <- rep(0,length(unique(UK_PP$Serotype)))
+UK_sero_freq_7 <- rep(0,length(unique(UK_PP$Serotype)))
+for (i in 1:length(unique(UK_PP$Serotype))){
+  UK_sero_freq_1[i] <- length(which(UK_PP[which(UK_PP$Serotype==unique(UK_PP$Serotype)[i]),]$"Time"==2006))
+  #UK_sero_freq_2[i] <- length(which(UK_PP[which(UK_PP$Serotype==unique(UK_PP$Serotype)[i]),]$"Time"==2004))
+  UK_sero_freq_7[i] <- length(which(UK_PP[which(UK_PP$Serotype==unique(UK_PP$Serotype)[i]),]$"Time"==2012))
+}
+
+saveRDS(UK_sero_freq_1, file = "UK_sero_freq_1.rds")
+saveRDS(UK_sero_freq_7, file = "UK_sero_freq_7.rds")
 ```
 
 #create initial population
@@ -1813,6 +1865,24 @@ saveRDS(PP_mass_cluster_freq_1, file = "PP_mass_cluster_freq_1.rds")
 saveRDS(PP_mass_cluster_freq_2, file = "PP_mass_cluster_freq_2.rds")
 saveRDS(PP_mass_cluster_freq_3, file = "PP_mass_cluster_freq_3.rds")
 ```
+
+
+```{r}
+# do same per serotype
+PP_mass_sero_freq_1 <- rep(0,length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_sero_freq_2 <- rep(0,length(unique(PopPUNK_clusters$Serotype)))
+PP_mass_sero_freq_3 <- rep(0,length(unique(PopPUNK_clusters$Serotype)))
+for (i in 1:length(unique(PopPUNK_clusters$Serotype))){
+  PP_mass_sero_freq_1[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Serotype==unique(PopPUNK_clusters$Serotype)[i]),]$"SeqYear"==2001))
+  PP_mass_sero_freq_2[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Serotype==unique(PopPUNK_clusters$Serotype)[i]),]$"SeqYear"==2004))
+  PP_mass_sero_freq_3[i] <- length(which(PopPUNK_clusters[which(PopPUNK_clusters$Serotype==unique(PopPUNK_clusters$Serotype)[i]),]$"SeqYear"==2007))
+}
+
+saveRDS(PP_mass_sero_freq_1, file = "PP_mass_sero_freq_1.rds")
+saveRDS(PP_mass_sero_freq_2, file = "PP_mass_sero_freq_2.rds")
+saveRDS(PP_mass_sero_freq_3, file = "PP_mass_sero_freq_3.rds")
+```
+
 
 # calculate delta across countries instead of time
 ```{r}
