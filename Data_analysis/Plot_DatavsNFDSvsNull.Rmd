@@ -810,6 +810,20 @@ create_cred_int_plot_change_sorted_noNull(Nepal_cluster_freq_2019, Nepal_params_
 
 
 create_cred_int_plot(Nepal_cluster_freq_2019, Nepal_params_4_model_data_rel, Nepal_params_null_model_data_rel, Nepal_seq_clusters_sorted, location_for_plots_Nepal, Nepal_preVac)
+
+# test for new simulation script (SimulateModelForPlot_Nepal_GPSCandSerotype.R)
+
+Nepal_params_4_model_data_rel_GPSC <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_12_02/Nepal_SimGPSCsAndSeroJointly_test/params_4_model_data_rel_GPSC.rds")
+Nepal_params_4_model_data_rel_sero <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_12_02/Nepal_SimGPSCsAndSeroJointly_test/params_4_model_data_rel_sero.rds")
+location_for_plots_Nepal <- "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_12_02/Nepal_SimGPSCsAndSeroJointly_test/"
+
+# GPSC
+create_cred_int_plot_change_sorted_noNull(Nepal_cluster_freq_2019, Nepal_params_4_model_data_rel_GPSC, Nepal_params_null_model_data_rel, Nepal_seq_clusters_sorted, location_for_plots_Nepal, Nepal_preVac, minmax_Nepal)
+
+# sero
+create_cred_int_plot_change_sorted_noNull_sero(Nepal_sero_freq_2019, Nepal_params_4_model_data_rel_sero, Nepal_params_null_model_data_rel_sero, Nepal_seq_clusters_sorted_sero, location_for_plots_Nepal_sero, Nepal_preVac_sero, minmax_Nepal, SeroVT_6A_dict)
+
+
 ```
 
 # compare data and null and nfds

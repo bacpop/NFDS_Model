@@ -205,7 +205,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params, output_loc){
   det_pmcmc_run <- mcstate::pmcmc(mcmc_pars, det_filter, control = control)
   
   #n_steps <- 1000
-  n_steps <- 100
+  n_steps <- 10
   n_burnin <- 0
   
   
@@ -253,7 +253,7 @@ Fit_model_to_sim_data <- function(fitting_data, fitting_params, output_loc){
   det_pmcmc_run <- mcstate::pmcmc(det_mcmc_pars, det_filter, control = control)
   
   # n_steps <- 20000 # good amount of steps but should be done on a cluster
-  n_steps <- 500
+  n_steps <- 50
   n_burnin <- 0
   
   

@@ -15,7 +15,7 @@ output: html_notebook
 
 # Read in meta data and PopPUNK GPSCs and add information to PopPUNK data frame
 ```{r}
-MetaData <- read.csv("MetaData.csv")
+MetaData <- read.csv("MetaData.csv") # maybe change to readr
 
 PopPUNK_clusters <- read.csv("poppunk_clusters_external_clusters.csv")
 # Add Serotype Information
