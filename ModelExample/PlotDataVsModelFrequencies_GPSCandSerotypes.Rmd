@@ -277,6 +277,10 @@ names(Serotype_dict) <- MetaData$filename
 PopPUNK_clusters$Serotype <- Serotype_dict[PopPUNK_clusters$Taxon]
 names(SeroVT_dict) <- unique(PopPUNK_clusters$Serotype) # adds names to SeroVT dictionary
 
+VT_dict <- MetaData$`Vaccine.Type`
+names(VT_dict) <- MetaData$filename
+PopPUNK_clusters$VT <- VT_dict[PopPUNK_clusters$Taxon]
+
 # preVac and postVac sero frequencies
 sero_data_preVac <- rep(0,length(names(SeroVT_dict)))
 names(sero_data_preVac) <- names(SeroVT_dict)
