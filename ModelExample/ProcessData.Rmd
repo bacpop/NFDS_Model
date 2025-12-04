@@ -34,6 +34,8 @@ VT_dict <- MetaData$`Vaccine.Type`
 names(VT_dict) <- MetaData$filename
 PopPUNK_clusters$VT <- VT_dict[PopPUNK_clusters$Taxon]
 
+# if the data set contains two vaccine introductions (e.g. PCV7 and PCV13), create two separate dictionaries and add two columns to PopPUNK_clusters
+
 # create dictionary between GPSC and index
 PPclustToIndex_dict <- 1:length(unique(PopPUNK_clusters$Cluster))
 names(PPclustToIndex_dict) <- (unique(PopPUNK_clusters$Cluster))
@@ -96,6 +98,9 @@ for (i in 1:nrow(PopPUNK_clusters)) {
   SeroVT[SerotypeToIndex_dict[PopPUNK_clusters$Serotype[i]]] <- as.integer(PopPUNK_clusters$VT[i]=="VT")
 }
 saveRDS(SeroVT, "SeroVT.rds") # serotype vector
+
+# if the data set contains two vaccine introductions (e.g. PCV7 and PCV13), create two separate SeroVT vectors 
+# these cann then be passed to the model version called "NFDS_Model_2vacc.R"
 ```
 
 # Start computing genotype matrix
