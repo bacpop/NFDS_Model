@@ -621,13 +621,14 @@ create_cred_int_plot_change_sorted_noNull_sero <- function(post_VT_data, NFDS_mo
   labs(x = "Serotype", y = "Frequency") +
   ggtitle("NVT Clusters Data vs. NFDS Model vs. Neutral Model\n with 95% multinomial confidence intervals") +  # Add the plot title
   theme(panel.background = element_rect(fill = "white",),
-        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+        panel.grid = element_line(color = "grey"),text = element_text(size = 30),legend.position="none") +
   ylim(-minmax, minmax)
   
     ggsave(plot_NVT, 
       filename = paste(output_location,"SeroChange_NVT_DatavsNFDS.pdf",sep = ""),   # The directory and file name you want to save the file in
       device = "pdf",
-      width = length(level_order_NVT), # The width of the plot in inches
+      #width = length(level_order_NVT), # The width of the plot in inches
+      width = 24,
       height = 6)
   
   # make VT plot
@@ -644,13 +645,14 @@ create_cred_int_plot_change_sorted_noNull_sero <- function(post_VT_data, NFDS_mo
     labs(x = "Serotype", y = "Frequency") +
     ggtitle("VT Clusters Data vs. NFDS Model vs. Neutral Model\n with 95% multinomial confidence intervals") +  # Add the plot title
     theme(panel.background = element_rect(fill = "white",),
-        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+        panel.grid = element_line(color = "grey"),text = element_text(size = 30), legend.position="none") +
     ylim(-minmax, minmax)
 
     ggsave(plot_VT, 
       filename = paste(output_location,"SeroChange_VT_DatavsNFDS.pdf",sep = ""),   # The directory and file name you want to save the file in
       device = "pdf",
-      width = length(level_order_VT), # The width of the plot in inches
+      #width = length(level_order_VT), # The width of the plot in inches
+      width = 8,
       height = 6)
   }
 }
@@ -668,10 +670,12 @@ US_seq_clusters <- readRDS("PopPUNK_clusters.rds")
 colnames(US_seq_clusters)[2] <- "GPSC"
 
 location_for_plots <- "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_10_23/US_SimulateModelForPlots/"
+location_for_plots <- "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Figures/Data_for_figures"
 minmax_US <- 0.15
 
 # serotype version
 location_for_plots_sero <- "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/US_SimForPlot_serotypes/"
+location_for_plots_sero <- "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Figures/Data_for_figures/"
 US_params_4_model_data_rel_sero <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/US_SimForPlot_serotypes/params_4_model_data_rel.rds")
 US_params_null_model_data_rel_sero <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/US_SimForPlot_serotypes/params_null_model_data_rel.rds")
 
@@ -721,6 +725,7 @@ minmax_UK <- 0.35
 
 # serotype version
 location_for_plots_sero_UK <- "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/UK_SimForPlot_serotypes/"
+location_for_plots_sero_UK <- "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Figures/Data_for_figures/"
 UK_params_4_model_data_rel_sero <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/UK_SimForPlot_serotypes/params_4_model_data_rel.rds")
 UK_params_null_model_data_rel_sero <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/UK_SimForPlot_serotypes/params_null_model_data_rel.rds")
 
@@ -797,6 +802,8 @@ Nepal_sero_freq_2019 <- readRDS("Nepal_sero_freqs_11.rds")
 Nepal_params_4_model_data_rel_sero <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_SimForPlot_NewGPSCorder_10k_fit2_serotypes/params_4_model_data_rel.rds")
 Nepal_params_null_model_data_rel_sero <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_SimForPlot_NewGPSCorder_10k_fit2_serotypes/params_null_model_data_rel.rds")
 location_for_plots_Nepal_sero <- "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_11_17/Nepal_SimForPlot_NewGPSCorder_10k_fit2_serotypes/"
+location_for_plots_Nepal_sero <- "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Figures/Data_for_figures/"
+
 ```
 
 ```{r}

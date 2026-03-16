@@ -143,8 +143,13 @@ for (i in names(Nepal_serotype_counts_selected)) {
     iter1 <- iter1 + 1
 }
 
+change_Nepal_meta_dataPP_forplot_serocount <-  Nepal_meta_dataPP_forplot_serocounts$relCount[which(Nepal_meta_dataPP_forplot_serocounts$Time == "post")] - Nepal_meta_dataPP_forplot_serocounts$relCount[which(Nepal_meta_dataPP_forplot_serocounts$Time == "pre")]
+names(change_Nepal_meta_dataPP_forplot_serocount) <- Nepal_meta_dataPP_forplot_serocounts$Serotype[1:(length(Nepal_meta_dataPP_forplot_serocounts$Serotype)/2)]
+
+level_order <- order(change_Nepal_meta_dataPP_forplot_serocount, decreasing = TRUE)
+
 ggplot(Nepal_meta_dataPP_forplot_serocounts, aes(x=Time, y=relCount, fill = VT)) + 
-  geom_bar(stat = "identity") + facet_grid(~(Serotype)) + theme_bw()
+  geom_bar(stat = "identity") + facet_grid(~(factor(Serotype,level = Serotype[level_order]))) + theme_bw() + scale_fill_manual(values=c("#009E73", "#E69F00"))
 ```
 
 # do same for GPSCs
@@ -227,6 +232,17 @@ for (i in sort(names(Nepal_GPSC_counts_selected))) {
 
 ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=Time, y=relCount, fill = VT)) + 
   geom_bar(stat = "identity") + facet_grid(~(GPSC)) + theme_bw()
+
+# sorted version of plot
+change_Nepal_meta_dataPP_forplot_GPSCcounts <-  Nepal_meta_dataPP_forplot_GPSCcounts$relCount[which(Nepal_meta_dataPP_forplot_GPSCcounts$Time == "post")] - Nepal_meta_dataPP_forplot_GPSCcounts$relCount[which(Nepal_meta_dataPP_forplot_GPSCcounts$Time == "pre")]
+names(change_Nepal_meta_dataPP_forplot_GPSCcounts) <- Nepal_meta_dataPP_forplot_GPSCcounts$Serotype[1:(length(Nepal_meta_dataPP_forplot_GPSCcounts$Serotype)/2)]
+
+level_order <- order(change_Nepal_meta_dataPP_forplot_GPSCcounts, decreasing = TRUE)
+
+ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=Time, y=relCount, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(~(factor(GPSC,level = GPSC[level_order]))) + theme_bw() + scale_fill_manual(values=c("#009E73", "#E69F00"))
+
+
 
 # sum(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT$relCount[55:108])
 

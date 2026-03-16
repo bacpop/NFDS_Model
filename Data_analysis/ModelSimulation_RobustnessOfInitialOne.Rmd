@@ -1,0 +1,260 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+# Simulate data from model.
+# Then fit model to data.
+# Then make observations more noisy / sparse and observe what happens to the model fit.
+# Also, fit model on some time steps and make predictions for the next steps.
+
+```{r}
+library(ggplot2)
+library(viridis)
+WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+#WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigma.R")
+#WF_PPxSero <- odin.dust::odin_dust("NFDS_Model_PPxSero_NewSigmaTotalNFDS.R")
+
+```
+
+```{r}
+# find common serotypes and clusters (>1% in start population)
+PPsero_startpop6 <- readRDS("PPsero_startpop6.rds")
+freq_clust <- which(rowSums(PPsero_startpop6)>(sum(PPsero_startpop6)/100))
+freq_sero <- which(colSums(PPsero_startpop6)>(sum(PPsero_startpop6)/100))
+length(freq_clust) # 23
+length(freq_sero) # 21
+
+
+set.seed(13)
+dt_test <- 1/12
+# use all directly original
+Genotypes_test_matrix <- readRDS("Genotypes_test_matrix.rds")
+delta_test <- readRDS("delta_test.rds")
+migMatr_test_mtx <- readRDS("migMatr_test_mtx.rds")
+
+gene_no_test <- length(delta_test)
+
+# generate vacc types
+vaccTypes_test_mtx1 <- readRDS(file = "SeroVT.rds")
+vaccTypes_test_mtx <- vaccTypes_test_mtx1[freq_sero]
+
+
+Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero))
+Pop_ini_test_mtx <- Pop_ini_test_mtx * 1000
+Pop_ini_test_mtx <- matrix(PPsero_startpop6[freq_clust, freq_sero], nrow = length(freq_clust), ncol = length(freq_sero))
+
+# test initialising with 3 instead of 1
+Pop_ini_test_mtx_ini3 <- Pop_ini_test_mtx
+Pop_ini_test_mtx_ini3[which(Pop_ini_test_mtx == 1, arr.ind = TRUE)] <- 3
+
+# test initialising with 10 instead of 1
+Pop_ini_test_mtx_ini10 <- Pop_ini_test_mtx
+Pop_ini_test_mtx_ini10[which(Pop_ini_test_mtx == 1, arr.ind = TRUE)] <- 10
+
+# test initialising with 0 instead of 1
+Pop_ini_test_mtx_ini0 <- Pop_ini_test_mtx
+Pop_ini_test_mtx_ini0[which(Pop_ini_test_mtx == 1, arr.ind = TRUE)] <- 0
+
+
+sim_data_IniRobust <- function(start_population){
+  PPxSero_testparams <- list(dt = dt_test, species_no = species_no_test, sero_no = sero_no_test, gene_no = gene_no_test, Pop_ini = start_population, Pop_eq = rowSums(start_population), capacity = sum(start_population), Genotypes = Genotypes_test_matrix, sigma_f = log(0.0345), prop_f = 0.3, delta = (delta_test), m = log(0.0133), migVec = migMatr_test_mtx, vaccTypes = vaccTypes_test_mtx, v = 0.0814, vacc_time = 4)
+
+
+WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
+                         time = 0,
+                         n_particles = 10L,
+                         n_threads = 4L,
+                         seed = 1L, deterministic = TRUE)
+#WFmodel_ppxSero$run(1)
+
+simMean_clust <- rowMeans(WFmodel_ppxSero$run(0)[2:(species_no_test+1),])
+simMean_all <- rowMeans(WFmodel_ppxSero$run(0)[-(1:(species_no_test+1)),])
+simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+simMean_sero <- colSums(simMean_matrix)
+
+
+simulated_data <- list()
+for (i in 1:20) {
+  simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_data[[i]] <- simMean_matrix
+}
+simulated_data_over_time_short_clust <- sapply(simulated_data, rowSums)
+
+simulated_data_over_time_short_clust_df <- as.data.frame(simulated_data_over_time_short_clust)
+
+simulated_data_long <- list()
+simulated_sum_data_long <- list()
+list_of_particle_list <- list()
+WFmodel_ppxSero <- WF_PPxSero$new(pars = PPxSero_testparams,
+                         time = 0,
+                         n_particles = 10L,
+                         n_threads = 4L,
+                         seed = 1L, deterministic = TRUE)
+for (i in 0:240) {
+  simMean_all <- rowMeans(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simMean_matrix <- matrix(simMean_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_data_long[[i+1]] <- simMean_matrix
+  simSum_all <- rowSums(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),])
+  simSum_matrix <- matrix(simSum_all, ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  simulated_sum_data_long[[i+1]] <- simSum_matrix
+  
+  #for (j in 1:10) {
+  #  #list_of_particle_list[j][[i+1]] <- matrix(WFmodel_ppxSero$run(i)[-(1:(species_no_test+1)),j], ncol = sero_no_test, nrow = species_no_test, byrow = FALSE)
+  #  empty_matr <- matrix(NA, nrow = species_no_test, ncol = 10)
+  #  empty_matr[,j] <- WFmodel_ppxSero$run(i)[(2:(species_no_test+1)),j]
+  #}
+  list_of_particle_list[[i+1]] <-  WFmodel_ppxSero$run(i)[(2:(species_no_test+1)),]
+}
+simulated_data_over_time_clust <- sapply(simulated_data_long, rowSums)
+simulated_data_over_time_clust_df <- as.data.frame(simulated_data_over_time_clust)
+
+simulated_data_over_time_filtered <- simulated_data_over_time_clust[,((1:20)*12)+1]
+simulated_data_over_time_filtered
+}
+
+
+
+simulated_data_over_time_filtered_ini1 <- sim_data_IniRobust(Pop_ini_test_mtx)
+simulated_data_over_time_filtered_ini3 <- sim_data_IniRobust(Pop_ini_test_mtx_ini3)
+simulated_data_over_time_filtered_ini10 <- sim_data_IniRobust(Pop_ini_test_mtx_ini10)
+simulated_data_over_time_filtered_ini0 <- sim_data_IniRobust(Pop_ini_test_mtx_ini0)
+
+
+simulated_data_over_time_filtered_ini1_rel <- simulated_data_over_time_filtered_ini1/colSums(simulated_data_over_time_filtered_ini1) * 100
+simulated_data_over_time_filtered_ini3_rel <- simulated_data_over_time_filtered_ini3/colSums(simulated_data_over_time_filtered_ini3) * 100
+simulated_data_over_time_filtered_ini10_rel <- simulated_data_over_time_filtered_ini10/colSums(simulated_data_over_time_filtered_ini10) * 100
+simulated_data_over_time_filtered_ini0_rel <- simulated_data_over_time_filtered_ini0/colSums(simulated_data_over_time_filtered_ini0) * 100
+
+simulated_data_over_time_filtered_ini1_df <- tibble::rownames_to_column(as.data.frame(simulated_data_over_time_filtered_ini1_rel), var = "species")
+simulated_data_over_time_filtered_ini3_df <- tibble::rownames_to_column(as.data.frame(simulated_data_over_time_filtered_ini3_rel), var = "species")
+simulated_data_over_time_filtered_ini10_df <- tibble::rownames_to_column(as.data.frame(simulated_data_over_time_filtered_ini10_rel), var = "species")
+simulated_data_over_time_filtered_ini0_df <- tibble::rownames_to_column(as.data.frame(simulated_data_over_time_filtered_ini0_rel), var = "species")
+
+names(simulated_data_over_time_filtered_ini1_df) <- c("species", as.character(1:20))
+names(simulated_data_over_time_filtered_ini3_df) <- c("species", as.character(1:20))
+names(simulated_data_over_time_filtered_ini10_df) <- c("species", as.character(1:20))
+names(simulated_data_over_time_filtered_ini0_df) <- c("species", as.character(1:20))
+```
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+plot_species_over_time <- function(df1, df2, df3, 
+                                   id_col = "species",
+                                   df_labels = c("Group 1", "Group 2", "Group 3")) {
+  
+  # Helper to pivot one dataframe to long format and tag it
+  prep_df <- function(df, label) {
+    df %>%
+      pivot_longer(
+        cols = -all_of(id_col),
+        names_to = "time",
+        values_to = "value"
+      ) %>%
+      mutate(
+        time     = factor(time, levels = unique(time)),
+        dataframe = label
+      )
+  }
+  
+  df_long <- bind_rows(
+    prep_df(df1, df_labels[1]),
+    prep_df(df2, df_labels[2]),
+    prep_df(df3, df_labels[3])
+  ) %>%
+    mutate(dataframe = factor(dataframe, levels = df_labels))
+  
+  # Build a wide-format dataframe for the ribbon (needs ymin and ymax per species/time)
+  df_ribbon <- df_long %>%
+    filter(dataframe %in% c(df_labels[1], df_labels[3])) %>%
+    group_by(.data[[id_col]], time) %>%
+    summarise(
+      ymin = min(value),
+      ymax = max(value),
+      .groups = "drop"
+    )
+  
+  # Generate and shuffle the turbo palette
+  n_species        <- length(unique(df_long[[id_col]]))
+  turbo_colours    <- viridisLite::viridis(n_species, option = "turbo")
+  shuffled_colours <- sample(turbo_colours)
+  
+  ggplot() +
+    # Ribbon layer (shading between df1 and df3)
+    geom_ribbon(
+      data = df_ribbon,
+      aes(
+        x    = time,
+        ymin = ymin,
+        ymax = ymax,
+        fill = .data[[id_col]],
+        group = .data[[id_col]]
+      ),
+      alpha = 0.15,  # adjust transparency here
+      colour = NA
+    ) +
+    # Line layer
+    geom_line(
+      data = df_long,
+      aes(
+        x        = time,
+        y        = value,
+        colour   = .data[[id_col]],
+        linetype = dataframe,
+        group    = interaction(.data[[id_col]], dataframe)
+      ),
+      linewidth = 0.8
+    ) +
+    geom_point(
+      data = df_long,
+      aes(
+        x      = time,
+        y      = value,
+        colour = .data[[id_col]],
+        group  = interaction(.data[[id_col]], dataframe)
+      ),
+      size = 1.5
+    ) +
+    scale_colour_manual(values = shuffled_colours) +
+    scale_fill_manual(values = shuffled_colours) +
+    scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+    guides(fill = "none") +  # suppress redundant fill legend
+    labs(
+      title    = "GPSC frequencies over time",
+      x        = "Time (Years)",
+      y        = "Percentage",
+      colour   = id_col,
+      linetype = "Dataset"
+    ) +
+  theme_minimal() +
+  theme(
+    axis.text.x     = element_text(hjust = 1, size = 14), 
+    axis.text.y     = element_text(size = 14),                          
+    axis.title      = element_text(size = 16),                          
+    legend.text     = element_text(size = 12),                          
+    legend.title    = element_text(size = 13),                          
+    legend.position = "right"
+  )
+}
+
+
+plot_species_over_time(
+  simulated_data_over_time_filtered_ini0_df, simulated_data_over_time_filtered_ini1_df, simulated_data_over_time_filtered_ini10_df,
+  id_col     = "species",
+  df_labels  = c("Ini0", "Ini1", "Ini10") 
+)
+
+plot_species_over_time(
+  simulated_data_over_time_filtered_ini1_df, simulated_data_over_time_filtered_ini3_df, simulated_data_over_time_filtered_ini10_df,
+  id_col     = "species",
+  df_labels  = c("Ini1", "Ini3", "Ini10") 
+)
+
+```
+

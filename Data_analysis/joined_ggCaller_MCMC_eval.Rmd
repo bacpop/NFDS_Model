@@ -219,6 +219,7 @@ names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3
 # 14
 # "1383" "1937" "2215" "2492" "2495" "2660" "2889" "2899" "2938" "3041" "3159" "3198" "3321" "3741"
 
+
 # 18 old analysis genes
 # 1352 Ascorbate-specific PTS system EIIC component
 # 1419 hypothetical protein
@@ -270,6 +271,40 @@ bakta_anno_dict[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNe
 #                      "Helix-turn-helix family protein"                                          "DpnD protein" 
 
 
+# Dec 17
+# this is the index - not the group name names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)])
+# so translate this using 
+UK_ggC_all_gene_names <- readRDS("UK_ggC_all_gene_names.rds")
+
+UK_ggC_all_gene_names[as.integer(names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]))]
+# "group_6218"  "group_3777"  "group_5023"  "group_10902" "group_620"   "group_3633"  "group_7816"  "group_6522"  "group_5840" 
+# "group_2109"  "group_3863"  "group_1655"  "group_8626"  "group_767" 
+
+bakta_anno_dict2 <- bakta_annotation_panaroo$Header1
+names(bakta_anno_dict2) <- bakta_annotation_panaroo$Header2
+
+bakta_anno_dict2[UK_ggC_all_gene_names[as.integer(names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]))]]
+
+#     group_6218                                          group_3777 
+#"phosphoenolpyruvate--glycerone phosphotransferase"                 "DUF3567 domain-containing protein" 
+#                                         group_5023                                         group_10902 
+#           "RelE/StbE replicon stabilization toxin"              "two-peptide bacteriocin subunit BlpN" 
+#                                               <NA>                                          group_3633 
+#                                                 NA                              "hypothetical protein" 
+#                                               <NA>                                          group_6522 
+#                                                 NA                                       "Bacteriocin" 
+#                                         group_5840                                                <NA> 
+#                   "AzlD domain-containing protein"                                                  NA 
+#                                         group_3863                                                <NA> 
+#                                             "Gp24"                                                  NA 
+#                                               <NA>                                           group_767 
+#                                                 NA "Type I restriction-modification system, S subunit"
+
+
+
+
+###
+
 UK_ggCaller_intermed_preVac[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]),1]
 # "group_8480"  "group_8014"  "group_3107"  "group_2288"  "group_6380" 
 # [6] "group_5830"  "group_6356"  "group_7007"  "group_4610"  "group_7464" 
@@ -314,5 +349,27 @@ venn.diagram(
         cat.dist = c(0.055, 0.055, 0.065),
         cat.fontfamily = "sans"
 )
+```
+
+```{r}
+# I did a blast search
+# for those genes clusters that are not represented in the pan_genome_reference.fa
+
+panaroo_genes_non_ref <- read.csv("~/Documents/PhD_Project/Data/StrepPneumo_UKUSNepal/final_graph_default_node.csv")
+
+group_2492_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2492")], ";")[[1]][1] # collagenase-like protease
+group_2899_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2899")], ";")[[1]][1] # toxin-antitoxin system, antitoxin component,AbrB family
+group_3159_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_3159")], ";")[[1]][1] # transposase-like protein, IS1515,MarR family
+group_2495_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2495")], ";")[[1]][1] # 
+
+
+# 17Dec look up those that were not in the ref
+group_620_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_620")], ";")[[1]][1] # type I restriction enzyme EcoEI specificity protein
+group_7816_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_7816")], ";")[[1]][1] # none found
+group_2109_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2109")], ";")[[1]][1] # degenerate transposase
+group_1655_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_1655")], ";")[[1]][1] # transposase
+group_8626_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_8626")], ";")[[1]][1] # nothing
+
+group_3633_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_3633")], ";")[[1]][1] # this one was hypothetical protein in bakta
 ```
 
