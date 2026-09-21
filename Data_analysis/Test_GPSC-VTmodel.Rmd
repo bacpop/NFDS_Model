@@ -1,0 +1,129 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+# read in data
+```{r}
+seq_clusters <- readRDS("Nepal_PP.rds")
+  intermed_gene_presence_absence_consensus <- readRDS(file = "Nepal_ggCaller_intermed_consensus.rds")
+  intermed_gene_presence_absence_consensus_matrix <- sapply(intermed_gene_presence_absence_consensus[-1,-1],as.double)
+  
+  delta_ranking <- readRDS(file = "Nepal_delta_ranking.rds")
+  #mass_cluster_freq_1 <- readRDS(file = "Nepal_cluster_freqs_1.rds")
+  #mass_cluster_freq_2 <- readRDS(file = "Nepal_cluster_freqs_2.rds")
+  #mass_cluster_freq_3 <- readRDS(file = "Nepal_cluster_freqs_3.rds")
+  #mass_cluster_freq_4 <- readRDS(file = "Nepal_cluster_freqs_4.rds")
+  #mass_cluster_freq_5 <- readRDS(file = "Nepal_cluster_freqs_5.rds")
+  #mass_cluster_freq_6 <- readRDS(file = "Nepal_cluster_freqs_6.rds")
+  mass_cluster_freq_7 <- readRDS(file = "Nepal_cluster_freqs_7.rds")
+  mass_cluster_freq_8 <- readRDS(file = "Nepal_cluster_freqs_8.rds")
+  mass_cluster_freq_9 <- readRDS(file = "Nepal_cluster_freqs_9.rds")
+  mass_cluster_freq_10 <- readRDS(file = "Nepal_cluster_freqs_10.rds") # now ignoring the earlier because pre-vac is composed of first three pre-vac timepoints
+  mass_cluster_freq_11 <- readRDS(file = "Nepal_cluster_freqs_11.rds")
+  #mass_cluster_freq_12 <- readRDS(file = "Nepal_cluster_freqs_12.rds")
+  #mass_cluster_freq_13 <- readRDS(file = "Nepal_cluster_freqs_13.rds")
+  #mass_cluster_freq_14 <- readRDS(file = "Nepal_cluster_freqs_14.rds")
+  #mass_cluster_freq_15 <- readRDS(file = "Nepal_cluster_freqs_15.rds")
+  #mass_cluster_freq_16 <- readRDS(file = "Nepal_cluster_freqs_16.rds")
+  #mass_cluster_freq_17 <- readRDS(file = "Nepal_cluster_freqs_17.rds")
+  
+  mass_clusterVT_freq_7 <- readRDS(file = "Nepal_clusterVT_freqs_7.rds")
+  mass_clusterVT_freq_8 <- readRDS(file = "Nepal_clusterVT_freqs_8.rds")
+  mass_clusterVT_freq_9 <- readRDS(file = "Nepal_clusterVT_freqs_9.rds")
+  mass_clusterVT_freq_10 <- readRDS(file = "Nepal_clusterVT_freqs_10.rds") 
+  mass_clusterVT_freq_11 <- readRDS(file = "Nepal_clusterVT_freqs_11.rds")
+  
+  mass_clusterNVT_freq_7 <- readRDS(file = "Nepal_clusterNVT_freqs_7.rds")
+  mass_clusterNVT_freq_8 <- readRDS(file = "Nepal_clusterNVT_freqs_8.rds")
+  mass_clusterNVT_freq_9 <- readRDS(file = "Nepal_clusterNVT_freqs_9.rds")
+  mass_clusterNVT_freq_10 <- readRDS(file = "Nepal_clusterNVT_freqs_10.rds") 
+  mass_clusterNVT_freq_11 <- readRDS(file = "Nepal_clusterNVT_freqs_11.rds")
+  
+  mass_clusters <- length(unique(seq_clusters$Cluster))
+  sero_no = length(unique(seq_clusters$Serotype))
+  
+  model_start_pop <- readRDS(file = "Nepal_PPsero_startpop.rds")
+  
+  mass_VT <- readRDS(file = "Nepal_SeroVT.rds")
+  mass_clusters <- length(unique(seq_clusters$GPSC))
+  avg_cluster_freq <- readRDS(file = "Nepal_PPsero_mig.rds")
+  dt <- 1/12
+  #peripost_mass_cluster_freq <- data.frame("year" = 1:10, rbind(mass_cluster_freq_8,mass_cluster_freq_9, mass_cluster_freq_10, mass_cluster_freq_11,mass_cluster_freq_12, mass_cluster_freq_13, mass_cluster_freq_14,mass_cluster_freq_15,mass_cluster_freq_16,mass_cluster_freq_17))
+  #peripost_mass_cluster_freq <- data.frame("year" = 1:7, rbind(mass_cluster_freq_11,mass_cluster_freq_12, mass_cluster_freq_13, mass_cluster_freq_14,mass_cluster_freq_15,mass_cluster_freq_16,mass_cluster_freq_17))
+  peripost_mass_cluster_freq <- data.frame("year" = 1:5, rbind(c(mass_clusterVT_freq_7, mass_clusterNVT_freq_7), c(mass_clusterVT_freq_8, mass_clusterNVT_freq_8),  c(mass_clusterVT_freq_9, mass_clusterNVT_freq_9),c(mass_clusterVT_freq_10, mass_clusterNVT_freq_10),c(mass_clusterVT_freq_11, mass_clusterNVT_freq_11)))
+  names(peripost_mass_cluster_freq) <- c("year", paste(as.character(1:(2 * mass_clusters))))
+  #vacc_time <- 6
+  vacc_time <- 1
+
+species_no <- mass_clusters
+no_clusters <- mass_clusters
+gene_no <- nrow(intermed_gene_presence_absence_consensus_matrix)
+
+Pop_ini <- data.frame(model_start_pop)
+Pop_eq <- rowSums(model_start_pop)
+Genotypes <- intermed_gene_presence_absence_consensus_matrix
+
+capacity <- sum(model_start_pop)
+delta <- delta_ranking
+vaccTypes <- mass_VT
+
+migVec <- data.frame(avg_cluster_freq)
+```
+
+# read in models
+```{r}
+WF_GPSC_VT <- odin.dust::odin_dust("NFDS_Model_PPxSero_GPSC-VT.R")
+WF <- odin.dust::odin_dust("NFDS_Model_PPxSero.R")
+```
+
+# test new GPSC-VT model 
+```{r}
+intermed_gene_presence_absence_consensus_matrix <- sapply(intermed_gene_presence_absence_consensus[-1,-1],as.double)
+test_pars <- list(dt = 1/12, species_no = mass_clusters, sero_no = sero_no, gene_no = nrow(intermed_gene_presence_absence_consensus_matrix), Pop_ini = as.matrix(Pop_ini), Pop_eq = Pop_eq, Genotypes = intermed_gene_presence_absence_consensus_matrix, capacity = capacity, delta = delta, vaccTypes = vaccTypes, gene_no = gene_no, vacc_time = vacc_time, dt = dt, sigma_w = pmcmc_sigma_w, migVec = as.matrix(migVec), sero_no = sero_no, sigma_f = -2, prop_f = 0.3, m = -5, v = 0.12)
+WFmodel_ppxSero_GPSC_VT <- WF_GPSC_VT$new(pars = test_pars,
+                                  time = 0,
+                                  n_particles = 1L,
+                                  n_threads = 4L,
+                                  seed = 1L, deterministic = TRUE)
+TestSim0_GPSC_VT <- (WFmodel_ppxSero_GPSC_VT$run(0*12)[((test_pars$species_no+2):(3 * test_pars$species_no+1)),])
+TestSim1_GPSC_VT <- (WFmodel_ppxSero_GPSC_VT$run(1*12)[((test_pars$species_no+2):(3 * test_pars$species_no+1)),])
+TestSim5_GPSC_VT <- (WFmodel_ppxSero_GPSC_VT$run(5*12)[((test_pars$species_no+2):(3 * test_pars$species_no+1)),])
+```
+
+```{r}
+plot(TestSim1_GPSC_VT)
+points(TestSim5_GPSC_VT, col = "red")
+```
+
+# run standard GPSC model for comparison
+```{r}
+WFmodel_ppxSero <- WF$new(pars = test_pars,
+                                  time = 0,
+                                  n_particles = 1L,
+                                  n_threads = 4L,
+                                  seed = 1L, deterministic = TRUE)
+TestSim0 <- (WFmodel_ppxSero$run(0*12)[(2:(test_pars$species_no+1)),])
+TestSim1 <- (WFmodel_ppxSero$run(1*12)[(2:(test_pars$species_no+1)),])
+TestSim5 <- (WFmodel_ppxSero$run(5*12)[(2:(test_pars$species_no+1)),])
+```
+
+```{r}
+plot(TestSim1)
+points(TestSim5, col = "red")
+```
+
+# compare the two
+```{r}
+plot(TestSim0)
+points(TestSim0_GPSC_VT[1:test_pars$species_no] + TestSim0_GPSC_VT[(test_pars$species_no + 1):(2*test_pars$species_no)], col = "blue")
+
+plot(TestSim1)
+points(TestSim1_GPSC_VT[1:test_pars$species_no] + TestSim1_GPSC_VT[(test_pars$species_no + 1):(2*test_pars$species_no)], col = "blue")
+
+plot(TestSim5)
+points(TestSim5_GPSC_VT[1:test_pars$species_no] + TestSim5_GPSC_VT[(test_pars$species_no + 1):(2*test_pars$species_no)], col = "blue")
+```
+# looks correct

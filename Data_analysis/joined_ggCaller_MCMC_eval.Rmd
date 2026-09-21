@@ -1,6 +1,8 @@
 ---
 title: "R Notebook"
 output: html_notebook
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r}
@@ -9,6 +11,7 @@ library(bayestestR)
 
 # 4-parameter model with GPSCs
 Mass_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_08/Mass_PPxSero2/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Mass_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/US_newPrior/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 Mass_4param_mcmc2_probs <- coda::as.mcmc(cbind(Mass_4param_mcmc2$probabilities, Mass_4param_mcmc2$pars))
 #coda::effectiveSize(Mass_4param_mcmc2_probs)
 #summary(coda::as.mcmc(Mass_4param_mcmc2_probs))
@@ -25,9 +28,36 @@ percentile95_up <- apply(Mass_4param_mcmc2_probs,2,quantile,.975)
 #    0.00000000  -216.93700171  -216.93700171    -3.46685002     0.34412010    -4.20067157     0.09226522 
 #    0.00000000  -221.10809628  -221.10809628    -3.96755164     0.26854095    -4.70350782     0.07083447
 #    0.0000000   -214.7636318   -214.7636318     -2.9528191      0.4381072     -3.6808380      0.1190635
+
+# check correlations between parameters
+par(mfrow=c(4,4))
+for (i in 1:4) {
+  for (j in 1:4) {
+    plot(Mass_4param_mcmc2$pars[,i],Mass_4param_mcmc2$pars[,j])
+  }
+}
+cor(Mass_4param_mcmc2$pars[,"prop_f"],Mass_4param_mcmc2$pars[,"sigma_f"])
+
 rm(Mass_4param_mcmc2)
 rm(Mass_4param_mcmc2_probs)
 
+param_mean_US <- param_mean
+percentile95_low_US <- percentile95_low
+percentile95_up_US <- percentile95_up
+
+
+# stoch
+Mass_4param_mcmc2_stoch <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_23/US_stoch/PPxSero_ggCaller_PopPUNK4_stoch_pmcmc_run2.rds")
+Mass_4param_mcmc2_stoch <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_25/US_stoch/PPxSero_ggCaller_PopPUNK4_stoch_pmcmc_run2.rds")
+
+Mass_4param_mcmc2_probs <- coda::as.mcmc(cbind(Mass_4param_mcmc2_stoch$probabilities, Mass_4param_mcmc2_stoch$pars))
+Mass_likelihood_4param <- median(Mass_4param_mcmc2_probs[,"log_likelihood"])
+param_mean <- apply(Mass_4param_mcmc2_probs, 2, mean)
+percentile95_low <- apply(Mass_4param_mcmc2_probs,2,quantile,.025)
+percentile95_up <- apply(Mass_4param_mcmc2_probs,2,quantile,.975)
+
+var(Mass_4param_mcmc2_probs[,"log_likelihood"]) # 4.466667 --> should be roughly 1? --> 2nd stoch fit: 6.19
+1 - coda::rejectionRate(Mass_4param_mcmc2_probs) # --> acceptance rate way too low --> should be 0.234 , 2nd: 0.07 (that's a bit better than 0.03)
 ```
 
 ```{r}
@@ -35,6 +65,8 @@ rm(Mass_4param_mcmc2_probs)
 
 # 4-parameter model GPSC version
 UK_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_08/UK_PPxSero/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+UK_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_14/UK/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+UK_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/UK_newPrior/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
 UK_4param_mcmc2_probs <- coda::as.mcmc(cbind(UK_4param_mcmc2$probabilities, UK_4param_mcmc2$pars))
 UK_4param_mcmc2_probs_burnin <- UK_4param_mcmc2_probs[c(1001:20000, 21001:40000, 41001:60000, 61001:80000),]
 UK_likelihood_4param <- median(UK_4param_mcmc2_probs_burnin[,"log_likelihood"])
@@ -46,6 +78,298 @@ percentile95_up <- apply(UK_4param_mcmc2_probs_burnin,2,quantile,.975)
 #     0.0000000   -540.3097118   -540.3097118     -3.8361059      0.2264006     -4.1091828      0.1032453
 #     0.00000000  -544.09425023  -544.09425023    -4.38824513     0.13255969    -4.42922249     0.08848182
 #     0.0000000   -538.2036833   -538.2036833     -3.3356316      0.3513341     -3.8118126      0.1195111 
+
+# check correlations between parameters
+par(mfrow=c(4,4))
+for (i in 1:4) {
+  for (j in 1:4) {
+    plot(UK_4param_mcmc2$pars[,i],UK_4param_mcmc2$pars[,j])
+  }
+}
+cor(UK_4param_mcmc2$pars[,"prop_f"],UK_4param_mcmc2$pars[,"sigma_f"])
+
+
 rm(UK_4param_mcmc2)
 
+param_mean_UK <- param_mean
+percentile95_low_UK <- percentile95_low
+percentile95_up_UK <- percentile95_up
 ```
+
+```{r}
+### Nepal
+
+# 4-parameter model GPSC version
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_05_18/Nepal_5k/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_09/Nepal/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_27/Nepal_newPrioRunWithGoodParams/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+
+Nepal_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_Null_det_pmcmc_run2.rds")
+Nepal_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
+Nepal_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_05/Nepal_newPrior/Nepal_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
+
+Nepal_4param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_4param_mcmc2$probabilities, Nepal_4param_mcmc2$pars))
+Nepal_4param_mcmc2_probs_burnin <- Nepal_4param_mcmc2_probs[c(1001:5000, 6001:10000, 11001:15000, 16001:20000),]
+Nepal_likelihood_4param <- median(Nepal_4param_mcmc2_probs_burnin[,"log_likelihood"])
+#mean(Nepal_4param_mcmc2_probs[,"log_likelihood"])
+param_mean <- apply(Nepal_4param_mcmc2_probs_burnin, 2, mean)
+percentile95_low <- apply(Nepal_4param_mcmc2_probs_burnin,2,quantile,.025)
+percentile95_up <- apply(Nepal_4param_mcmc2_probs_burnin,2,quantile,.975)
+#     log_prior log_likelihood  log_posterior        sigma_f         prop_f              m              v 
+#     0.000000e+00  -2.596143e+03  -2.596143e+03  -9.880124e-01   2.415340e-01  -2.392463e+00   6.751184e-02
+#     0.000000e+00  -2.599995e+03  -2.599995e+03  -1.174697e+00   2.069937e-01  -2.538166e+00   2.490808e-02
+#     0.0000000  -2593.6809855  -2593.6809855     -0.8154029      0.2491590     -2.2057006      0.1171725
+
+# check correlations between parameters
+par(mfrow=c(4,4))
+for (i in 1:4) {
+  for (j in 1:4) {
+    plot(Nepal_4param_mcmc2$pars[,i],Nepal_4param_mcmc2$pars[,j])
+  }
+}
+
+cor(Nepal_4param_mcmc2$pars[,"prop_f"],Nepal_4param_mcmc2$pars[,"sigma_f"])
+
+rm(Nepal_4param_mcmc2)
+
+param_mean_Nepal <- param_mean
+percentile95_low_Nepal <- percentile95_low
+percentile95_up_Nepal <- percentile95_up
+
+# 21.07.2025: stoch
+Nepal_4param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_07_21/Nepal_stoch/Nepal_PPxSero_ggCaller_PopPUNK4_stoch_pmcmc_run2.rds")
+Nepal_4param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_4param_mcmc2$probabilities, Nepal_4param_mcmc2$pars))
+apply(Nepal_4param_mcmc2_probs, 2, mean)
+1 - coda::rejectionRate(Nepal_4param_mcmc2_probs)
+
+```
+
+
+
+```{r}
+library(ggplot2)
+# plot results
+joined_mcmc_param_fits <- data.frame(params = rep(c("NFDS strength", "genes under NFDS", "migration rate", "vaccination strength"), 3),
+                                     population = c(rep("US",4), rep("UK",4), rep("Nepal",4)),
+                                     mean = c(param_mean_US[4:7], param_mean_UK[4:7], param_mean_Nepal[4:7]),
+                                     lower = c(percentile95_low_US[4:7], percentile95_low_UK[4:7], percentile95_low_Nepal[4:7]),
+                                     upper = c(percentile95_up_US[4:7], percentile95_up_UK[4:7], percentile95_up_Nepal[4:7]))
+joined_mcmc_param_fits[c(1,3,5,7,9,11),c("mean", "lower", "upper")] <- exp(joined_mcmc_param_fits[c(1,3,5,7,9,11),c("mean", "lower", "upper")])
+
+ggplot(joined_mcmc_param_fits,aes(x=params,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2),position = position_dodge(width=0.75),, size = 1) +
+  geom_point(position = position_dodge(width=0.75),size = 3) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Parameter")
+
+ggplot(joined_mcmc_param_fits,aes(x=population,y=mean, colour = population, group = interaction(population, params))) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.2), size = 1) +
+  geom_point(size = 3) +
+  facet_wrap(~params, ncol = 2) +
+  theme(panel.background = element_rect(fill = "white"),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20)) +
+  labs(y= "Parameter estimate", x = "Population")
+
+# newer version of this in ModelComparisonAnalysis
+```
+
+```{r}
+# compare genes under NFDS
+# US: 0.353438108
+# UK: 0.115461801
+# Nepal: 0.405269203
+
+Mass_delta_rank <- readRDS("ggC_delta_ranking.rds") # 1934 intermed-freq genes
+UK_delta_rank <- readRDS("UK_delta_ranking.rds") # 1938 intermed-freq genes
+Nepal_delta_rank <- readRDS("Nepal_delta_ranking.rds") # 2340 intermed-freq genes
+
+# absolute number of genes under NFDS:
+# US: 1934 * 0.353438108 = 683.5493
+# UK: 1938 * 0.115461801 = 223.765
+# Nepal: 2340 * 0.405269203 = 948.3299
+
+gene_overlap_USUKNepal <- intersect(intersect(names(Mass_delta_rank), names(UK_delta_rank)), names(Nepal_delta_rank))
+# 1418 intermed-freq genes overlap btw all three
+# no, it's 1360
+# it's 1367
+
+# random would be:
+# 1360 * 0.34412010 * 0.2264006 * 0.241534 = 25.59203
+# 1367 * 0.353438108 * 0.115461801 * 0.405269203 = 22.60809
+
+Mass_underNFDS <- rep(0, length(Mass_delta_rank))
+names(Mass_underNFDS) <- names(Mass_delta_rank)
+Mass_underNFDS[which(Mass_delta_rank <= 0.353438108 * length(Mass_delta_rank))] <- 1
+UK_underNFDS <- rep(0, length(UK_delta_rank))
+names(UK_underNFDS) <- names(UK_delta_rank)
+UK_underNFDS[which(UK_delta_rank <= 0.115461801 * length(UK_delta_rank))] <- 1
+Nepal_underNFDS <- rep(0, length(Nepal_delta_rank))
+names(Nepal_underNFDS) <- names(Nepal_delta_rank)
+Nepal_underNFDS[which(Nepal_delta_rank <= 0.405269203 * length(Nepal_delta_rank))] <- 1
+
+gene_overlap_USUKNepal_underNFDS <- rep(0, length(gene_overlap_USUKNepal))
+names(gene_overlap_USUKNepal_underNFDS) <- gene_overlap_USUKNepal
+gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + Mass_underNFDS[gene_overlap_USUKNepal]
+gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + UK_underNFDS[gene_overlap_USUKNepal]
+gene_overlap_USUKNepal_underNFDS <- gene_overlap_USUKNepal_underNFDS + Nepal_underNFDS[gene_overlap_USUKNepal]
+
+names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)])
+# 14
+# "1383" "1937" "2215" "2492" "2495" "2660" "2889" "2899" "2938" "3041" "3159" "3198" "3321" "3741"
+
+
+# 18 old analysis genes
+# 1352 Ascorbate-specific PTS system EIIC component
+# 1419 hypothetical protein
+# 1452 hypothetical protein
+# 1494 Brp/Blh family beta-carotene 15,15'-monooxygenase
+# 1535 Phage protein
+# 1572 ABC transporter ATP-binding protein
+# 2153 Cholinephosphate cytidylyltransferase / Choline kinase
+# 2232 Phosphoribosylamine--glycine ligase
+# 2238 hypothetical protein
+# 2361 Gram-positive signal peptide protein, YSIRK family
+# 2748 hypothetical protein
+# 2944 hypothetical protein
+# 3011 HTH tetR-type domain-containing protein
+# 3054 hypothetical protein
+# 3097 Transcriptional regulator, AbiEi antitoxin, Type IV TA system
+# 3181 DnaD domain-containing protein
+# 3355 hypothetical protein
+# 3585 hypothetical protein
+
+# this is based on the new panaroo run though 
+
+# 10.11.2025 --> but need to update with new Nepal fit
+# 11
+# "1937" "2215" "2492" "2495" "2660" "2889" "2899" "3159" "3198" "3321" "3741"
+
+bakta_annotation_panaroo <- read.delim("~/Documents/PhD_Project/Data/StrepPneumo_UKUSNepal/bakta_annotation/create_tsv_annotation/bakta_annotation_and_before.tsv")
+bakta_anno_dict <- bakta_annotation_panaroo$Header1
+names(bakta_anno_dict) <- unlist(strsplit(bakta_annotation_panaroo$Header2, split = "_"))[(1:length(bakta_annotation_panaroo$Header2))*2]
+
+bakta_anno_dict[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)])]
+# hmm, this is not really working since not all genes have a functional annotation
+# 14
+# "1383" "1937" "2215" "2492" "2495" "2660" "2889" "2899" "2938" "3041" "3159" "3198" "3321" "3741"
+# the result:
+#  1383                                                    1937 
+#                      "putative tRNA sulfurtransferase"          "TIGR04197 family type VII secretion effector" 
+#                                                   2215                                                    <NA> 
+#                                        "Phage protein"                                                      NA 
+#                                                   2495                                                    2660 
+#                                 "hypothetical protein"           "MIP18 family-like domain-containing protein" 
+#                                                   2889                                                    <NA> 
+#               "DegV domain-containing protein SP-1557"                                                      NA 
+#                                                   2938                                                    3041 
+#"sodium-coupled multidrug efflux MATE transporter PdrM"                            "ATP-dependent DNA helicase" 
+#                                                   <NA>                                                    3198 
+#                                                     NA                             "Transcriptional regulator" 
+#                                                   3321                                                    3741 
+#                      "Helix-turn-helix family protein"                                          "DpnD protein" 
+
+
+# Dec 17
+# this is the index - not the group name names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)])
+# so translate this using 
+UK_ggC_all_gene_names <- readRDS("UK_ggC_all_gene_names.rds")
+
+UK_ggC_all_gene_names[as.integer(names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]))]
+# "group_6218"  "group_3777"  "group_5023"  "group_10902" "group_620"   "group_3633"  "group_7816"  "group_6522"  "group_5840" 
+# "group_2109"  "group_3863"  "group_1655"  "group_8626"  "group_767" 
+
+bakta_anno_dict2 <- bakta_annotation_panaroo$Header1
+names(bakta_anno_dict2) <- bakta_annotation_panaroo$Header2
+
+bakta_anno_dict2[UK_ggC_all_gene_names[as.integer(names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]))]]
+
+#     group_6218                                          group_3777 
+#"phosphoenolpyruvate--glycerone phosphotransferase"                 "DUF3567 domain-containing protein" 
+#                                         group_5023                                         group_10902 
+#           "RelE/StbE replicon stabilization toxin"              "two-peptide bacteriocin subunit BlpN" 
+#                                               <NA>                                          group_3633 
+#                                                 NA                              "hypothetical protein" 
+#                                               <NA>                                          group_6522 
+#                                                 NA                                       "Bacteriocin" 
+#                                         group_5840                                                <NA> 
+#                   "AzlD domain-containing protein"                                                  NA 
+#                                         group_3863                                                <NA> 
+#                                             "Gp24"                                                  NA 
+#                                               <NA>                                           group_767 
+#                                                 NA "Type I restriction-modification system, S subunit"
+
+
+
+
+###
+
+UK_ggCaller_intermed_preVac[names(gene_overlap_USUKNepal_underNFDS[which(gene_overlap_USUKNepal_underNFDS==3)]),1]
+# "group_8480"  "group_8014"  "group_3107"  "group_2288"  "group_6380" 
+# [6] "group_5830"  "group_6356"  "group_7007"  "group_4610"  "group_7464" 
+# [11] "group_7124"  "group_2281"  "group_7330"  "group_3566"  "group_3124" 
+# [16] "group_2109"  "group_1655"  "group_11258"
+
+Mass_onlyNFDS <- which(Mass_underNFDS ==1)
+UK_onlyNFDS <- which(UK_underNFDS == 1)
+Nepal_onlyNFDS <- which(Nepal_underNFDS == 1)
+
+library(VennDiagram)
+library(RColorBrewer)
+myCol <- brewer.pal(3, "Pastel2")
+
+venn.diagram(
+  x = list(names(Mass_onlyNFDS), names(UK_onlyNFDS), names(Nepal_onlyNFDS)),
+  category.names = c("US", "UK", "Nepal"),
+  filename = '../venn_diagramm_NFDSgenes.png',
+  output=TRUE, 
+  
+  # Output features
+        imagetype="png" ,
+        height = 960 , 
+        width = 960 , 
+        resolution = 600,
+        compression = "lzw",
+        
+        # Circles
+        lwd = 2,
+        lty = 'blank',
+        fill = myCol,
+        
+        # Numbers
+        cex = .6,
+        fontface = "bold",
+        fontfamily = "sans",
+        
+        # Set names
+        cat.cex = 0.6,
+        cat.fontface = "bold",
+        cat.default.pos = "outer",
+        cat.dist = c(0.055, 0.055, 0.065),
+        cat.fontfamily = "sans"
+)
+```
+
+```{r}
+# I did a blast search
+# for those genes clusters that are not represented in the pan_genome_reference.fa
+
+panaroo_genes_non_ref <- read.csv("~/Documents/PhD_Project/Data/StrepPneumo_UKUSNepal/final_graph_default_node.csv")
+
+group_2492_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2492")], ";")[[1]][1] # collagenase-like protease
+group_2899_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2899")], ";")[[1]][1] # toxin-antitoxin system, antitoxin component,AbrB family
+group_3159_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_3159")], ";")[[1]][1] # transposase-like protein, IS1515,MarR family
+group_2495_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2495")], ";")[[1]][1] # 
+
+
+# 17Dec look up those that were not in the ref
+group_620_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_620")], ";")[[1]][1] # type I restriction enzyme EcoEI specificity protein
+group_7816_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_7816")], ";")[[1]][1] # none found
+group_2109_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_2109")], ";")[[1]][1] # degenerate transposase
+group_1655_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_1655")], ";")[[1]][1] # transposase
+group_8626_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_8626")], ";")[[1]][1] # nothing
+
+group_3633_dna <- strsplit(panaroo_genes_non_ref$dna[which(panaroo_genes_non_ref$name == "group_3633")], ";")[[1]][1] # this one was hypothetical protein in bakta
+```
+

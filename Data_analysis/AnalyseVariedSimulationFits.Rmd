@@ -1,0 +1,456 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+# summarise fits in csvs
+```{r}
+# varied sample size March 2026
+sample_years2 <- c("1")
+sample_sizes2 <- c("v1_increasing","v2_decreasing","v3_rand1","v4_rand2")
+
+calculate_param_vals <- function(fit_rds){
+  mcmc_annual_probs <- coda::as.mcmc(cbind(fit_rds$probabilities, fit_rds$pars))
+  #coda::effectiveSize(Mass_4param_mcmc2_probs)
+  #summary(coda::as.mcmc(Mass_4param_mcmc2_probs))
+  #mcmc_annual_probs_quadrennial <- median(mcmc_annual_probs[,"log_likelihood"])
+  #mean(Mass_4param_mcmc2_probs[,"log_likelihood"])
+
+  param_mean <- apply(mcmc_annual_probs, 2, mean)
+  #percentile95_low <- apply(mcmc_annual_probs,2,quantile,.025)
+  #percentile95_up <- apply(mcmc_annual_probs,2,quantile,.975)
+  
+  percentile95_low <- apply(mcmc_annual_probs,2,quantile,.025)
+  percentile95_up <- apply(mcmc_annual_probs,2,quantile,.975)
+  list(param_mean, percentile95_low, percentile95_up)
+}
+
+
+read_sim_data <- function(sample_sizes2, folder_path){
+  list2_2 <- vector(mode = "list", length = length(sample_sizes2))
+  params_sampleSizesAndYears2_f <- list(list2_2)
+  for (i in 1:length(sample_years2)) {
+    for (j in 1:length(sample_sizes2)) {
+      name_part <- sample_sizes2[j]
+      full_name <- paste(folder_path,name_part, "_4param_det_pmcmc_run2_simulation.rds", sep = "")
+      if(file.exists(full_name)){
+        print(full_name)
+        mcmc_data <- readRDS(full_name)
+        processed_chains <- mcstate::pmcmc_thin(mcmc_data, burnin = 5000, thin = 1)
+        params_sampleSizesAndYears2_f[[i]][[j]] <- calculate_param_vals(processed_chains)
+        rm(mcmc_data)
+        rm(processed_chains)
+      }
+      else{
+        print(paste(full_name, " does not exist", sep = ""))
+      }
+    }
+  }
+  params_sampleSizesAndYears2_f
+}
+
+params_sampleSizesAndYears2_varied <- read_sim_data(sample_sizes2, folder_path = "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2026_03_17/FitModelToVaryingSampleSize_run1/US_based_simulation_with_freq_1_")
+
+params_sampleSizesAndYears2_v2 <- read_sim_data(sample_sizes2, folder_path = "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2026_03_17/FitModelToVaryingSampleSize_run2/US_based_simulation_with_freq_1_")
+
+params_sampleSizesAndYears2_v3 <- read_sim_data(sample_sizes2, folder_path = "/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2026_03_17/FitModelToVaryingSampleSize_run1/US_based_simulation_with_freq_1_")
+
+plot_param_comp_sampleSizeYear2 <- function(index, params_sampleSizesAndYears2_f2){
+  #mean_v <- rep(NA, 20)
+  #low_v <- rep(NA, 20)
+  #up_v <- rep(NA, 20)
+  #mean_v <- rep(NA, 40)
+  #low_v <- rep(NA, 40)
+  #up_v <- rep(NA, 40)
+  mean_v <- rep(NA, 4)
+  low_v <- rep(NA, 4)
+  up_v <- rep(NA, 4)
+  i_help <- 1
+  j_help <- 1
+  ij_help <- 1
+  for (i in 1:length(sample_years2)) {
+    for (j in 1:length(sample_sizes2)) {
+      #print(j)
+      #if(!((i==1 & j==1)| (i==1 & j==7) |(i==1 & j==8) |(i==1 & j==9) | (i==1 & j==10)| (i==2 & j==1) | (i==2 & j==7) |(i==2 & j==8) |(i==2 & j==9) |(i==2 & j==10) | (i==3 & j ==1) | (i==3 & j ==7)| (i==3 & j ==8)| (i==3 & j ==9) |  (i==3 & j ==10) |(i==4 & j==1) | (i==4 & j==7) | (i==4 & j==8) | (i==4 & j==9) | (i==4 & j==10))){
+      if(!((i==1 & j==9) | (i==1 & j==10)| (i==2 & j==9) | (i==2 & j==10) | (i==3 & j ==9) |(i==3 & j ==10) | (i==4 & j==9) | (i==4 & j==10))){
+        mean_v[ij_help] <- params_sampleSizesAndYears2_f2[[i]][[j]][[1]][index]
+        low_v[ij_help] <- params_sampleSizesAndYears2_f2[[i]][[j]][[2]][index]
+        up_v[ij_help] <- params_sampleSizesAndYears2_f2[[i]][[j]][[3]][index]
+        j_help <- j_help +1
+        ij_help <- ij_help +1
+      }
+      #ij_help <- ij_help +1
+    }
+    i_help <- i_help +1
+    j_help <- 1
+  }
+  #print(mean_v)
+  # rep(c(0.25, 0.5, 1,2.5,5), 4)
+  # rep(c(0.1, 0.25, 0.5, 1,2.5,5, 10, 25, 50, 100), 4)
+joined_mcmc_param_fits_sampleSize3 <- data.frame(params = rep(c(4, 5, 6, 7), 1), 
+                                     population = as.integer(c(rep(1,4))),
+                                     mean = mean_v,
+                                     lower = low_v,
+                                     upper = up_v)
+joined_mcmc_param_fits_sampleSize3$budget <- rep(c(4, 5, 6, 7), 1)
+joined_mcmc_param_fits_sampleSize3$budget <- factor(joined_mcmc_param_fits_sampleSize3$budget)
+joined_mcmc_param_fits_sampleSize3$population <- factor(joined_mcmc_param_fits_sampleSize3$population)
+joined_mcmc_param_fits_sampleSize3$params <- factor(joined_mcmc_param_fits_sampleSize3$params)
+return(joined_mcmc_param_fits_sampleSize3)
+}
+
+# 1st run
+joined_mcmc_param_fits_sampleSize3_v_2 <- plot_param_comp_sampleSizeYear2(7, params_sampleSizesAndYears2_varied)
+joined_mcmc_param_fits_sampleSize3_v_2$population <- rep(4, 4)
+  
+joined_mcmc_param_fits_sampleSize3_sigmaf_2 <- plot_param_comp_sampleSizeYear2(4, params_sampleSizesAndYears2_varied)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2 <- joined_mcmc_param_fits_sampleSize3_sigmaf_2
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$mean)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$lower)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2$upper)
+joined_mcmc_param_fits_sampleSize3_sigmaf_2$population <- rep(4, 4)
+
+joined_mcmc_param_fits_sampleSize3_propf_2 <- plot_param_comp_sampleSizeYear2(5, params_sampleSizesAndYears2_varied)
+joined_mcmc_param_fits_sampleSize3_propf_2$population <- rep(4, 4)
+
+joined_mcmc_param_fits_sampleSize3_m_2 <- plot_param_comp_sampleSizeYear2(6, params_sampleSizesAndYears2_varied)
+joined_mcmc_param_fits_sampleSize3_m_exp_2 <- joined_mcmc_param_fits_sampleSize3_m_2
+joined_mcmc_param_fits_sampleSize3_m_exp_2$mean <- exp(joined_mcmc_param_fits_sampleSize3_m_2$mean)
+joined_mcmc_param_fits_sampleSize3_m_exp_2$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2$lower)
+joined_mcmc_param_fits_sampleSize3_m_exp_2$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2$upper)
+joined_mcmc_param_fits_sampleSize3_m_2$population <- rep(4, 4)
+
+#2nd run
+joined_mcmc_param_fits_sampleSize3_v_2_v2 <- plot_param_comp_sampleSizeYear2(7, params_sampleSizesAndYears2_v2)
+joined_mcmc_param_fits_sampleSize3_v_2_v2$population <- rep(5, 4)
+  
+joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2 <- plot_param_comp_sampleSizeYear2(4, params_sampleSizesAndYears2_v2)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2 <- joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2$mean)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2$lower)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v2$upper)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2$population <- rep(5, 4)
+
+joined_mcmc_param_fits_sampleSize3_propf_2_v2 <- plot_param_comp_sampleSizeYear2(5, params_sampleSizesAndYears2_v2)
+joined_mcmc_param_fits_sampleSize3_propf_2_v2$population <- rep(5, 4)
+
+joined_mcmc_param_fits_sampleSize3_m_2_v2 <- plot_param_comp_sampleSizeYear2(6, params_sampleSizesAndYears2_v2)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2 <- joined_mcmc_param_fits_sampleSize3_m_2_v2
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2$mean <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v2$mean)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v2$lower)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v2$upper)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v2$population <- rep(5, 4)
+
+#3rd run
+joined_mcmc_param_fits_sampleSize3_v_2_v3 <- plot_param_comp_sampleSizeYear2(7, params_sampleSizesAndYears2_v3)
+joined_mcmc_param_fits_sampleSize3_v_2_v3$population <- rep(6, 4)
+  
+joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3 <- plot_param_comp_sampleSizeYear2(4, params_sampleSizesAndYears2_v3)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3 <- joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3$mean <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3$mean)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3$lower <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3$lower)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3$upper <- exp(joined_mcmc_param_fits_sampleSize3_sigmaf_2_v3$upper)
+joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3$population <- rep(6, 4)
+
+joined_mcmc_param_fits_sampleSize3_propf_2_v3 <- plot_param_comp_sampleSizeYear2(5, params_sampleSizesAndYears2_v3)
+joined_mcmc_param_fits_sampleSize3_propf_2_v3$population <- rep(6, 4)
+
+joined_mcmc_param_fits_sampleSize3_m_2_v3 <- plot_param_comp_sampleSizeYear2(6, params_sampleSizesAndYears2_v3)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3 <- joined_mcmc_param_fits_sampleSize3_m_2_v3
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$mean <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$mean)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$lower <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$lower)
+joined_mcmc_param_fits_sampleSize3_m_exp_2_v3$upper <- exp(joined_mcmc_param_fits_sampleSize3_m_2_v3$upper)
+joined_mcmc_param_fits_sampleSize3_m_2_v3$population <- rep(6, 4)
+
+
+# save these dfs
+write.csv(joined_mcmc_param_fits_sampleSize3_v_2_v3, "joined_mcmc_param_fits_variedSampleSize_v_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_v_2_v2, "joined_mcmc_param_fits_variedSampleSize_v_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_v_2, "joined_mcmc_param_fits_variedSampleSize_v_2.csv", row.names = TRUE)
+
+write.csv(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v3, "joined_mcmc_param_fits_variedSampleSize_sigmaf_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2_v2, "joined_mcmc_param_fits_variedSampleSize_sigmaf_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_sigmaf_exp_2, "joined_mcmc_param_fits_variedSampleSize_sigmaf_2.csv", row.names = TRUE)
+
+write.csv(joined_mcmc_param_fits_sampleSize3_propf_2_v3, "joined_mcmc_param_fits_variedSampleSize_propf_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_propf_2_v2, "joined_mcmc_param_fits_variedSampleSize_propf_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_propf_2, "joined_mcmc_param_fits_variedSampleSize_propf_2.csv", row.names = TRUE)
+
+write.csv(joined_mcmc_param_fits_sampleSize3_m_exp_2_v3, "joined_mcmc_param_fits_variedSampleSize_m_2_v3.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_m_exp_2_v2, "joined_mcmc_param_fits_variedSampleSize_m_2_v2.csv", row.names = TRUE)
+write.csv(joined_mcmc_param_fits_sampleSize3_m_exp_2, "joined_mcmc_param_fits_variedSampleSize_m_2.csv", row.names = TRUE)
+
+```
+
+```{r}
+# read in pre-processed fits for simulation (create three independent fits, then calculated parameter mean and 95-percentiles)
+
+sim_fit_m_1_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_m_2.csv")[,-1]
+sim_fit_m_2_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_m_2_v2.csv")[,-1]
+sim_fit_m_3_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_m_2_v3.csv")[,-1]
+
+sim_fit_v_1_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_v_2.csv")[,-1]
+sim_fit_v_2_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_v_2_v2.csv")[,-1]
+sim_fit_v_3_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_v_2_v3.csv")[,-1]
+
+sim_fit_sigmaf_1_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_sigmaf_2.csv")[,-1]
+sim_fit_sigmaf_2_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_sigmaf_2_v2.csv")[,-1]
+sim_fit_sigmaf_3_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_sigmaf_2_v3.csv")[,-1]
+
+sim_fit_propf_1_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_propf_2.csv")[,-1]
+sim_fit_propf_2_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_propf_2_v2.csv")[,-1]
+sim_fit_propf_3_varied <- read.csv("joined_mcmc_param_fits_variedSampleSize_propf_2_v3.csv")[,-1]
+```
+
+```{r}
+# save all three replicates in one data.frame per parameter
+sim_fit_m_mean_varied <- cbind(sim_fit_m_1_varied$params, sim_fit_m_1_varied$population, c(sim_fit_m_1_varied$mean, sim_fit_m_2_varied$mean, sim_fit_m_3_varied$mean), c(sim_fit_m_1_varied$lower, sim_fit_m_2_varied$lower, sim_fit_m_3_varied$lower), c(sim_fit_m_1_varied$upper, sim_fit_m_2_varied$upper, sim_fit_m_3_varied$upper), sim_fit_m_1_varied$budget)
+sim_fit_v_mean_varied <- cbind(sim_fit_v_1_varied$params, sim_fit_v_1_varied$population, c(sim_fit_v_1_varied$mean, sim_fit_v_2_varied$mean, sim_fit_v_3_varied$mean), c(sim_fit_v_1_varied$lower, sim_fit_v_2_varied$lower, sim_fit_v_3_varied$lower), c(sim_fit_v_1_varied$upper, sim_fit_v_2_varied$upper, sim_fit_v_3_varied$upper), sim_fit_v_3_varied$budget)
+sim_fit_sigmaf_mean_varied <- cbind(sim_fit_sigmaf_1_varied$params, sim_fit_sigmaf_1_varied$population, c(sim_fit_sigmaf_1_varied$mean, sim_fit_sigmaf_2_varied$mean, sim_fit_sigmaf_3_varied$mean), c(sim_fit_sigmaf_1_varied$lower, sim_fit_sigmaf_2_varied$lower, sim_fit_sigmaf_3_varied$lower), c(sim_fit_sigmaf_1_varied$upper, sim_fit_sigmaf_2_varied$upper, sim_fit_sigmaf_3_varied$upper), sim_fit_sigmaf_1_varied$budget)
+sim_fit_propf_mean_varied <- cbind(sim_fit_propf_1_varied$params, sim_fit_propf_1_varied$population, c(sim_fit_propf_1_varied$mean, sim_fit_propf_2_varied$mean, sim_fit_propf_3_varied$mean), c(sim_fit_propf_1_varied$lower, sim_fit_propf_2_varied$lower, sim_fit_propf_3_varied$lower), c(sim_fit_propf_1_varied$upper, sim_fit_propf_2_varied$upper, sim_fit_propf_3_varied$upper), sim_fit_propf_1_varied$budget)
+
+colnames(sim_fit_m_mean_varied) <- colnames(sim_fit_m_1_varied)[1:6]
+colnames(sim_fit_v_mean_varied) <- colnames(sim_fit_m_1_varied)[1:6]
+colnames(sim_fit_sigmaf_mean_varied) <- colnames(sim_fit_m_1_varied)[1:6]
+colnames(sim_fit_propf_mean_varied) <- colnames(sim_fit_m_1_varied)[1:6]
+```
+
+# next steps: make new plot with means
+# calculate mean of of means and credible intervals
+```{r}
+sim_fit_m_mean_df_varied <- data.frame(sim_fit_m_mean_varied)
+sim_fit_m_mean_df_varied <- aggregate(. ~ params + population, data = sim_fit_m_mean_df_varied, FUN = mean)
+#sim_fit_m_mean_df[,3:5] <- exp(sim_fit_m_mean_df[,3:5])
+sim_fit_m_mean_df_varied$budget <- factor(sim_fit_m_mean_df_varied$budget)
+sim_fit_m_mean_df_varied$population <- factor(sim_fit_m_mean_df_varied$population)
+sim_fit_m_mean_df_varied$params <- factor(sim_fit_m_mean_df_varied$params)
+
+sim_fit_v_mean_df_varied <- data.frame(sim_fit_v_mean_varied)
+sim_fit_v_mean_df_varied <- aggregate(. ~ params + population, data = sim_fit_v_mean_df_varied, FUN = mean)
+sim_fit_v_mean_df_varied$budget <- factor(sim_fit_v_mean_df_varied$budget)
+sim_fit_v_mean_df_varied$population <- rep(1, 4)
+sim_fit_v_mean_df_varied$population <- factor(sim_fit_v_mean_df_varied$population)
+sim_fit_v_mean_df_varied$params <- factor(sim_fit_v_mean_df_varied$params)
+
+sim_fit_sigmaf_mean_df_varied <- data.frame(sim_fit_sigmaf_mean_varied)
+sim_fit_sigmaf_mean_df_varied <- aggregate(. ~ params + population, data = sim_fit_sigmaf_mean_df_varied, FUN = mean)
+sim_fit_sigmaf_mean_df_varied$budget <- factor(sim_fit_sigmaf_mean_df_varied$budget)
+sim_fit_sigmaf_mean_df_varied$population <- factor(sim_fit_sigmaf_mean_df_varied$population)
+sim_fit_sigmaf_mean_df_varied$params <- factor(sim_fit_sigmaf_mean_df_varied$params)
+
+sim_fit_propf_mean_df_varied <- data.frame(sim_fit_propf_mean_varied)
+sim_fit_propf_mean_df_varied <- aggregate(. ~ params + population, data = sim_fit_propf_mean_df_varied, FUN = mean)
+sim_fit_propf_mean_df_varied$budget <- factor(sim_fit_propf_mean_df_varied$budget)
+sim_fit_propf_mean_df_varied$population <- rep(1, 4)
+sim_fit_propf_mean_df_varied$population <- factor(sim_fit_propf_mean_df_varied$population)
+sim_fit_propf_mean_df_varied$params <- factor(sim_fit_propf_mean_df_varied$params)
+```
+
+# import non-varied fits
+# are calculated in AnalyseAndProcessSimulationFits.Rmd
+```{r}
+sim_fit_propf_mean_df_low <- sim_fit_propf_mean_df[which((as.numeric(sim_fit_propf_mean_df$params) <= 5) & ((sim_fit_propf_mean_df$population) == 1)),]
+sim_fit_v_mean_df_low <- sim_fit_v_mean_df[which((as.numeric(sim_fit_propf_mean_df$params) <= 5) & ((sim_fit_propf_mean_df$population) == 1)),]
+sim_fit_sigmaf_mean_df_low <- sim_fit_sigmaf_mean_df[which((as.numeric(sim_fit_propf_mean_df$params) <= 5) & ((sim_fit_propf_mean_df$population) == 1)),]
+sim_fit_m_mean_df_low <- sim_fit_m_mean_df[which((as.numeric(sim_fit_propf_mean_df$params) <= 5) & ((sim_fit_propf_mean_df$population) == 1)),]
+```
+
+```{r}
+sim_fit_m_mean_df_varied <- rbind(sim_fit_m_mean_df_varied, sim_fit_m_mean_df_low)
+sim_fit_v_mean_df_varied <- rbind(sim_fit_v_mean_df_varied, sim_fit_v_mean_df_low)
+sim_fit_sigmaf_mean_df_varied <- rbind(sim_fit_sigmaf_mean_df_varied, sim_fit_sigmaf_mean_df_low)
+sim_fit_propf_mean_df_varied <- rbind(sim_fit_propf_mean_df_varied, sim_fit_propf_mean_df_low)
+```
+
+
+```{r}
+library(viridis)
+library(ggplot2)
+
+output_location <- "/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Figures/Figures_revision/"
+
+# vaccine parameter
+real_val_v <- 0.0814
+
+v_plot_byFreq <- ggplot(sim_fit_v_mean_df_varied,aes(x=params,y=mean, colour = budget, group = params)) + 
+    geom_hline(aes(yintercept = real_val_v), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),option = "turbo",direction = -1) + coord_cartesian(ylim = c(0,0.2)) +
+  scale_x_discrete(
+    limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),  # replace with your actual factor levels in desired order
+    labels = c("0.1" = "0.1", 
+               "0.25" = "0.25", 
+               "0.5" = "0.5",
+               "1" = "1",
+               "2.5" = "2.5",
+               "4" = "increasing",
+               "5" = "decreasing",
+               "6" = "random_1",
+               "7" = "random_2")         # replace with your desired display labels
+  ) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(v_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_v_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
+
+v_plot <- ggplot(sim_fit_v_mean_df_varied,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_v), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(v_plot, 
+    filename = paste(output_location,"Fig4_byBudget_v_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+
+# immigration parameter
+real_val_m <- 0.0133
+
+m_plot_byFreq <- ggplot(sim_fit_m_mean_df_varied,aes(x=params,y=mean, colour = budget, group = params)) + 
+    geom_hline(aes(yintercept = real_val_m), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),option = "turbo",direction = -1) + coord_cartesian(ylim = c(0,0.1)) +
+  scale_x_discrete(
+    limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),  # replace with your actual factor levels in desired order
+    labels = c("0.1" = "0.1", 
+               "0.25" = "0.25", 
+               "0.5" = "0.5",
+               "1" = "1",
+               "2.5" = "2.5",
+               "4" = "increasing",
+               "5" = "decreasing",
+               "6" = "random_1",
+               "7" = "random_2")         # replace with your desired display labels
+  ) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+
+ggsave(m_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_m_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
+
+m_plot <- ggplot(sim_fit_m_mean_df_varied,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_m), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.1)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(m_plot, 
+    filename = paste(output_location,"Fig4_byBudget_m_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+
+# sigma_f
+real_val_sigmaf <- 0.0345
+
+sigmaf_plot_byFreq <- ggplot(sim_fit_sigmaf_mean_df_varied,aes(x=params,y=mean, colour = budget, group = params)) + 
+    geom_hline(aes(yintercept = real_val_sigmaf), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),option = "turbo",direction = -1) + coord_cartesian(ylim = c(0,0.2)) +
+  scale_x_discrete(
+    limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),  # replace with your actual factor levels in desired order
+    labels = c("0.1" = "0.1", 
+               "0.25" = "0.25", 
+               "0.5" = "0.5",
+               "1" = "1",
+               "2.5" = "2.5",
+               "4" = "increasing",
+               "5" = "decreasing",
+               "6" = "random_1",
+               "7" = "random_2")         # replace with your desired display labels
+  ) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+
+ggsave(sigmaf_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_sigmaf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
+
+sigmaf_plot <- ggplot(sim_fit_sigmaf_mean_df_varied,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_sigmaf), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.2)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(sigmaf_plot, 
+    filename = paste(output_location,"Fig4_byBudget_sigmaf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+
+# prop_f
+real_val_prop_f <- 0.3
+  
+propf_plot_byFreq <- ggplot(sim_fit_propf_mean_df_varied,aes(x=params,y=mean, colour = budget, group = params)) + 
+    geom_hline(aes(yintercept = real_val_prop_f), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=budget,width=0.4), linewidth = 1) +
+  geom_point(size = 4) + scale_color_viridis_d(limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),option = "turbo",direction = -1) + coord_cartesian(ylim = c(0,1)) +
+  scale_x_discrete(
+    limits = c("0.1", "0.25", "0.5", "1","2.5", "4", "5", "6", "7"),  # replace with your actual factor levels in desired order
+    labels = c("0.1" = "0.1", 
+               "0.25" = "0.25", 
+               "0.5" = "0.5",
+               "1" = "1",
+               "2.5" = "2.5",
+               "4" = "increasing",
+               "5" = "decreasing",
+               "6" = "random_1",
+               "7" = "random_2")         # replace with your desired display labels
+  ) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+
+ggsave(propf_plot_byFreq, 
+    filename = paste(output_location,"Fig4_byFreq_propf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 20, # The width of the plot in inches
+    height = 4)
+
+
+propf_plot <- ggplot(sim_fit_propf_mean_df_varied,aes(x=population,y=mean, colour = population, group = interaction(population, params))) + 
+  geom_hline(aes(yintercept = real_val_prop_f), colour = "red", linetype = "dashed", linewidth = 1.5) +
+  geom_errorbar(aes(ymin=lower,ymax=upper,color=population,width=0.4), linewidth = 1) +
+  geom_point(size = 3) + scale_color_viridis_d(option = "turbo",direction = -1) +
+  facet_wrap(~params, ncol = 8) + coord_cartesian(ylim = c(0,0.5)) +
+  theme(panel.background = element_rect(fill = "white",),
+        panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
+  labs(y= "Parameter estimate", x = "Population")
+
+ggsave(propf_plot, 
+    filename = paste(output_location,"Fig4_byBudget_propf_v1.pdf",sep = ""),   # The directory and file name you want to save the file in
+    device = "pdf",
+    width = 12, # The width of the plot in inches
+    height = 4)
+```
+
+
+

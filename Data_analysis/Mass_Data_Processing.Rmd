@@ -33,6 +33,18 @@ Isolate_from_Mass_dict[Mass_Isolates] <- 1
 ```
 
 ```{r}
+# sequencing over time Mass
+Mass_time_points <- c(2001, 2004, 2007)
+seq_no_per_year <- rep(0, length(2001:2007))
+names(seq_no_per_year) <- 2001:2007
+for (i in 1:length(Mass_time_points)) {
+   seq_no_per_year[as.character(Mass_time_points[i])] <- length(which(Mass_Samples_accCodes$`Year of Isolation`==Mass_time_points[i]))
+}
+barplot(seq_no_per_year, xlab = "Years", ylim = c(0, 250), ylab = "Sequence Counts")
+```
+
+
+```{r}
 ### Reading in the Gene Cluster information
 #gene_cluster <- read.table(paste(path_to_data, "v2_Massachusetts_data_NickCroucher/gCOG_sequences/CLS00005.out", sep = ""), quote="\"", comment.char="")[ c(TRUE,FALSE), ]
 

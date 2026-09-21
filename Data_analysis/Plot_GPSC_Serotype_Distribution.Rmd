@@ -1,0 +1,301 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+# read in pre-post Nepal
+Nepal_cluster_sero_freqs_pre_post_df_plot <- readRDS("Nepal_cluster_sero_freqs_pre_post_df.rds")
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_subsample <- Nepal_cluster_sero_freqs_pre_post_df_plot[c(1:825, 10890 + 1:825),]
+
+Nepal_serotype_counts_plot <- readRDS("Nepal_serotype_counts.rds")
+Nepal_GPSC_counts_plot <- readRDS("Nepal_GPSC_counts.rds")
+# 1 percent as cutoff? That would be 18.92
+Nepal_serotype_counts_plot_selected <- Nepal_serotype_counts_plot[which(Nepal_serotype_counts_plot > 18)]
+Nepal_GPSC_counts_plot_selected <- Nepal_GPSC_counts_plot[which(Nepal_GPSC_counts_plot > 18)]
+# 28 serotypes, 27 GPSCs
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_selected <- readRDS("Nepal_cluster_sero_freqs_pre_post_df_selected.rds")
+
+#Nepal_pre_GPSC <- Nepal_cluster_freqs[[5]]
+Nepal_pre_GPSC <- Nepal_cluster_freqs[[1]]
+names(Nepal_pre_GPSC) <- unique(Nepal_PP$GPSC)
+Nepal_selected_pre_GPSC_counts <- Nepal_pre_GPSC[names(Nepal_GPSC_counts_plot_selected)]
+
+#Nepal_post_GPSC <- Nepal_cluster_freqs[[15]]
+Nepal_post_GPSC <- Nepal_cluster_freqs[[11]]
+names(Nepal_post_GPSC) <- unique(Nepal_PP$GPSC)
+Nepal_selected_post_GPSC_counts <- Nepal_post_GPSC[names(Nepal_GPSC_counts_plot_selected)]
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum <- Nepal_cluster_sero_freqs_pre_post_df_plot_selected
+Nepal_GPSC_counts_plot_selected_df <- data.frame(matrix(NA, nrow=length(Nepal_GPSC_counts_plot_selected)*2, ncol = 4))
+GPSC_pre_post_sum_counts <- data.frame(matrix(NA, nrow = 2 * length(Nepal_GPSC_counts_plot_selected), ncol = 4))
+colnames(GPSC_pre_post_sum_counts) <- c("Serotype", "GPSC", "relCount", "Time")
+GPSC_pre_post_sum_counts[,1] <- rep("Sum", 2 * length(Nepal_GPSC_counts_plot_selected))
+GPSC_pre_post_sum_counts[,2] <- rep(names(Nepal_GPSC_counts_plot_selected),2) 
+GPSC_pre_post_sum_counts[,3] <- c(Nepal_selected_pre_GPSC_counts/length(which(Nepal_meta_dataPP$Year == "2009")), Nepal_selected_post_GPSC_counts/length(which(Nepal_meta_dataPP$Year == "2019")))
+GPSC_pre_post_sum_counts[,4] <- factor(c(rep("preVac", length(Nepal_GPSC_counts_plot_selected)), rep("postVac", length(Nepal_GPSC_counts_plot_selected))), levels = c("preVac", "postVac"))
+
+Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum <- rbind(Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum, GPSC_pre_post_sum_counts)
+
+```
+
+
+```{r}
+library(ggplot2)
+library(hrbrthemes)
+library(viridis)
+ggplot(Nepal_cluster_sero_freqs_pre_post_df_plot_selected, aes(fill=Time, y=relCount, x=Serotype)) + 
+    geom_bar(position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = T, option = "E") +
+    ggtitle("Pre-post vaccine GPSCs and serotypes") +
+    facet_wrap(~GPSC) +
+    theme(legend.position="right", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    xlab("") + theme_ipsum()
+
+
+ggplot(Nepal_cluster_sero_freqs_pre_post_df_plot_selected_AndSum, aes(fill=Time, y=relCount, x=Serotype)) + 
+    geom_bar(position="dodge", stat="identity") +
+    scale_fill_viridis(discrete = T, option = "E") +
+    ggtitle("Pre-post vaccine GPSCs and serotypes") +
+    facet_wrap(~GPSC) +
+    theme_ipsum() +
+    theme(legend.position="right", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    xlab("")  #+ theme_ipsum()
+
+# also colour / mark VTs
+```
+
+```{r}
+plot(Nepal_pre_GPSC/sum(Nepal_pre_GPSC))
+plot(Nepal_post_GPSC/sum(Nepal_post_GPSC))
+
+plot(Nepal_pre_GPSC/sum(Nepal_pre_GPSC) - (Nepal_post_GPSC/sum(Nepal_post_GPSC)))
+
+# try mixed three-year pre vacc sample instead
+Nepal_3pre_GPSC <- Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]]
+names(Nepal_3pre_GPSC) <- unique(Nepal_PP$GPSC)
+
+plot(Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC/sum(Nepal_post_GPSC)))
+
+barplot((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC/sum(Nepal_post_GPSC)))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)])
+```
+# what if I sub-sample the post vt time point?
+```{r}
+Nepal_post_GPSC_subsample <- rmultinom(1, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))[,1]
+
+plot.new()
+barplot(((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC_subsample/sum(Nepal_post_GPSC_subsample)))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)]), col = "#00000030")
+
+Nepal_post_GPSC_subsample_reps <- rmultinom(100, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))
+plot((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC_subsample_reps[,1]/sum(Nepal_post_GPSC_subsample_reps[,1])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], xaxt = "n", pch = 19, col = "#00000030", ylim = c(-0.06, 0.06))
+axis(1, at=1:length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)), labels=names(Nepal_post_GPSC)[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], cex.axis=0.8)
+abline(h = 0)
+
+for (i in 1:100) {
+  Nepal_post_GPSC_subsample <- rmultinom(1, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))[,1]
+points((Nepal_3pre_GPSC/sum(Nepal_3pre_GPSC) - (Nepal_post_GPSC_subsample_reps[,i]/sum(Nepal_post_GPSC_subsample_reps[,i])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], pch = 19, col = "#00000030")
+}
+
+
+# just look at freq variation in last tp
+Nepal_post_GPSC_subsample_reps <- rmultinom(100, size = sum(Nepal_3pre_GPSC), prob = Nepal_post_GPSC/sum(Nepal_post_GPSC))
+plot(((Nepal_post_GPSC_subsample_reps[,1]/sum(Nepal_post_GPSC_subsample_reps[,1])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], pch = 19, col = "#00000030",xaxt = "n", ylim = c(0, 0.15))
+axis(1, at=1:length(which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)), labels=names(Nepal_post_GPSC)[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], cex.axis=0.8)
+
+for (i in 2:100) {
+points(((Nepal_post_GPSC_subsample_reps[,i]/sum(Nepal_post_GPSC_subsample_reps[,i])))[which(Nepal_cluster_freqs[[1]] + Nepal_cluster_freqs[[4]] + Nepal_cluster_freqs[[6]] > 1)], pch = 19, col = "#00000030")
+}
+```
+
+
+
+
+# try to make similar plot for serotypes
+```{r}
+Nepal_meta_dataPP_forplot <- readRDS("Nepal_meta_dataPP.rds")
+Nepal_serotype_counts <- readRDS("Nepal_serotype_counts.rds")
+Nepal_serotype_counts_selected <- Nepal_serotype_counts[which(Nepal_serotype_counts > 18)]
+#Nepal_serotype_counts_selected <- Nepal_serotype_counts
+
+
+Nepal_meta_dataPP_forplot_serocounts <- data.frame(matrix(NA, nrow = 2 * length(Nepal_serotype_counts_selected), ncol = 4))
+colnames(Nepal_meta_dataPP_forplot_serocounts) <- c("Serotype", "relCount", "Time", "VT")
+Nepal_meta_dataPP_forplot_serocounts[,1] <- rep(sort(rep(names(Nepal_serotype_counts_selected))),2)
+Nepal_meta_dataPP_forplot_serocounts[,3] <- factor(c(rep("pre",length(Nepal_serotype_counts_selected)), rep("post", length(Nepal_serotype_counts_selected))), levels = c("pre","post"))
+Nepal_meta_dataPP_forplot_serocounts[,4] <- PCV10_VTsPP[Nepal_meta_dataPP_forplot_serocounts[,1]]
+
+
+iter1 <- 1
+for (i in names(Nepal_serotype_counts_selected)) {
+  Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[1])) + length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[4])) + length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[6])))/(length(which(Nepal_meta_dataPP_forplot$Year == "2009")) + length(which(Nepal_meta_dataPP_forplot$Year == "2012")) + length(which(Nepal_meta_dataPP_forplot$Year == "2014")))
+  #print(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[1]))
+    #print(iter1+iter2-1)
+    iter1 <- iter1 + 1
+}
+for (i in names(Nepal_serotype_counts_selected)) {
+  Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP_forplot[which(Nepal_meta_dataPP_forplot$Serotype==i),]$Year==Nepal_time_points_selected[11])))/(length(which(Nepal_meta_dataPP_forplot$Year == "2019")))
+  #Nepal_meta_dataPP_forplot_serocounts[(iter1),2] <- (length(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[10])))/(length(which(Nepal_meta_dataPP$Year == "2018")))
+  #print(which(Nepal_meta_dataPP[which(Nepal_meta_dataPP$Serotype==i),]$Year==Nepal_time_points_selected[1]))
+    #print(iter1+iter2-1)
+    iter1 <- iter1 + 1
+}
+
+change_Nepal_meta_dataPP_forplot_serocount <-  Nepal_meta_dataPP_forplot_serocounts$relCount[which(Nepal_meta_dataPP_forplot_serocounts$Time == "post")] - Nepal_meta_dataPP_forplot_serocounts$relCount[which(Nepal_meta_dataPP_forplot_serocounts$Time == "pre")]
+names(change_Nepal_meta_dataPP_forplot_serocount) <- Nepal_meta_dataPP_forplot_serocounts$Serotype[1:(length(Nepal_meta_dataPP_forplot_serocounts$Serotype)/2)]
+
+level_order <- order(change_Nepal_meta_dataPP_forplot_serocount, decreasing = TRUE)
+
+ggplot(Nepal_meta_dataPP_forplot_serocounts, aes(x=Time, y=relCount, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(~(factor(Serotype,level = Serotype[level_order]))) + theme_bw() + scale_fill_manual(values=c("#009E73", "#E69F00"))
+```
+
+# do same for GPSCs
+
+```{r}
+Nepal_GPSC_counts <- readRDS("Nepal_GPSC_counts.rds")
+Nepal_GPSC_counts_selected <- Nepal_GPSC_counts[which(Nepal_GPSC_counts > 18)]
+
+### this one is not correct I think
+# filtering with double-which chooses incorrect rows
+
+Nepal_meta_dataPP_forplot_GPSCcounts <- data.frame(matrix(NA, nrow = 2 * length(Nepal_GPSC_counts_selected), ncol = 4))
+colnames(Nepal_meta_dataPP_forplot_GPSCcounts) <- c("GPSC", "relCount", "Time", "VT")
+Nepal_meta_dataPP_forplot_GPSCcounts[,1] <- rep(sort(rep(names(Nepal_GPSC_counts_selected))),2)
+Nepal_meta_dataPP_forplot_GPSCcounts[,3] <- factor(c(rep("pre",length(Nepal_GPSC_counts_selected)), rep("post", length(Nepal_GPSC_counts_selected))), levels = c("pre","post"))
+Nepal_meta_dataPP_forplot_GPSCcounts[,4] <- factor(c(rep("VT",length(Nepal_GPSC_counts_selected)), rep("VT", length(Nepal_GPSC_counts_selected))), levels = c("NVT","Mixed","VT"))
+#Nepal_meta_dataPP_forplot_GPSCcounts[,4] <- 
+
+Nepal_PP_with_time1 <- Nepal_PP
+Nepal_PP_with_time1$Time <- Nepal_SeqYear_dict[Nepal_PP$sample]
+
+iter1 <- 1
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[1])) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[4])) + length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[6])))/(length(which(Nepal_meta_dataPP$Year == "2009")) + length(which(Nepal_meta_dataPP$Year == "2012")) + length(which(Nepal_meta_dataPP$Year == "2014")))
+  VT_info <- unique(c(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[1]),]$VT, Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[4]),]$VT, Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[6]),]$VT))
+  if(length(VT_info)>1){
+    Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),4] <- "Mixed"
+  }
+  else{
+    Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),4] <- VT_info
+  }
+    iter1 <- iter1 + 1
+}
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),2] <- (length(which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[11])))/(length(which(Nepal_meta_dataPP$Year == "2019")))
+  VT_info <- unique(Nepal_PP_with_time1[which(Nepal_PP_with_time1[which(Nepal_PP_with_time1$GPSC == i),]$Time == Nepal_time_points_selected[11]),]$VT)
+  if(length(VT_info)>1){
+    Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),4] <- "Mixed"
+  }
+  else{
+    Nepal_meta_dataPP_forplot_GPSCcounts[(iter1),4] <- VT_info
+  }
+    iter1 <- iter1 + 1
+}
+
+ggplot(Nepal_meta_dataPP_forplot_GPSCcounts, aes(x=Time, y=relCount, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(~(GPSC)) + theme_bw()
+```
+
+# split this for VT and NVT
+```{r}
+
+Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT <- data.frame(matrix(NA, nrow = 4 * length(Nepal_GPSC_counts_selected), ncol = 4))
+colnames(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT) <- c("GPSC", "relCount", "Time", "VT")
+Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[,1] <- rep(sort(rep(names(Nepal_GPSC_counts_selected))),4)
+Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[,3] <- factor(c(rep("pre",2 * length(Nepal_GPSC_counts_selected)),rep("post", 2*length(Nepal_GPSC_counts_selected))), levels = c("pre","post"))
+Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[,4] <- c(rep("VT",length(Nepal_GPSC_counts_selected)), rep("NVT",length(Nepal_GPSC_counts_selected)), rep("VT",length(Nepal_GPSC_counts_selected)), rep("NVT",length(Nepal_GPSC_counts_selected)))
+
+#Nepal_PP_with_time1 <- Nepal_PP
+#Nepal_PP_with_time1$Time <- Nepal_SeqYear_dict[Nepal_PP$sample]
+
+iter1 <- 1
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[1] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[4] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[6]) & (Nepal_PP_with_time1$VT == "VT"),]))/(length(which(Nepal_PP_with_time1$Time == "2009")) + length(which(Nepal_PP_with_time1$Time == "2012")) + length(which(Nepal_PP_with_time1$Time == "2014")))
+    iter1 <- iter1 + 1
+}
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[1] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[4] | Nepal_PP_with_time1$Time == Nepal_time_points_selected[6]) & (Nepal_PP_with_time1$VT == "NVT"),]))/(length(which(Nepal_PP_with_time1$Time == "2009")) + length(which(Nepal_PP_with_time1$Time == "2012")) + length(which(Nepal_PP_with_time1$Time == "2014")))
+    iter1 <- iter1 + 1
+}
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[11]) & (Nepal_PP_with_time1$VT == "VT"),]))/(length(which(Nepal_PP_with_time1$Time == "2019")))
+    iter1 <- iter1 + 1
+}
+for (i in sort(names(Nepal_GPSC_counts_selected))) {
+  Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT[(iter1),2] <- (nrow(Nepal_PP_with_time1[(Nepal_PP_with_time1$GPSC == i) & (Nepal_PP_with_time1$Time == Nepal_time_points_selected[11]) & (Nepal_PP_with_time1$VT == "NVT"),]))/(length(which(Nepal_PP_with_time1$Time == "2019")))
+    iter1 <- iter1 + 1
+}
+
+
+ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=Time, y=relCount, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(~(GPSC)) + theme_bw()
+
+# sorted version of plot
+change_Nepal_meta_dataPP_forplot_GPSCcounts <-  Nepal_meta_dataPP_forplot_GPSCcounts$relCount[which(Nepal_meta_dataPP_forplot_GPSCcounts$Time == "post")] - Nepal_meta_dataPP_forplot_GPSCcounts$relCount[which(Nepal_meta_dataPP_forplot_GPSCcounts$Time == "pre")]
+names(change_Nepal_meta_dataPP_forplot_GPSCcounts) <- Nepal_meta_dataPP_forplot_GPSCcounts$Serotype[1:(length(Nepal_meta_dataPP_forplot_GPSCcounts$Serotype)/2)]
+
+level_order <- order(change_Nepal_meta_dataPP_forplot_GPSCcounts, decreasing = TRUE)
+
+ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=Time, y=relCount, fill = VT)) + 
+  geom_bar(stat = "identity") + facet_grid(~(factor(GPSC,level = GPSC[level_order]))) + theme_bw() + scale_fill_manual(values=c("#009E73", "#E69F00"))
+
+
+
+# sum(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT$relCount[55:108])
+
+ggplot(Nepal_meta_dataPP_forplot_GPSCcounts_VTNVT, aes(x=interaction(Time,GPSC), y=relCount, fill = VT, group = Time)) + 
+  geom_bar(stat = "identity") #+ facet_grid(~(GPSC)) + theme_bw()
+```
+
+# investigate the serotypes of the GPSCs that are difficult to capture
+# mixed GPSC 10;209, 101, 230, 84, 225
+# NVT GPSC 11, 25, 30, 206
+```{r}
+# pre and post 10;209
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "10;209") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# VT "19F"
+# NVT "10A" "7B"  "35B"
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "10;209") & (Nepal_PP_with_time1$Time == 2019)])
+# VT  "19F" "23F"   
+# NVT "10A" "17F"   "19A" "35B" "7B"  "6C"  "24B/24C/24F" "18C"  "22F" 
+
+# pre and post 101
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "101") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "23F" "19F" "23B"
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "101") & (Nepal_PP_with_time1$Time == 2019)])
+# "23F" "23B" "17F" "19B"
+
+# pre and post 230
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "230") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "34"  "33B" "6C" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "230") & (Nepal_PP_with_time1$Time == 2019)])
+# "13"  "33B" "34"  "6C"  "35B" "6A"
+
+# pre and post 25
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "25") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "15B/15C" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "25") & (Nepal_PP_with_time1$Time == 2019)])
+# "15B/15C"
+
+# pre and post 11
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "11") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "6A"  "17F" "21"  "9N" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "11") & (Nepal_PP_with_time1$Time == 2019)])
+# "21"  "6A"  "17F"
+
+# pre and post 13
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "13") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "6D" 
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "13") & (Nepal_PP_with_time1$Time == 2019)])
+# "6A"
+
+# pre and post 30
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "30") & (Nepal_PP_with_time1$Time == 2009 | Nepal_PP_with_time1$Time == 2012 | Nepal_PP_with_time1$Time == 2014)])
+# "10A" "10F"
+unique(Nepal_PP_with_time1$Serotype[(Nepal_PP_with_time1$GPSC == "30") & (Nepal_PP_with_time1$Time == 2019)])
+# "10A" "10F"
+```
+

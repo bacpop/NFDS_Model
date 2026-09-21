@@ -1,0 +1,314 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+Nepal_clusters <- readRDS("Nepal_PP.rds")
+
+Nepal_clusters$Serotype[which(Nepal_clusters$Serotype == "15B/15C")] <- "15B/C"
+
+UK_clusters <- readRDS("UK_PP.rds")
+names(UK_clusters)[2] <- "GPSC"
+names(UK_clusters)[6] <- "VT"
+UK_clusters$Serotype[which(UK_clusters$Serotype == "15B" | UK_clusters$Serotype == "15C")] <- "15B/C"
+
+US_clusters <- readRDS("PopPUNK_clusters.rds")
+names(US_clusters)[2] <- "GPSC"
+```
+
+```{r}
+library(ggplot2)
+
+plot_counts <- function(data, category_col, colour_col,
+                        position = "stack") {
+
+  ggplot(
+    data,
+    aes(
+      x = factor(.data[[category_col]]),
+      fill = .data[[colour_col]]
+    )
+  ) +
+    geom_bar(position = position) +
+    labs(
+      title = paste("Counts of", category_col, "by", colour_col),
+      x = category_col,
+      y = "Count",
+      fill = colour_col
+    ) +
+    theme_minimal()
+}
+```
+
+```{r}
+p1 <- plot_counts(Nepal_clusters, "GPSC", "VT")
+p1
+p2 <- plot_counts(Nepal_clusters, "Serotype", "VT")
+p2
+```
+
+```{r}
+library(ggplot2)
+
+plot_freq_compare <- function(dfs, col,
+                              df_names = NULL,
+                              colors = NULL,
+                              position = "dodge",
+                              min_freq = 0.01,
+                              sort_by_df = 3) {
+
+  if (is.null(df_names)) {
+    df_names <- paste0("df", seq_along(dfs))
+  }
+
+  if (length(df_names) != length(dfs)) {
+    stop("df_names must have the same length as dfs")
+  }
+
+  # Default colors if none provided
+  if (is.null(colors)) {
+    colors <- scales::hue_pal()(length(dfs))
+  }
+
+  if (length(colors) != length(dfs)) {
+    stop("colors must have the same length as dfs")
+  }
+
+  # All values across datasets
+  all_values <- sort(unique(unlist(lapply(dfs, function(d) d[[col]]))))
+
+  # Build summary dataframe
+  summary_df <- do.call(rbind, lapply(seq_along(dfs), function(i) {
+
+    d <- dfs[[i]]
+    n <- nrow(d)
+
+    tab <- table(factor(d[[col]], levels = all_values))
+
+    data.frame(
+      value = names(tab),
+      frequency = as.numeric(tab) / n,
+      dataframe = df_names[i],
+      stringsAsFactors = FALSE
+    )
+  }))
+
+  # Filter low-frequency categories
+  max_freq_by_value <- aggregate(frequency ~ value,
+                                 data = summary_df,
+                                 FUN = max)
+
+  keep_values <- max_freq_by_value$value[
+    max_freq_by_value$frequency > min_freq
+  ]
+
+  summary_df <- subset(summary_df, value %in% keep_values)
+  summary_df$dataframe <- factor(summary_df$dataframe, levels = df_names)
+  colors <- setNames(colors, df_names)
+
+  # Sort x-axis by selected dataframe
+  ref_df_name <- df_names[sort_by_df]
+
+  ordering <- subset(summary_df, dataframe == ref_df_name)
+  ordering <- ordering[order(-ordering$frequency), ]
+
+  ordered_values <- ordering$value
+
+  summary_df$value <- factor(summary_df$value,
+                             levels = ordered_values)
+
+  ggplot(summary_df,
+         aes(x = value,
+             y = frequency,
+             fill = dataframe)) +
+    geom_col(position = position) +
+    scale_fill_manual(values = colors) +
+    labs(
+      x = col,
+      y = "Frequency",
+      fill = "Dataframe"
+    ) +
+    theme_minimal() +
+    theme(
+  axis.text = element_text(size = 14),      # tick labels
+  axis.title = element_text(size = 16),     # axis names
+  legend.text = element_text(size = 14),    # legend labels
+  legend.title = element_text(size = 16)    # legend title
+)
+}
+```
+
+```{r}
+plot_freq_compare(list(Nepal_clusters, UK_clusters, US_clusters), "GPSC", df_names = c("Kathmandu", "Southampton", "Massachusetts"), colors = c("black", "#56B4E9", "#D55E00"))
+plot_freq_compare(list(Nepal_clusters, UK_clusters, US_clusters), "Serotype", df_names = c("Kathmandu", "Southampton", "Massachusetts"), colors = c("black", "#56B4E9", "#D55E00"))
+
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+plot_three_ordered_by_df3 <- function(dfs, col, df_names = NULL, colors = NULL, min_freq = 0.01) {
+  if (length(dfs) != 3) stop("Please provide exactly 3 dataframes.")
+  
+  if (is.null(df_names)) {
+    df_names <- paste0("df", seq_along(dfs))
+  }
+  if (length(df_names) != 3) stop("df_names must have length 3.")
+  
+  if (is.null(colors)) {
+    colors <- c("tomato", "steelblue", "darkgreen")
+  }
+  if (length(colors) != 3) stop("colors must have length 3.")
+  names(colors) <- df_names
+  
+  # All values seen in any dataframe
+  all_values <- sort(unique(unlist(lapply(dfs, function(d) d[[col]]))))
+  
+  # Frequencies for each dataframe
+  freq_df <- bind_rows(lapply(seq_along(dfs), function(i) {
+    d <- dfs[[i]]
+    tab <- table(factor(d[[col]], levels = all_values))
+    data.frame(
+      value = names(tab),
+      frequency = as.numeric(tab) / nrow(d),
+      dataframe = df_names[i],
+      stringsAsFactors = FALSE
+    )
+  }))
+  
+  # Keep values that appear above threshold in at least one dataframe
+  keep_values <- freq_df %>%
+    group_by(value) %>%
+    summarise(max_freq = max(frequency), .groups = "drop") %>%
+    filter(max_freq > min_freq) %>%
+    pull(value)
+  
+  freq_df <- freq_df %>%
+    filter(value %in% keep_values)
+  
+  # Order by frequencies in the 3rd dataframe
+  order_values <- freq_df %>%
+    filter(dataframe == df_names[3]) %>%
+    arrange(desc(frequency), value) %>%
+    pull(value)
+  
+  # Add any values missing from df3 at the end
+  order_values <- c(order_values, setdiff(unique(freq_df$value), order_values))
+  
+  make_plot <- function(df_name) {
+    plot_data <- freq_df %>%
+      filter(dataframe == df_name) %>%
+      mutate(value = factor(value, levels = order_values))
+    
+    ggplot(plot_data, aes(x = value, y = frequency, fill = dataframe)) +
+      geom_col(width = 0.8) +
+      scale_fill_manual(values = colors, guide = "none") +
+      labs(
+        title = df_name,
+        x = col,
+        y = "Frequency"
+      ) +
+      theme_minimal(base_size = 18) +
+      theme(
+        plot.title = element_text(hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust = 1)
+      )
+  }
+  
+  list(
+    plot1 = make_plot(df_names[1]),
+    plot2 = make_plot(df_names[2]),
+    plot3 = make_plot(df_names[3])
+  )
+}
+```
+
+```{r}
+p <- plot_three_ordered_by_df3(list(Nepal_clusters, UK_clusters, US_clusters), "GPSC", df_names = c("Kathmandu", "Southampton", "Massachusetts"), colors = c("black", "#56B4E9", "#D55E00"))
+p
+
+p2 <- plot_three_ordered_by_df3(list(Nepal_clusters, UK_clusters, US_clusters), "Serotype", df_names = c("Kathmandu", "Southampton", "Massachusetts"), colors = c("black", "#56B4E9", "#D55E00"))
+p2
+```
+
+
+
+```{r}
+joined_ggCaller_list <- readRDS("joined_ggCaller_list.rds")
+#names(joined_ggCaller_list)  "UK"    "US"    "Nepal"
+UK_gene_freqs <- rowSums(sapply(joined_ggCaller_list[["UK"]][-1,-1], as.numeric))/671
+US_gene_freqs <- rowSums(sapply(joined_ggCaller_list[["US"]][-1,-1], as.numeric))/616
+Nepal_gene_freqs <- rowSums(sapply(joined_ggCaller_list[["Nepal"]][-1,-1], as.numeric))/1892
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+plot_binned_freqs <- function(v1, v2, v3,
+                              names = c("V1", "V2", "V3"),
+                              colors = c("tomato", "steelblue", "darkgreen"),
+                              bin_width1 = 0.1,
+                              xlim = c(0, 1)) {
+
+  if (length(names) != 3) stop("names must have length 3")
+  if (length(colors) != 3) stop("colors must have length 3")
+  names(colors) <- names
+
+  breaks <- seq(xlim[1], xlim[2], by = bin_width1)
+
+  bin_counts <- function(v, label, bin_width = bin_width1, xmax = 1) {
+
+  v <- v[v > 0]
+
+  breaks <- seq(0, xmax, by = bin_width)
+
+  h <- hist(v, breaks = breaks, plot = FALSE)
+
+  data.frame(
+    bin_center = h$mids,
+    count = h$counts,
+    series = label
+  )
+  }
+  
+  d1 <- bin_counts(v1, names[1])
+  d2 <- bin_counts(v2, names[2])
+  d3 <- bin_counts(v3, names[3])
+
+  make_plot <- function(dat, label) {
+    ggplot(dat, aes(x = bin_center, y = count, fill = series)) +
+  geom_col(width = bin_width1 * 0.9) +
+  scale_fill_manual(values = colors, guide = "none") +
+  scale_x_continuous(
+    limits = c(0, 1),
+    breaks = c(0, 0.25, 0.5, 0.75, 1)
+  ) +
+  labs(
+    title = label,
+    x = "Frequency",
+    y = "Count"
+  ) +
+  theme_minimal(base_size = 18)
+  }
+
+  list(
+    plot1 = make_plot(d1, names[1]),
+    plot2 = make_plot(d2, names[2]),
+    plot3 = make_plot(d3, names[3])
+  )
+}
+```
+
+```{r}
+plots <- plot_binned_freqs(
+  Nepal_gene_freqs, UK_gene_freqs, US_gene_freqs, bin_width = 0.02,
+  names = c("Kathmandu", "Southampton", "Massachusetts"), colors = c("black", "#56B4E9", "#D55E00")
+)
+plots
+```
+
