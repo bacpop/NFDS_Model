@@ -104,8 +104,7 @@ saveRDS(SeroVT, "SeroVT.rds") # serotype vector
 ```
 
 # Start computing genotype matrix
-
-# First, read in panaroo output
+# First, read in Panaroo output
 ```{r}
 gene_presence_absence_mtx <- read.csv("gene_presence_absence.csv")
 

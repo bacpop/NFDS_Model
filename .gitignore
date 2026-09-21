@@ -18,3 +18,4 @@ Data_analysis/*.tsv
 */.Rhistory
 */.Rproj.user
 ModelExample/MCMC_output/.*
+.positai

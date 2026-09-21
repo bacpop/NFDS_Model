@@ -98,16 +98,17 @@ create_conf_int_plot_change_sorted_GPSC <- function(post_VT_data, NFDS_model_out
   # compute order by frequency changes
   # VTs and NVTs separately
   data_and_model_with_errors_and_null_ModelSample_NVT <- data_and_model_with_errors_and_null_ModelSample[which(data_and_model_with_errors_and_null_ModelSample$VT=="NVT"),]
-  data_and_model_with_errors_and_null_ModelSample_NVT$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_NVT)/2),2)
+  
   data_and_model_with_errors_and_null_ModelSample_VT <- data_and_model_with_errors_and_null_ModelSample[which(data_and_model_with_errors_and_null_ModelSample$VT=="VT"),]
   data_and_model_with_errors_and_null_ModelSample_mixed <- data_and_model_with_errors_and_null_ModelSample[which(data_and_model_with_errors_and_null_ModelSample$VT=="mixed"),]
-  data_and_model_with_errors_and_null_ModelSample_mixed$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_mixed)/2),2)
+  
   
   level_order_NVT <- order(data_and_model_with_errors_and_null_ModelSample_NVT$values[which(data_and_model_with_errors_and_null_ModelSample_NVT$Group == "Data")], decreasing = TRUE)
   level_order_mixed <- order(data_and_model_with_errors_and_null_ModelSample_mixed$values[which(data_and_model_with_errors_and_null_ModelSample_mixed$Group == "Data")], decreasing = TRUE)
  
   # make NVT plot
-
+  if(nrow(data_and_model_with_errors_and_null_ModelSample_NVT)>0){
+    data_and_model_with_errors_and_null_ModelSample_NVT$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_NVT)/2),2)
   plot_NVT <- ggplot(data_and_model_with_errors_and_null_ModelSample_NVT, aes(y=values, x=factor(xvals,level = level_order_NVT), group = Group, color = Group)) + 
     geom_hline(yintercept = 0, linetype="dashed") +
     geom_point(position = position_dodge(.5), stat="identity",size = 2.5) +
@@ -125,7 +126,7 @@ create_conf_int_plot_change_sorted_GPSC <- function(post_VT_data, NFDS_model_out
       device = "pdf",
       width = length(level_order_NVT), # The width of the plot in inches
       height = 6)
-  
+  }
   # make VT plot
   if(nrow(data_and_model_with_errors_and_null_ModelSample_VT)>0){
     data_and_model_with_errors_and_null_ModelSample_VT$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_VT)/2),2)
@@ -151,7 +152,8 @@ create_conf_int_plot_change_sorted_GPSC <- function(post_VT_data, NFDS_model_out
   }
   
   # make mixed plot
-
+  if(nrow(data_and_model_with_errors_and_null_ModelSample_mixed)>0){
+  data_and_model_with_errors_and_null_ModelSample_mixed$xvals <- rep(1:(nrow(data_and_model_with_errors_and_null_ModelSample_mixed)/2),2)
   plot_mixed <- ggplot(data_and_model_with_errors_and_null_ModelSample_mixed, aes(y=values, x=factor(xvals,level = level_order_mixed), group = Group, color = Group)) +  
     geom_hline(yintercept = 0, linetype="dashed") +
     geom_point(position = position_dodge(.5), stat="identity",size = 2.5) +
@@ -169,6 +171,7 @@ create_conf_int_plot_change_sorted_GPSC <- function(post_VT_data, NFDS_model_out
     device = "pdf",
     width = length(level_order_mixed), # The width of the plot in inches
     height = 6)
+  }
 }
 ```
 
@@ -314,13 +317,13 @@ PopPUNK_clusters$VT1 <- VT_dict[PopPUNK_clusters$Taxon]
 PopPUNK_clusters$VT2 <- VT2_dict[PopPUNK_clusters$Taxon]
 
 # preVac and postVac sero frequencies
-sero_data_preVac <- rep(0,length(names(SeroVT_dict)))
-names(sero_data_preVac) <- names(SeroVT_dict)
-sero_data_postVac <-rep(0,length(names(SeroVT_dict)))
-names(sero_data_postVac) <- names(SeroVT_dict)
-for (i in 1:length(names(SeroVT_dict))){
-  sero_data_preVac[i] <- length(which(MetaData$Serotype == names(SeroVT_dict)[i] & MetaData$Year.of.Isolation == 2001)) # change to desired pre-vaccine time point
-  sero_data_postVac[i] <- length(which(MetaData$Serotype == names(SeroVT_dict)[i] & MetaData$Year.of.Isolation == 2007)) # change to desired post-vaccine time point
+sero_data_preVac <- rep(0,length(unique(PopPUNK_clusters$Serotype)))
+names(sero_data_preVac) <- unique(PopPUNK_clusters$Serotype)
+sero_data_postVac <-rep(0,length(unique(PopPUNK_clusters$Serotype)))
+names(sero_data_postVac) <- unique(PopPUNK_clusters$Serotype)
+for (i in 1:length(unique(PopPUNK_clusters$Serotype))){
+  sero_data_preVac[i] <- length(which(MetaData$Serotype == unique(PopPUNK_clusters$Serotype)[i] & MetaData$Year.of.Isolation == 2001)) # change to desired pre-vaccine time point
+  sero_data_postVac[i] <- length(which(MetaData$Serotype == unique(PopPUNK_clusters$Serotype)[i] & MetaData$Year.of.Isolation == 2007)) # change to desired post-vaccine time point
 }
 ```
 

@@ -1,5 +1,5 @@
 
-simulated_data_over_time <- readRDS("simulated_data_over_time_filtered_100percent.rds")
+simulated_data_over_time <- readRDS("simulated_data_over_time_filtered.rds")
 
 # create sampled datasets
 sample_dataset_varied <- function(data_all, sample_size_vec){

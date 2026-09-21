@@ -561,4 +561,3 @@ ggplot(mse_SimFromSimFits_paramDistMean95_df_cumu_mean,aes(x=Year,y=MSEmean, col
         panel.grid = element_line(color = "grey"),text = element_text(size = 20),panel.spacing = unit(2, "lines")) +
   labs(y= "Cumulative mean squared error", x = "Years")
 ```
-

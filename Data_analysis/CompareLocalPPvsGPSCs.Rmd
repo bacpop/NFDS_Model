@@ -185,9 +185,17 @@ compare_clusterings <- function(df1, df2,
   cat("\n")
  
   # ── Contingency table ───────────────────────────────────────
+  # Sort factor levels numerically where possible, for readable row/col order
+  sort_num_or_chr <- function(x) {
+    u    <- unique(as.character(x))
+    nums <- suppressWarnings(as.numeric(u))
+    if (all(!is.na(nums))) factor(x, levels = u[order(nums)])
+    else                   factor(x)
+  }
+ 
   cont <- table(
-    df1_cluster = merged$cluster_1,
-    df2_cluster = merged$cluster_2
+    df1_cluster = sort_num_or_chr(merged$cluster_1),
+    df2_cluster = sort_num_or_chr(merged$cluster_2)
   )
  
   cat("Overlap / contingency table (counts):\n")
@@ -199,26 +207,148 @@ compare_clusterings <- function(df1, df2,
   # ── Sankey / alluvial plot ──────────────────────────────────
   p <- NULL
   if (plot) {
-    # Build frequency table for alluvial
+ 
+    # Helper: sort cluster labels numerically if all values are numeric,
+    # otherwise fall back to standard alphabetical order
+    sorted_levels <- function(x) {
+      u <- unique(as.character(x))
+      nums <- suppressWarnings(as.numeric(u))
+      if (all(!is.na(nums))) u[order(nums)] else sort(u)
+    }
+ 
+    ord1 <- sorted_levels(merged$cluster_1)
+    ord2 <- sorted_levels(merged$cluster_2)
+ 
+    # Build frequency table; keep cluster columns as plain character so we
+    # can set factor levels ourselves for correct axis ordering
     alluvial_df <- merged %>%
       count(cluster_1, cluster_2) %>%
       mutate(
-        cluster_1 = factor(paste0(label1, ": ", cluster_1)),
-        cluster_2 = factor(paste0(label2, ": ", cluster_2))
+        cluster_1 = factor(as.character(cluster_1), levels = ord1),
+        cluster_2 = factor(as.character(cluster_2), levels = ord2)
       )
+ 
+    pal <- make_palette(length(ord1))
+    names(pal) <- ord1
+ 
+    # ── Compute stratum midpoints for leader lines ──────────────
+    #
+    # ggalluvial stacks strata top-to-bottom in factor-level order,
+    # so the first level is at the TOP and y accumulates downward.
+    # We reverse the level order for cumsum, then flip back.
+    #
+    # axis1 (df1) strata
+    totals1 <- alluvial_df %>%
+      group_by(cluster_1) %>%
+      summarise(total = sum(n), .groups = "drop") %>%
+      arrange(match(cluster_1, rev(ord1))) %>%   # top level first = last in ord1
+      mutate(
+        ymax = cumsum(total),
+        ymid = ymax - total / 2
+      )
+ 
+    # axis2 (df2) strata
+    totals2 <- alluvial_df %>%
+      group_by(cluster_2) %>%
+      summarise(total = sum(n), .groups = "drop") %>%
+      arrange(match(cluster_2, rev(ord2))) %>%
+      mutate(
+        ymax = cumsum(total),
+        ymid = ymax - total / 2
+      )
+ 
+    # Leader line geometry (in ggalluvial's internal x-scale):
+    #   axis1 is at x = 1, axis2 is at x = 2
+    #   stratum half-width = 0.3 / 2 = 0.15
+    #   elbow x: step out 0.12 beyond the stratum edge
+    #   text x:  a further 0.08 beyond the elbow
+    x1_edge  <- 1 - 0.15          # left  edge of axis1 strata
+    x2_edge  <- 2 + 0.15          # right edge of axis2 strata
+    x1_elbow <- x1_edge - 0.12
+    x2_elbow <- x2_edge + 0.12
+    x1_text  <- x1_elbow - 0.08
+    x2_text  <- x2_elbow + 0.08
+ 
+    leaders1 <- totals1 %>%
+      mutate(
+        x_start = x1_edge,
+        x_elbow = x1_elbow,
+        x_text  = x1_text,
+        label   = as.character(cluster_1)
+      )
+ 
+    leaders2 <- totals2 %>%
+      mutate(
+        x_start = x2_edge,
+        x_elbow = x2_elbow,
+        x_text  = x2_text,
+        label   = as.character(cluster_2)
+      )
+ 
+    # y-positions for the horizontal baseline: evenly spaced across the full
+    # y range so labels never overlap regardless of cluster size
+    y_total <- sum(totals1$total)
+    n1 <- nrow(leaders1)
+    n2 <- nrow(leaders2)
+ 
+    # Even spacing top-to-bottom: arrange by ymid descending so label order
+    # follows strata order visually
+    leaders1 <- leaders1 %>%
+      arrange(desc(ymid)) %>%
+      mutate(y_text = seq(y_total, 0, length.out = n1 + 2)[seq(2, n1 + 1)])
+ 
+    leaders2 <- leaders2 %>%
+      arrange(desc(ymid)) %>%
+      mutate(y_text = seq(y_total, 0, length.out = n2 + 2)[seq(2, n2 + 1)])
+ 
+    # Expand plot limits to make room for leader lines
+    x_expand <- 0.55
  
     p <- ggplot(alluvial_df,
                 aes(axis1 = cluster_1, axis2 = cluster_2, y = n)) +
       geom_alluvium(aes(fill = cluster_1), alpha = 0.75, width = 0.3) +
       geom_stratum(width = 0.3, fill = "grey92", colour = "grey40") +
-      geom_text(stat = "stratum", aes(label = after_stat(stratum)),
-                size = 3.2, fontface = "bold") +
-      scale_x_discrete(limits = c(label1, label2), expand = c(0.1, 0.1)) +
-      scale_fill_manual(values = make_palette(n_distinct(alluvial_df$cluster_1)),
-                        guide = "none") +
+      # Angled segment: stratum midpoint → elbow (at label y)
+      geom_segment(
+        data = leaders1,
+        aes(x = x_start, xend = x_elbow, y = ymid, yend = y_text),
+        colour = "grey50", linewidth = 0.3, inherit.aes = FALSE
+      ) +
+      # Horizontal segment: elbow → text anchor
+      geom_segment(
+        data = leaders1,
+        aes(x = x_elbow, xend = x_text, y = y_text, yend = y_text),
+        colour = "grey50", linewidth = 0.3, inherit.aes = FALSE
+      ) +
+      geom_text(
+        data = leaders1,
+        aes(x = x_text, y = y_text, label = label),
+        hjust = 1, size = 4.2, inherit.aes = FALSE
+      ) +
+      geom_segment(
+        data = leaders2,
+        aes(x = x_start, xend = x_elbow, y = ymid, yend = y_text),
+        colour = "grey50", linewidth = 0.3, inherit.aes = FALSE
+      ) +
+      geom_segment(
+        data = leaders2,
+        aes(x = x_elbow, xend = x_text, y = y_text, yend = y_text),
+        colour = "grey50", linewidth = 0.3, inherit.aes = FALSE
+      ) +
+      geom_text(
+        data = leaders2,
+        aes(x = x_text, y = y_text, label = label),
+        hjust = 0, size = 4.2, inherit.aes = FALSE
+      ) +
+      scale_x_continuous(
+        breaks = c(1, 2),
+        labels = c(label1, label2),
+        limits = c(1 - x_expand, 2 + x_expand)
+      ) +
+      scale_fill_manual(values = pal, guide = "none") +
       labs(
-        title = "Cluster assignment comparison",
-        subtitle = sprintf("ARI = %.4f  |  AMI = %.4f  |  %.1f%% misclassified  |  n = %d items",
+        title    = "Cluster assignment comparison",
+        subtitle = sprintf("ARI = %.4f  |  AMI = %.4f  |  %.1f%% disagreement  |  n = %d items",
                            ari, ami, pct_misclassified, n_shared),
         y = "Number of items",
         x = NULL
@@ -243,7 +373,6 @@ compare_clusterings <- function(df1, df2,
     plot              = p
   ))
 }
- 
 
 
 
@@ -255,6 +384,14 @@ result <- compare_clusterings(
   cluster_col = "Cluster",
   label1      = "Local PopPUNK clusters",
   label2      = "GPSCs"
+)
+
+result <- compare_clusterings(
+  Mass_GPSCs, Mass_PopPUNK_local,
+  name_col    = "Taxon",
+  cluster_col = "Cluster",
+  label2      = "Local PopPUNK clusters",
+  label1      = "GPSCs"
 )
 
 # Access individual outputs:

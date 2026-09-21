@@ -7,6 +7,7 @@ editor_options:
 
 ```{r}
 library(bayestestR)
+library(coda)
 ### Mass
 
 # Null model
@@ -103,21 +104,137 @@ Mass_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_proj
 Mass_2param_mcmc2_probs <- coda::as.mcmc(cbind(Mass_2param_mcmc2$probabilities, Mass_2param_mcmc2$pars))
 Mass_likelihood_2param <- mean(Mass_2param_mcmc2_probs[,"log_likelihood"])
 Mass_param_mean2 <- apply(Mass_2param_mcmc2_probs, 2, mean)
+Mass_percentile95_low_2param <- apply(Mass_2param_mcmc2_probs,2,quantile,.025)
+Mass_percentile95_up_2param <- apply(Mass_2param_mcmc2_probs,2,quantile,.975)
 rm(Mass_2param_mcmc2)
 
 Mass_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/US_newPrior/PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
 Mass_3param_mcmc2_probs <- coda::as.mcmc(cbind(Mass_3param_mcmc2$probabilities, Mass_3param_mcmc2$pars))
 Mass_likelihood_3param <- mean(Mass_3param_mcmc2_probs[,"log_likelihood"])
 Mass_param_mean3 <- apply(Mass_3param_mcmc2_probs, 2, mean)
+Mass_percentile95_low_3param <- apply(Mass_3param_mcmc2_probs,2,quantile,.025)
+Mass_percentile95_up_3param <- apply(Mass_3param_mcmc2_probs,2,quantile,.975)
 rm(Mass_3param_mcmc2)
 
 Mass_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/US_newPrior/PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
 Mass_5param_mcmc2_probs <- coda::as.mcmc(cbind(Mass_5param_mcmc2$probabilities, Mass_5param_mcmc2$pars))
 Mass_likelihood_5param <- mean(Mass_5param_mcmc2_probs[,"log_likelihood"])
 Mass_param_mean5 <- apply(Mass_5param_mcmc2_probs, 2, mean)
+Mass_percentile95_low_5param <- apply(Mass_5param_mcmc2_probs,2,quantile,.025)
+Mass_percentile95_up_5param <- apply(Mass_5param_mcmc2_probs,2,quantile,.975)
 rm(Mass_5param_mcmc2)
 
+
+# mean fit 
+Mass_4param_mcmc2_mean <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2026_03_23/US_mean/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Mass_4param_mcmc2_probs_mean <- coda::as.mcmc(cbind(Mass_4param_mcmc2_mean$probabilities, Mass_4param_mcmc2_mean$pars))
+Mass_likelihood_4param_mean <- mean(Mass_4param_mcmc2_probs_mean[,"log_likelihood"])
+Mass_param_mean4_mean <- apply(Mass_4param_mcmc2_probs_mean, 2, mean)
+Mass_percentile95_low_mean <- apply(Mass_4param_mcmc2_probs_mean,2,quantile,.025)
+Mass_percentile95_up_mean <- apply(Mass_4param_mcmc2_probs_mean,2,quantile,.975)
+rm(Mass_4param_mcmc2_mean)
+
+# large population fit
+Mass_4param_mcmc2_largePop <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2026_03_25/US_LargePop/PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Mass_4param_mcmc2_probs_largePop <- coda::as.mcmc(cbind(Mass_4param_mcmc2_largePop$probabilities, Mass_4param_mcmc2_largePop$pars))
+Mass_likelihood_4param_largePop <- mean(Mass_4param_mcmc2_probs_largePop[,"log_likelihood"])
+Mass_param_mean4_largePop <- apply(Mass_4param_mcmc2_probs_largePop, 2, mean)
+Mass_percentile95_low_largePop <- apply(Mass_4param_mcmc2_probs_largePop,2,quantile,.025)
+Mass_percentile95_up_largePop <- apply(Mass_4param_mcmc2_probs_largePop,2,quantile,.975)
+rm(Mass_4param_mcmc2_largePop)
 ```
+
+
+# plot mean vs standard together
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+plot_pmcmc_posteriors <- function(fit1, fit2, 
+                                  label1 = "Model 1", label2 = "Model 2",
+                                  burnin = 0, exp_params = c("m", "sigma_f")) {
+  
+  # Extract parameter samples as data frames, dropping the log-likelihood column
+  extract_samples <- function(fit, label, burnin = 0, n_chains = 4) {
+  samples <- as.data.frame(fit$pars)
+  
+  n_total <- nrow(samples)
+  
+  if (n_total %% n_chains != 0) warning("Total iterations not evenly divisible by n_chains — check n_chains is correct")
+  
+  n_iter <- n_total / n_chains
+  
+  if (burnin >= n_iter) stop("burnin is >= number of iterations per chain")
+  
+  # Build an index of rows to keep: drop first `burnin` rows from each chain's block
+  keep <- unlist(lapply(seq_len(n_chains), function(i) {
+    block_start <- (i - 1) * n_iter + 1
+    block_end   <- i * n_iter
+    seq(block_start + burnin, block_end)
+  }))
+  
+  samples <- samples[keep, ]
+  
+  if (!is.null(exp_params)) {
+    missing_params <- setdiff(exp_params, names(samples))
+    if (length(missing_params) > 0) warning("exp_params not found in samples: ", paste(missing_params, collapse = ", "))
+    for (p in intersect(exp_params, names(samples))) {
+      samples[[p]] <- exp(samples[[p]])
+    }
+  }
+  
+  samples$model <- label
+  samples
+}
+  
+  df1 <- extract_samples(fit1, label1, burnin = burnin)
+  df2 <- extract_samples(fit2, label2, burnin = burnin)
+  
+  # Only keep parameters present in both objects
+  params1 <- setdiff(names(df1), "model")
+  params2 <- setdiff(names(df2), "model")
+  shared_params <- intersect(params1, params2)
+  
+  if (length(shared_params) == 0) stop("No shared parameters between the two objects.")
+  
+  if (!setequal(params1, params2)) {
+    message("Note: parameters not shared between objects will be dropped: ",
+            paste(union(setdiff(params1, params2), setdiff(params2, params1)), collapse = ", "))
+  }
+  
+  # Combine and pivot to long format
+  combined <- bind_rows(
+    df1[, c(shared_params, "model")],
+    df2[, c(shared_params, "model")]
+  ) |>
+    pivot_longer(cols = all_of(shared_params),
+                 names_to = "parameter",
+                 values_to = "value")
+  
+  ggplot(combined, aes(x = value, colour = model, fill = model)) +
+    geom_density(alpha = 0.2, linewidth = 0.8) +
+    facet_wrap(~ parameter, scales = "free") +
+    scale_colour_brewer(palette = "Set1") +
+    scale_fill_brewer(palette = "Set1") +
+    labs(x = "Value", y = "Density", colour = NULL, fill = NULL) +
+    theme_bw(base_size = 22) +  
+    theme(legend.position = "top",
+          axis.title  = element_text(size = 22),   
+          axis.text   = element_text(size = 22),   
+          strip.text  = element_text(size = 22),   
+          legend.text = element_text(size = 22))  
+}
+
+# Usage
+plot_pmcmc_posteriors(Mass_4param_mcmc2, Mass_4param_mcmc2_mean, label1 = "0/1", label2 = "Mean", burnin = 10000)
+
+
+plot_pmcmc_posteriors(Mass_4param_mcmc2, Mass_4param_mcmc2_largePop, label1 = "15,000", label2 = "200,000", burnin = 10000)
+```
+
+
+
 
 # Likelihood ratio test
 #  lambda = -2*(x_1-x_2).
@@ -158,6 +275,8 @@ Mass_2_bic<- -2 * (Mass_likelihood_2param) + log(616) * 2 # 558.1187
 Mass_3_bic<- -2 * (Mass_likelihood_3param) + log(616) * 3 # 544.2304
 Mass_4_bic<- -2 * (Mass_likelihood_4param) + log(616) * 4 # 458.9257
 Mass_5_bic<- -2 * (Mass_likelihood_5param) + log(616) * 5 # 465.0913
+
+Mass_4_bic_mean <- -2 * (Mass_likelihood_4param_mean) + log(616) * 4 # 449.8755
 ```
 
 ```{r}
@@ -244,19 +363,37 @@ UK_2param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_projec
 UK_2param_mcmc2_probs <- coda::as.mcmc(cbind(UK_2param_mcmc2$probabilities, UK_2param_mcmc2$pars))
 UK_param_mean2 <- apply(UK_2param_mcmc2_probs, 2, mean)
 UK_likelihood_2param <- mean(UK_2param_mcmc2_probs[,"log_likelihood"])
+UK_percentile95_low_2param <- apply(UK_2param_mcmc2_probs,2,quantile,.025)
+UK_percentile95_up_2param <- apply(UK_2param_mcmc2_probs,2,quantile,.975)
 rm(UK_2param_mcmc2)
 
 UK_3param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/UK_newPrior/UK_PPxSero_ggCaller_PopPUNK_3param_det_pmcmc_run2.rds")
 UK_3param_mcmc2_probs <- coda::as.mcmc(cbind(UK_3param_mcmc2$probabilities, UK_3param_mcmc2$pars))
 UK_likelihood_3param <- mean(UK_3param_mcmc2_probs[,"log_likelihood"])
 UK_param_mean3 <- apply(UK_3param_mcmc2_probs, 2, mean)
+UK_percentile95_low_3param <- apply(UK_3param_mcmc2_probs,2,quantile,.025)
+UK_percentile95_up_3param <- apply(UK_3param_mcmc2_probs,2,quantile,.975)
 rm(UK_3param_mcmc2)
 
 UK_5param_mcmc2 <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2025_08_04/UK_newPrior/UK_PPxSero_ggCaller_PopPUNK_5param_det_pmcmc_run2.rds")
 UK_5param_mcmc2_probs <- coda::as.mcmc(cbind(UK_5param_mcmc2$probabilities, UK_5param_mcmc2$pars))
 UK_likelihood_5param <- mean(UK_5param_mcmc2_probs[,"log_likelihood"])
 UK_param_mean5 <- apply(UK_5param_mcmc2_probs, 2, mean)
+UK_percentile95_low_5param <- apply(UK_5param_mcmc2_probs,2,quantile,.025)
+UK_percentile95_up_5param <- apply(UK_5param_mcmc2_probs,2,quantile,.975)
 rm(UK_5param_mcmc2)
+
+
+# Large Pop
+UK_4param_mcmc2_largePop <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2026_03_25/UK_LargePop/UK_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+UK_4param_mcmc2_probs_largePop <- coda::as.mcmc(cbind(UK_4param_mcmc2_largePop$probabilities, UK_4param_mcmc2_largePop$pars))
+UK_param_mean4_largePop <- apply(UK_4param_mcmc2_probs_largePop, 2, mean)
+UK_percentile95_low_largePop <- apply(UK_4param_mcmc2_probs_largePop,2,quantile,.025)
+UK_percentile95_up_largePop <- apply(UK_4param_mcmc2_probs_largePop,2,quantile,.975)
+UK_likelihood_4param_largePop <- mean(UK_4param_mcmc2_probs_largePop[,"log_likelihood"])
+rm(UK_4param_mcmc2_largePop)
+
+plot_pmcmc_posteriors(UK_4param_mcmc2, UK_4param_mcmc2_largePop, label1 = "15,000", label2 = "50,000", burnin = 10000)
 
 ```
 
@@ -292,6 +429,108 @@ UK_2_bic<- -2 * (UK_likelihood_2param) + log(672) * 2 # 1160.003
 UK_3_bic<- -2 * (UK_likelihood_3param) + log(672) * 3 # 1165.918
 UK_4_bic<- -2 * (UK_likelihood_4param) + log(672) * 4 # 952.5368
 UK_5_bic<- -2 * (UK_likelihood_5param) + log(672) * 5 # 959.0727
+```
+
+# plot my Mass/UK fit vs Corander fit
+```{r}
+# copying Corander estimates from their table
+Corander_Mass_point_null <- c(0.0375, 0.0073) # v m
+Corander_Mass_point_3dof <- c(0.0733, 0.0056, 0.0075) # v m sigmaf
+Corander_Mass_low_3dof <- c(0.043, 0.002, 0.0017)
+Corander_Mass_up_3dof <- c(0.1207, 0.0131, 0.0234)
+Corander_Mass_point_5dof <- c(0.0812, 0.0044, 0.1363, 0.2483, 0.0023) # v m sigmaf propf sigmaw
+Corander_Mass_low_5dof <- c(0.0491, 0.0015, 0.0213, 0.1197, 0.001)
+Corander_Mass_up_5dof <- c( 0.1254, 0.0165, 0.2113, 0.5448, 0.0514)
+
+Corander_UK_point_null <- c(NA, NA) # v m
+Corander_UK_point_3dof <- c(0.1175, 0.0032, 0.0028) # v m sigmaf
+Corander_UK_low_3dof <- c(0.0667, 0.0011, 0.001)
+Corander_UK_up_3dof <- c(0.2262, 0.0132, 0.0117)
+Corander_UK_point_5dof <- c(0.2063, 0.0124, 0.1393, 0.4035, 0.0023)
+Corander_UK_low_5dof <- c(0.0832, 0.0012, 0.0121, 0.1005, 0.001)
+Corander_UK_up_5dof <- c( 0.3150, 0.0394, 0.2148, 0.5951, 0.0238)
+
+
+# pre-process my fits
+
+
+Mass_param_list <- list(Mass_param_mean2, Mass_percentile95_low_2param, Mass_percentile95_up_2param, Mass_param_mean3, Mass_percentile95_low_3param, Mass_percentile95_up_3param, Mass_param_mean5, Mass_percentile95_low_5param, Mass_percentile95_up_5param)
+
+UK_param_list <- list(UK_param_mean2, UK_percentile95_low_2param, UK_percentile95_up_2param, UK_param_mean3, UK_percentile95_low_3param, UK_percentile95_up_3param, UK_param_mean5, UK_percentile95_low_5param, UK_percentile95_up_5param)
+
+for (i in 1:length(Mass_param_list)) {
+  Mass_param_list[[i]]["m"] <- exp(Mass_param_list[[i]]["m"])
+  UK_param_list[[i]]["m"] <- exp(UK_param_list[[i]]["m"])
+  if(i>3){
+     Mass_param_list[[i]]["sigma_f"] <- exp(Mass_param_list[[i]]["sigma_f"])
+     UK_param_list[[i]]["sigma_f"] <- exp(UK_param_list[[i]]["sigma_f"])
+  }
+  if(i>6){
+    Mass_param_list[[i]]["sigma_w"] <- exp(Mass_param_list[[i]]["sigma_w"])
+    UK_param_list[[i]]["sigma_w"] <- exp(UK_param_list[[i]]["sigma_w"])
+  }
+}
+
+
+
+library(dplyr)
+library(purrr)
+
+make_df <- function(est, low, up, model, dataset, approach) {
+  tibble(
+    model = model,
+    dataset = dataset,
+    approach = approach,
+    parameter = c("v", "m", "sigma_f", "prop_f", "sigma_w")[1:length(est)],
+    estimate = est,
+    lower = low,
+    upper = up
+  )
+}
+
+df <- bind_rows(
+  make_df(Corander_Mass_point_null, Corander_Mass_point_null, Corander_Mass_point_null, "2", "Massachusetts", "Corander model"),
+  make_df(Corander_Mass_point_3dof, Corander_Mass_low_3dof, Corander_Mass_up_3dof, "3", "Massachusetts", "Corander model"),
+  make_df(Corander_Mass_point_5dof, Corander_Mass_low_5dof, Corander_Mass_up_5dof, "5", "Massachusetts", "Corander model"),
+  # add the remaining dataset/approach combinations
+  make_df(rev(Mass_param_list[[1]])[1:2], rev(Mass_param_list[[2]])[1:2], rev(Mass_param_list[[3]])[1:2], "2", "Massachusetts", "My model"),
+  make_df(rev(Mass_param_list[[4]])[1:3], rev(Mass_param_list[[5]])[1:3], rev(Mass_param_list[[6]])[1:3], "3", "Massachusetts", "My model"),
+  make_df(rev(Mass_param_list[[7]])[c(1,2, 5, 4, 3)], rev(Mass_param_list[[8]])[c(1,2, 5, 4, 3)], rev(Mass_param_list[[9]])[c(1,2, 5, 4, 3)], "5", "Massachusetts", "My model"),
+  
+  make_df(Corander_UK_point_null, Corander_UK_point_null, Corander_UK_point_null, "2", "Southampton", "Corander model"),
+  make_df(Corander_UK_point_3dof, Corander_UK_low_3dof, Corander_UK_up_3dof, "3", "Southampton", "Corander model"),
+  make_df(Corander_UK_point_5dof, Corander_UK_low_5dof, Corander_UK_up_5dof, "5", "Southampton", "Corander model"),
+  # add the remaining dataset/approach combinations
+  make_df(rev(UK_param_list[[1]])[1:2], rev(UK_param_list[[2]])[1:2], rev(UK_param_list[[3]])[1:2], "2", "Southampton", "My model"),
+  make_df(rev(UK_param_list[[4]])[1:3], rev(UK_param_list[[5]])[1:3], rev(UK_param_list[[6]])[1:3], "3", "Southampton", "My model"),
+  make_df(rev(UK_param_list[[7]])[c(1,2, 5, 4, 3)], rev(UK_param_list[[8]])[c(1,2, 5, 4, 3)], rev(UK_param_list[[9]])[c(1,2, 5, 4, 3)], "5", "Southampton", "My model")
+)
+
+df$parameter <- factor(
+  df$parameter,
+  levels = c("v", "m", "sigma_f","prop_f","sigma_w")
+)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(df,
+       aes(x = model,
+           y = estimate,
+           colour = approach)) +
+  geom_point(
+    position = position_dodge(width = 0.4),
+    size = 2
+  ) +
+  geom_errorbar(
+    aes(ymin = lower, ymax = upper),
+    position = position_dodge(width = 0.4),
+    width = 0.15
+  ) +
+  facet_wrap(dataset ~ parameter,
+             scales = "free", nrow = 2) +
+  theme_minimal(base_size = 18) + labs(x = "Degrees of freedom", y = "Parameter estimate") + labs(color = "Model")
 ```
 
 ```{r}
@@ -530,6 +769,17 @@ Nepal_5param_mcmc2_probs <- coda::as.mcmc(cbind(Nepal_5param_mcmc2$probabilities
 Nepal_param_mean5 <- apply(Nepal_5param_mcmc2_probs, 2, mean)
 Nepal_likelihood_5param <- mean(Nepal_5param_mcmc2_probs[,"log_likelihood"])
 rm(Nepal_5param_mcmc2)
+
+# Large Pop
+Nepal_4param_mcmc2_largePop <- readRDS("/Users/llorenz/Documents/PhD_Project/Code/1st_project/WF_plots_postTAC2/2026_03_25/Nepal_LargePop_fit2/Nepal_PPxSero_ggCaller_PopPUNK_4param_det_pmcmc_run2.rds")
+Nepal_4param_mcmc2_probs_largePop <- coda::as.mcmc(cbind(Nepal_4param_mcmc2_largePop$probabilities, Nepal_4param_mcmc2_largePop$pars))
+Nepal_param_mean4_largePop <- apply(Nepal_4param_mcmc2_probs_largePop, 2, mean)
+Nepal_percentile95_low_largePop <- apply(Nepal_4param_mcmc2_probs_largePop,2,quantile,.025)
+Nepal_percentile95_up_largePop <- apply(Nepal_4param_mcmc2_probs_largePop,2,quantile,.975)
+Nepal_likelihood_4param_largePop <- mean(Nepal_4param_mcmc2_probs_largePop[,"log_likelihood"])
+rm(Nepal_4param_mcmc2_largePop)
+
+plot_pmcmc_posteriors(Nepal_4param_mcmc2, Nepal_4param_mcmc2_largePop, label1 = "15,000", label2 = "82,921", burnin = 5000)
 
 ```
 

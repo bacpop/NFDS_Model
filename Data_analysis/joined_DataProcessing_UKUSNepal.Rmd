@@ -8,6 +8,7 @@ editor_options:
 ```{r}
 path_to_data <- "~/Documents/PhD_Project/Data/"
 library(readxl)
+library(ggplot2)
 ```
 
 #### read in meta data
@@ -93,7 +94,12 @@ for (i in unique(Nepal_meta_data_gps2_v2_selection$Year)) {
 #Nepal_meta_data_gps2_v2_selection$"In_silico_serotype" <- rep(NA, nrow(Nepal_meta_data_gps2_v2_selection))
 #Nepal_meta_data_gps2_v2_selection$"In_silico_serotype" <- gps2_serotype_dict_v2[Nepal_meta_data_gps2_v2_selection$"Lane_id"]
 
-# check how much these two serotyping methods really differ
+# save for paper
+Nepal_meta_data_gps2_accNo <- Nepal_meta_data_gps2_v2[filter_for_carriage,c(4, 11, 19)]
+Nepal_meta_data_gps2_accNo <- Nepal_meta_data_gps2_accNo[,-2]
+write.csv(Nepal_meta_data_gps2_accNo,"/Users/llorenz/Documents/PhD_Project/Papers/NFDS_Model/Data/Kathmandu_AccessionNumbers.csv")
+
+vim# check how much these two serotyping methods really differ
 same <- 0
 diff <- 0
 diff_names <- c()
@@ -591,13 +597,17 @@ saveRDS(PPxSero_matrix_prob, "PPsero_mig2.rds")
 
 # same with new sorting 
 PPsero_startpop6 <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
+PPsero_startpop6_large <- matrix(0, nrow = length(unique(PopPUNK_clusters$Cluster)), ncol = length(unique(PopPUNK_clusters$Serotype)))
 PP_expand_factor <- 15000 / sum(PP_mass_cluster_freq_1_sero)
+PP_expand_factor_US_large <- 200000 / sum(PP_mass_cluster_freq_1_sero)
 exp_noise <- 1000
 for (i in 1:nrow(PPsero_startpop6)) {
     PPsero_startpop6[i,] <- (sapply((PP_mass_cluster_freq_1_sero[i,] + rexp(n = length(PP_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob[i,])
+    PPsero_startpop6_large[i,] <- (sapply((PP_mass_cluster_freq_1_sero[i,] + rexp(n = length(PP_mass_cluster_freq_1_sero[i,]), rate = exp_noise)) * PP_expand_factor_US_large, rpois, n=1)) + ceiling(PPxSero_matrix_prob[i,])
   #PPsero_startpop5[i,] <- PP_mass_cluster_freq_1_sero[i,] + ceiling(PPxSero_matrix_prob[i,])
 }
 saveRDS(PPsero_startpop6, "PPsero_startpop6.rds")
+saveRDS(PPsero_startpop6_large, "PPsero_startpop6_large.rds")
 
 plot(colSums(PP_mass_cluster_freq_1_sero)/sum(colSums(PP_mass_cluster_freq_1_sero)))
 points(colSums(PPsero_startpop6)/sum(colSums(PPsero_startpop6)), col = "red")
@@ -1065,6 +1075,11 @@ expand_factor <- 15000 / sum(Nepal_cluster_freqs_preVac)
 exp_noise <- 10
 Nepal_model_start_pop <- (sapply((Nepal_cluster_freqs_preVac + rexp(n = length(Nepal_cluster_freqs_preVac), rate = exp_noise)) * expand_factor, rpois, n=1))
 
+# larger population size
+expand_factor_l <- 83000 / sum(Nepal_cluster_freqs_preVac)
+exp_noise <- 10
+Nepal_model_start_pop_l <- (sapply((Nepal_cluster_freqs_preVac + rexp(n = length(Nepal_cluster_freqs_preVac), rate = exp_noise)) * expand_factor_l, rpois, n=1))
+
 # visual check for the "sampling"
 plot(Nepal_cluster_freqs_preVac/sum(Nepal_cluster_freqs_preVac))
 points(Nepal_model_start_pop/sum(Nepal_model_start_pop), col = "red")
@@ -1080,6 +1095,7 @@ plot(Nepal_cluster_freqs_preVac/sum(Nepal_cluster_freqs_preVac))
 points(Nepal_model_start_pop/sum(Nepal_model_start_pop), col = "red")
 
 saveRDS(Nepal_model_start_pop, "Nepal_model_start_pop.rds")
+saveRDS(Nepal_model_start_pop_l, "Nepal_model_start_pop_large.rds")
 ```
 
 
@@ -1118,6 +1134,7 @@ Nepal_model_start_pop <- readRDS("Nepal_model_start_pop.rds")
 Nepal_clusters_no <- length(unique(Nepal_clusters$GPSC))
 Nepal_avg_cluster_freq <- rep(1/Nepal_clusters_no, Nepal_clusters_no)
 
+Nepal_model_start_pop_l <- readRDS("Nepal_model_start_pop_large.rds")
 
 PPxSero_matrix <- matrix(0, nrow = length(unique(Nepal_clusters$GPSC)), ncol = length(unique(Nepal_clusters$Serotype)))
 
@@ -1157,13 +1174,17 @@ saveRDS(Nepal_mass_cluster_freq_1_sero, file = "Nepal_mass_cluster_freq_1_sero.r
 
 
 PPsero_startpop2 <-  matrix(0, nrow = length(unique(Nepal_clusters$GPSC)), ncol = length(unique(Nepal_clusters$Serotype)))
+PPsero_startpop2_large <-  matrix(0, nrow = length(unique(Nepal_clusters$GPSC)), ncol = length(unique(Nepal_clusters$Serotype)))
 PP_expand_factor <- 15000 / sum(Nepal_cluster_freqs_preVac)
+expand_factor_l <- 83000 / sum(Nepal_cluster_freqs_preVac)
 exp_noise <- 1000
 for (i in (unique(Nepal_clusters$GPSC))) {
-  #PPsero_startpop2[PPclustToIndex_dict[i],] <- round((PPxSero_matrix[i,] * Nepal_model_start_pop[i])/sum(PPxSero_matrix[i,]))
   PPsero_startpop2[Nepal_PPclustToIndex_dict[i],] <- (sapply((Nepal_mass_cluster_freq_1_sero[Nepal_PPclustToIndex_dict[i],] + rexp(n = length(Nepal_mass_cluster_freq_1_sero[Nepal_PPclustToIndex_dict[i],]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[Nepal_PPclustToIndex_dict[i],])
+  
+  PPsero_startpop2_large[Nepal_PPclustToIndex_dict[i],] <- (sapply((Nepal_mass_cluster_freq_1_sero[Nepal_PPclustToIndex_dict[i],] + rexp(n = length(Nepal_mass_cluster_freq_1_sero[Nepal_PPclustToIndex_dict[i],]), rate = exp_noise)) * expand_factor_l, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[Nepal_PPclustToIndex_dict[i],])
 }
 saveRDS(PPsero_startpop2, "Nepal_PPsero_startpop.rds")
+saveRDS(PPsero_startpop2_large, "Nepal_PPsero_startpop_large.rds")
 
 
 # serotype VT vector
@@ -1615,13 +1636,18 @@ points(colSums(PPsero_startpop2)/sum(colSums(PPsero_startpop2)), col = "red")
 
 # same as PPsero_startpop6 for Mass
 PPsero_startpop4 <- matrix(0, nrow = length(unique(UK_clusters$Cluster)), ncol = length(unique(UK_clusters$Serotype)))
+PPsero_startpop4_large <- matrix(0, nrow = length(unique(UK_clusters$Cluster)), ncol = length(unique(UK_clusters$Serotype)))
 PP_expand_factor <- 15000 / sum(UK_cluster_freqs_sero[[1]])
+PP_expand_factor_UK_large <- 50000 / sum(UK_cluster_freqs_sero[[1]])
+
 exp_noise <- 1000
 for (i in 1:nrow(PPsero_startpop4)) {
     PPsero_startpop4[i,] <- (sapply((UK_cluster_freqs_sero[[1]][i,] + rexp(n = length(UK_cluster_freqs_sero[[1]][i,]), rate = exp_noise)) * PP_expand_factor, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[i,])
-  #PPsero_startpop5[i,] <- PP_mass_cluster_freq_1_sero[i,] + ceiling(PPxSero_matrix_prob[i,])
+    PPsero_startpop4_large[i,] <- (sapply((UK_cluster_freqs_sero[[1]][i,] + rexp(n = length(UK_cluster_freqs_sero[[1]][i,]), rate = exp_noise)) * PP_expand_factor_UK_large, rpois, n=1)) + ceiling(PPxSero_matrix_prob2[i,])
+
 }
 saveRDS(PPsero_startpop4, "UK_PPsero_startpop.rds")
+saveRDS(PPsero_startpop4_large, "UK_PPsero_startpop_large.rds")
 # see next bit, I had already implemented that
 
 plot(rowSums(UK_cluster_freqs_sero[[1]])/sum(rowSums(UK_cluster_freqs_sero[[1]])))
@@ -1793,6 +1819,21 @@ ggCPP_intermed_gene_presence_absence_consensus[-1,1] <- ggC_intermed_gene_presen
 ggCPP_intermed_gene_presence_absence_consensus_2001[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
 ggCPP_intermed_gene_presence_absence_consensus_2004[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
 ggCPP_intermed_gene_presence_absence_consensus_2007[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+
+
+# mean as alternative
+cons_genomes_mean <- function(x){
+  as.double((mean(as.integer(x))))
+}
+
+ggCPP_intermed_gene_presence_absence_consensus_mean <- data.frame(matrix(0, nrow = sum(ggC_filter)+1, ncol = length(unique(PopPUNK_clusters$Cluster))+1))
+ggCPP_intermed_gene_presence_absence_consensus_mean[1,-1] <- paste("SeqCl_",unique(PopPUNK_clusters$Cluster),sep = "")
+
+for (i in unique(PopPUNK_clusters$Cluster)) {
+  ggCPP_intermed_gene_presence_absence_consensus_mean[-1,(which(unique(PopPUNK_clusters$Cluster) == i))+1] <- apply(as.matrix(ggC_intermed_gene_presence_absence[-1,c(FALSE,ggCPP_Mass_seq_clusters_dict[unlist(ggC_intermed_gene_presence_absence[1,-1])]==i)]), 1, cons_genomes_mean)
+}
+ggCPP_intermed_gene_presence_absence_consensus_mean[-1,1] <- ggC_intermed_gene_presence_absence[-1,1]
+saveRDS(ggCPP_intermed_gene_presence_absence_consensus_mean, file = "ggCPP_intermed_gene_presence_absence_consensus_mean.rds")
 ```
 
 
